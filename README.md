@@ -1,57 +1,62 @@
-# Welcome to your Expo app 👋
+# ZeroD Farms — Employee Field App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+The phone client for farm staff, part of the ZeroD Farms Management System.
 
-## Get started
+A **Worker** logs the day's mortality, feed, weights, environment readings and
+treatments against the right house and batch — offline, in a barn, with one
+hand — and sees what their performance points are worth in pay. A **Manager**
+assigns that work, scores the people doing it, moves birds between houses, and
+reconciles stock at the farm gate.
 
-1. Install dependencies
+Every write queues locally first and lands exactly once when signal comes back.
 
-   ```bash
-   npm install
-   ```
+## The system
 
-2. Start the app
+| Repo | What |
+| --- | --- |
+| `server/` | Hono + Prisma + Postgres API. The source of truth for all three clients. |
+| `web/` | Admin dashboard — the operator console. Not for field staff. |
+| `mobile/` | **This app.** Worker + Manager, in the field. |
 
-   ```bash
-   npx expo start
-   ```
+## Docs
 
-In the output, you'll find options to open the app in a
+Read in this order:
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+| Doc | What it covers |
+| --- | --- |
+| [`docs/PRD.md`](docs/PRD.md) | The 20 screens — purpose, layout, fields, empty states, endpoints |
+| [`docs/design.md`](docs/design.md) | The "Field Instrument" visual system — colour, type, structure, voice |
+| [`docs/offline-sync.md`](docs/offline-sync.md) | The write queue: how records survive no signal and don't duplicate |
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+Upstream, in the other repos:
 
-## Get a fresh project
+- `server/docs/FEATURES.md` §3 — the feature set and permission matrix this app implements
+- `server/docs/api.md` — endpoint reference
+- `web/docs/design.md` — the admin client's system; shares the status-colour vocabulary
 
-When you're ready, run:
+## Status
+
+Pre-implementation. The app is currently the unmodified `create-expo-app`
+template; the docs above define what replaces it.
+
+## Running it
 
 ```bash
-npm run reset-project
+bun install
+npx expo start          # Expo Go is enough — v1 adds no native modules
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Lint and typecheck before calling anything done:
 
-### Other setup steps
+```bash
+npx expo lint
+npx tsc --noEmit
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+**Pointing at the API.** The server binds `localhost:5085`, which a physical
+phone can't reach. Set the API base URL to your machine's LAN IP and add that
+origin to `ALLOWED_ORIGINS` in `server/.env`.
 
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
-# fms-exe-mobile
+See [`AGENTS.md`](AGENTS.md) for Expo conventions — in particular, check the
+versioned docs before writing against any Expo API rather than working from
+memory.
