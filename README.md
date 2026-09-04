@@ -36,15 +36,25 @@ Upstream, in the other repos:
 
 ## Status
 
-Pre-implementation. The app is currently the unmodified `create-expo-app`
-template; the docs above define what replaces it.
+v1 built: all 20 screens, the offline write queue, and the Worker + Manager
+tiers. Verified end-to-end against a live API — including an offline write
+surviving a reload and syncing exactly once on reconnect.
 
 ## Running it
 
 ```bash
 bun install
-npx expo start          # Expo Go is enough — v1 adds no native modules
+npx expo start          # iOS/Android — the real targets
+npx expo start --web    # preview only, see the caveat below
 ```
+
+**Web is a preview target, not a deployment one.** The app runs there, but
+`expo-sqlite` uses a WASM build needing `SharedArrayBuffer`, which requires
+cross-origin isolation (`COEP`/`COOP`). Those headers are configured for
+production builds via the expo-router plugin in `app.json`, but the dev server
+doesn't send them — so the offline queue may be unavailable in `--web` dev.
+That degrades rather than crashes (`lib/outbox.ts` opens the database lazily),
+and iOS/Android use native SQLite and are unaffected.
 
 Lint and typecheck before calling anything done:
 

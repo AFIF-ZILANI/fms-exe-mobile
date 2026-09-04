@@ -1,21 +1,24 @@
-import { useEffect, useState } from 'react';
-import { useColorScheme as useRNColorScheme } from 'react-native';
+import { useSyncExternalStore } from 'react';
+import { Appearance } from 'react-native';
+
+function subscribe(onChange: () => void) {
+  const subscription = Appearance.addChangeListener(onChange);
+  return () => subscription.remove();
+}
 
 /**
- * To support static rendering, this value needs to be re-calculated on the client side for web
+ * Web needs the colour scheme recalculated on the client, since static
+ * rendering has no `prefers-color-scheme` to read.
+ *
+ * useSyncExternalStore rather than the useState+useEffect the Expo template
+ * ships: the server snapshot ('light') is what static rendering emits and
+ * the client snapshot takes over on hydration, which is hydration-safe by
+ * construction and needs no effect (React 19 flags setState-in-effect).
  */
 export function useColorScheme() {
-  const [hasHydrated, setHasHydrated] = useState(false);
-
-  useEffect(() => {
-    setHasHydrated(true);
-  }, []);
-
-  const colorScheme = useRNColorScheme();
-
-  if (hasHydrated) {
-    return colorScheme;
-  }
-
-  return 'light';
+  return useSyncExternalStore(
+    subscribe,
+    () => Appearance.getColorScheme() ?? 'light',
+    () => 'light' as const,
+  );
 }
