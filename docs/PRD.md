@@ -368,7 +368,7 @@ them, and doubles as the count display.
 | --- | --- | --- | --- |
 | 6.7 | Mortality | house, **count died**, cause note?, date | Count focused on mount. Warn (don't block) if count > 2% of live birds — a fat-finger `50` for `5` is the costly typo, and `BatchHouseBalance` decrements for real. |
 | 6.8 | Consumption | house, **item**, quantity, unit, note?, date | Items filtered to `is_unit_tracked: false` — see below. Unit defaults from the item; `base_quantity` is server-computed. No `stock_unit_id` without QR. |
-| 6.9 | Weight | house, **average weight (g)**, sample size, date | Server enforces `@@unique([batch_id, house_id, date])` — one sample per house per day. On 409, offer "Replace today's sample," not a raw conflict. |
+| 6.9 | Weight | house, **average weight (g)**, sample size, date | Server enforces `@@unique([batch_id, house_id, date])` — one sample per house per day, so `date` is submitted truncated to midnight or the constraint never actually bites. There is **no update endpoint** for WeightRecords (create + list only), so a same-day duplicate can't be "replaced" — it surfaces through the outbox's normal dead-letter path instead. |
 | 6.10 | Environment | house, temp °C, humidity %, ammonia ppm, CO₂ ppm, pressure hPa, **time period** | Five readings stacked in one keypad-friendly column, not a grid. `time_period` defaults from the device clock, overridable. |
 | 6.11 | Treatment | **type toggle** (medication / vaccination), house, name, dosage, cause?, doctor?, remarks? | One screen, two endpoints. Doctor optional — treatments happen without one. |
 

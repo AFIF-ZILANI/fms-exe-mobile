@@ -142,8 +142,15 @@ reading," which is exactly true.
 | Eyebrow | Plex Sans 500 | 11 / 14 | Uppercase, `letterSpacing: 0.08em`. Section headers. |
 
 Weights to bundle: Plex Sans Regular / Medium / SemiBold, Plex Mono Regular /
-SemiBold. Five files, ~250KB. Don't add more weights — the scale above is the
-whole system.
+SemiBold. Five static TTFs from IBM's own repo (`IBM/plex@6.4.2`), ~908KB
+total — Google Fonts only publishes the variable build, whose weight axis
+renders inconsistently across React Native platforms. Don't add more weights;
+the scale above is the whole system.
+
+**Bengali falls back.** Several house names are Bengali (`বাচ্চার সেড`) and IBM
+Plex has no Bengali glyphs, so those strings render in the platform's default
+font. Acceptable — but don't add a `letterSpacing` or line-height tweak that
+assumes Plex metrics on a field that can hold a house name.
 
 ### 3.2 Rules
 

@@ -174,6 +174,19 @@ The UI confirms from step 4, never step 5. "Saved · will sync" is the honest
 message: it *is* saved, on this phone, durably, and the server is a detail of
 when.
 
+**`submit()` returns a boolean, and callers must honour it.** `false` means the
+write reached *nothing* — not the server, not the queue — and the hook has
+already told the user so. A form that navigates away regardless would leave a
+worker believing a record landed when it didn't, which is the one failure this
+whole design exists to prevent. Every call site is `if (queued) router.back()`;
+the feeding-program screen, which stays put to add another phase, only clears
+its fields when `queued` is true.
+
+The database is also opened **lazily**, inside `initOutbox()`, rather than at
+module scope. A throw at import time would white-screen the entire app with no
+recovery; contained, a storage failure still leaves reads, navigation and a
+real error message working.
+
 If a task launched the form, marking that task done is a second queued write
 (`POST /task-assignments/:id/complete`) enqueued in the same step 4.
 
