@@ -1,186 +1,378 @@
-# ZeroD Farms Field App — Design Guidelines
+# ZeroD Farms Field App — Design System
 
-Design system for the **Employee Field App** (`fms-exe-mobile`) — the phone
-client Workers and Managers use in the barn. Scope is this app only. The Admin
-Web Dashboard is a separate client with its own system (`web/docs/design.md`);
-where the two overlap, this doc says so and defers.
+Design system for the **Employee Field App** — the phone client Workers and
+Managers use in the barn. Scope is this app only. The Admin Web Dashboard is a
+separate client with its own system (`web/docs/design.md`); where the two
+overlap, this doc says so and defers.
 
-Screens this system serves are inventoried in `docs/PRD.md`. The feature set and
-permission matrix it implements are `server/docs/FEATURES.md` §3.
-
-This doc describes what is **proposed** — none of it is implemented yet. The
-Expo template ships a five-token `Colors` object in `src/constants/theme.ts` and
-system fonts; everything below replaces that.
+- Screens this system serves — `docs/PRD.md`
+- **Per-screen layout blueprints — `docs/layout/`** (exact sizes, positions, states)
+- Offline queue behaviour the UI reflects — `docs/offline-sync.md`
 
 ---
 
-## 1. Direction: "Field Instrument"
+## 0. What changed in v2, and why
 
-**This is an instrument, not a dashboard.** It is read at arm's length, in
-direct sun and in a dim barn, by someone wearing gloves who is already doing
+v1 shipped a strict monochrome system ("Field Instrument"): ink on paper,
+hairline rules, colour reserved exclusively for mortality figures and unsynced
+rows. It was disciplined and it was correct about legibility. It was also
+**dull, flat, and hard to parse** — every row weighed the same, nothing guided
+the eye, and a screen of grey text with a UUID in it reads as unfinished rather
+than as restrained.
+
+v2 keeps what worked and fixes what didn't:
+
+| Kept from v1 | Changed in v2 |
+| --- | --- |
+| Figures are the content — numerals get the display treatment | Numerals now sit **inside stat cards**, not floating on bare ground |
+| Never colour-alone for status (icon or word always) | Colour is now **structural too** — brand green carries primary actions |
+| One status vocabulary shared with the web dashboard | Added tinted surfaces, so a screen has depth without shouting |
+| Mono for every numeral, so columns align for free | Sans changed to a friendlier geometric face (see §3) |
+| 48dp targets, bottom-anchored primary actions | Added a **persistent bottom tab bar** — v1's FAB-only nav left workers lost |
+| Dark mode ships with light, always | Cards, radii and soft shadows replace bare hairline rows |
+
+**The v1 bet is explicitly withdrawn.** "The only saturated colour belongs to a
+value that means something" made every screen equally quiet, which made none of
+them scannable. v2's bet is different and stated in §2.1.
+
+---
+
+## 1. Direction: "Field Green"
+
+**A calm, modern instrument that still looks alive.** It is read at arm's length,
+in direct sun and in a dim barn, by someone wearing gloves who is already doing
 something else with their other hand.
 
-Two consequences drive every decision here:
+Four consequences drive every decision here:
 
 1. **Figures are the content.** Every screen's most important element is a
    number — a bird count, a mortality, a reading, a point total. Figures get the
-   display treatment; labels get out of the way. This inverts the usual
-   hierarchy, deliberately.
-2. **It writes a permanent ledger.** `Consumption`, `MortalityLog`,
-   `BatchHouseAllocation`, `PerformanceScoreEntry` and the rest are append-only
-   at the application layer — a correction is a new offsetting row, never an
-   edit (`server/docs/FEATURES.md` §4). The interface should look like the
-   logbook it is.
+   display treatment; labels get out of the way.
+2. **Grouping beats density.** Related things live in a card together. A worker
+   should be able to find "today's tasks" without reading a single word, purely
+   from where the block sits and what shape it is.
+3. **It writes a permanent ledger.** `Consumption`, `MortalityLog`,
+   `BatchHouseAllocation`, `PerformanceScoreEntry` and the rest are append-only —
+   a correction is a new offsetting row, never an edit. The interface should feel
+   trustworthy, and never offer an Edit affordance on a logged record.
+4. **The thumb is the only reliable input.** One-handed reach, 48dp minimum
+   targets, primary actions bottom-anchored, navigation at the bottom of the
+   screen — never the top.
 
 ### 1.1 Principles
 
-1. **Colour is a data channel, not decoration.** See §2. This is the system's
-   defining constraint.
-2. **Never colour-alone for status.** Inherited from `web/docs/design.md` §1.3
-   and non-negotiable for the same reasons — colourblind safety, and screenshots
-   that get forwarded. Every status carries an icon or a word.
+1. **Green is the app.** Brand green carries primary actions, active navigation,
+   selected states and positive outcomes. It should be visible on every screen.
+2. **Never colour-alone for status.** Non-negotiable — colourblind safety, and
+   screenshots that get forwarded. Every status carries an icon **or** a word.
 3. **One status vocabulary across both clients.** A CRITICAL alert is the same
-   colour concept here as on the web dashboard. §2.2 maps them explicitly.
-4. **Legibility beats atmosphere.** Pure white ground, near-black ink. Not a
-   warm cream — this screen competes with sunlight.
-5. **Dark mode is not an afterthought.** Feeding at 5am and 11pm is normal.
-   Every token ships light and dark together.
-6. **The thumb is the only reliable input.** One-handed reach, 48dp targets,
-   primary actions bottom-anchored.
+   colour concept here as on the web dashboard. §2.4 maps them.
+4. **Legibility beats atmosphere.** This screen competes with sunlight. Tints are
+   soft; text contrast is not.
+5. **Dark mode is not an afterthought.** Feeding at 5am and 11pm is normal. Every
+   token ships light and dark together, in the same change.
+6. **Motion confirms, never decorates.** The only animations that survive review
+   are the ones that tell a worker their write was recorded.
 
 ---
 
-## 2. Colour system
+## 2. Colour
 
-### 2.1 The constraint
+### 2.1 The bet
 
-The interface is **monochrome**. Buttons are ink. Cards are paper. Rules are
-grey. The only saturated colour on any screen belongs to **a value that means
-something** — a mortality figure, a negative score, an unsynced row, an
-out-of-range reading.
+**Brand green is structural; the other saturated colours stay semantic.**
 
-This is the system's one real bet. It pays off twice: it reads as disciplined
-and professional, and in a barn it makes colour a dependable attention signal.
-When nothing is decorative, anything coloured is worth looking at.
+Green is free to appear anywhere it means "this is the app, this is the action,
+this is good" — buttons, the active tab, selected chips, positive scores, a
+house that's healthy. Red, amber and blue are **not** free: they keep v1's
+discipline and appear only when a value means something (a mortality figure, an
+unsynced write, an out-of-range reading).
 
-> The discipline **is** the design. The moment a coloured primary button or a
-> tinted card appears "to add warmth," the signal stops working and every
-> screen gets slower to read. This is the first thing to check in review.
+This is what makes the app read as alive without becoming noisy. One colour
+carries identity and action. Three colours carry meaning. Nothing carries
+decoration.
 
-This is not a departure from the web dashboard — `web/docs/design.md` §2.2 keeps
-`primary` grayscale for exactly the same reason ("that's what makes a 15-page
-data console feel calm"). The field app takes the same position further.
+> The discipline that still matters: **a red thing on screen is always bad news,
+> and an amber thing is always "not on the server yet."** The moment red is used
+> to make a button prominent, or amber to add warmth, the signal stops working.
+> This is the first thing to check in design review.
 
-### 2.2 Tokens
+### 2.2 Foundation tokens
 
-Replace the `Colors` object in `src/constants/theme.ts` wholesale.
-
-**Foundation** — the entire UI is built from these five:
+The neutral ground the whole UI is built on.
 
 | Token | Light | Dark | Use |
 | --- | --- | --- | --- |
-| `ink` | `#101418` | `#E8ECEF` | Body text, primary buttons, the hero figure |
-| `paper` | `#FFFFFF` | `#0D1014` | Screen ground |
-| `field` | `#F1F3F5` | `#171B20` | Insets, pressed states, input wells |
-| `line` | `#DFE3E8` | `#262C33` | Hairlines, the ledger gutter rule |
-| `muted` | `#626E7A` | `#8A959F` | Secondary text, captions, eyebrows |
+| `ground` | `#F5F8F6` | `#0E1613` | The page background behind cards |
+| `surface` | `#FFFFFF` | `#16201C` | Card fill, sheet fill, header fill |
+| `surfaceAlt` | `#F1F4F2` | `#1D2925` | Input wells, insets, pressed rows, skeletons |
+| `ink` | `#0F1613` | `#E9EFEB` | Primary text, hero figures |
+| `inkSoft` | `#46534C` | `#AEBAB3` | Secondary text, card body copy |
+| `muted` | `#6B7A72` | `#7E8D85` | Captions, eyebrows, placeholder, inactive tabs |
+| `line` | `#E2E8E4` | `#27332E` | Hairlines, card borders, dividers, input borders |
 
-**Data channel** — the only saturated values in the app. Names match
-`web/docs/design.md` §2.3 so one word means one thing across both clients:
+Dark `ground` and `surface` carry a faint green cast rather than being pure
+grey — it keeps the two themes recognisably the same product.
+
+### 2.3 Brand tokens
+
+| Token | Light | Dark | Use |
+| --- | --- | --- | --- |
+| `primary` | `#1B8A5A` | `#34D399` | Primary buttons, active tab, links, focus rings, selected state |
+| `primaryPressed` | `#146E47` | `#2BB983` | Pressed state of anything `primary` |
+| `primarySoft` | `#E7F5EE` | `#12332A` | Selected chip fill, active tab pill, soft badge fill |
+| `onPrimary` | `#FFFFFF` | `#04150E` | Text and icons on a `primary` fill |
+
+**`primary` doubles as `success`.** They are the same value on purpose — in this
+product green means both "the brand" and "this went well," and splitting them
+into two near-identical greens reads as a mistake rather than as a distinction.
+
+### 2.4 Semantic tokens
+
+Names match `web/docs/design.md` so one word means one thing across both clients.
 
 | Token | Light | Dark | Field-app usage |
 | --- | --- | --- | --- |
-| `success` | `#11784A` | `#3DD68C` | Positive score entries, in-range readings, synced |
-| `critical` | `#C0342B` | `#FF6B5E` | Mortality figures, negative scores, errors, out-of-range readings |
-| `warning` | `#B26A00` | `#E8A33D` | **Queued / unsynced writes**, low stock, nearing expiry |
-| `info` | `#1F6FEB` | `#5AA3FF` | Fresh-from-network marker, informational alerts |
+| `success` | `#1B8A5A` | `#34D399` | Positive score entries, in-range readings, synced. Same value as `primary`. |
+| `critical` | `#DC2626` | `#FF7B6B` | Mortality figures, negative scores, errors, out-of-range readings, destructive confirms |
+| `warning` | `#D97706` | `#FBBF24` | **Queued / unsynced writes**, low stock, nearing expiry, over-threshold input warnings |
+| `info` | `#2563EB` | `#60A5FA` | Fresh-from-network marker, informational banners |
 | `neutral` | = `muted` | = `muted` | Done, cancelled, closed, inactive — no action needed |
 
-Mobile-specific usages worth stating, since they don't exist on web:
+Mobile-specific meanings worth stating, since they don't exist on web:
 
-- **`warning` means "not yet on the server."** Queue depth, pending dots, and
-  the dead-letter state all draw from it. It is the most frequently seen colour
-  in the app and the one a worker learns first.
-- **`info` marks freshness**, not importance — a value fetched this session
+- **`warning` means "not yet on the server."** Queue depth, pending dots and the
+  dead-letter state all draw from it. It is the colour a worker learns first.
+- **`info` marks freshness,** not importance — a value fetched this session
   rather than served from cache.
 
-### 2.3 The one brand touch
+### 2.5 Tint surfaces
 
-`web/docs/design.md` §2.2 defines a green brand accent
-(`oklch(0.53 0.14 152)`) reserved for "login/logo/empty-state illustrations
-only — never in tables/badges/charts."
+Soft fills used **only** as card or tile backgrounds, never as text colour and
+never as a border. They give a screen depth without adding saturation.
 
-The field app honours that scope exactly, which here means **one place**: the
-splash screen and app icon. It appears nowhere in the running UI. That keeps the
-two clients recognisably one product without breaking §2.1.
+| Token | Light | Dark | Paired with |
+| --- | --- | --- | --- |
+| `tintGreen` | `#E7F5EE` | `#12332A` | Bird counts, positive stats, healthy houses |
+| `tintAmber` | `#FEF5E7` | `#2A2110` | Points / payroll stats, queue banner |
+| `tintRed` | `#FDECEC` | `#2B1616` | Mortality stats, error banners |
+| `tintBlue` | `#E9F0FE` | `#101E33` | Environment readings, info banners |
+
+**Rule:** a tinted surface always carries a matching semantic-coloured figure or
+icon. A tinted card with only neutral ink inside it is decoration — remove the
+tint. Text on a tint is always `ink`, never the semantic colour at body size.
+
+### 2.6 Elevation
+
+Light theme uses soft shadows. Dark theme uses **borders instead of shadows** —
+a shadow on a dark ground is invisible and only costs render time.
+
+| Level | Light | Dark | Use |
+| --- | --- | --- | --- |
+| `flat` | none | none | Rows inside a card, list items |
+| `card` | `y2 blur8 rgba(15,22,19,0.05)` + `y1 blur2 rgba(15,22,19,0.03)` | `1px solid line` | Every card |
+| `raised` | `y4 blur12 rgba(27,138,90,0.24)` | `y4 blur12 rgba(0,0,0,0.4)` | Centre tab button, FAB |
+| `sheet` | `y-4 blur24 rgba(15,22,19,0.12)` | `y-4 blur24 rgba(0,0,0,0.5)` | Bottom sheets, sticky submit bar |
+| `header` | `y1 blur3 rgba(15,22,19,0.04)` on scroll only | `1px bottom line` on scroll only | Screen header once content scrolls under it |
+
+Shadows never exceed these values. There is no `xl` elevation, and nothing in
+this app floats above a sheet.
 
 ---
 
 ## 3. Typography
 
-**IBM Plex Sans + IBM Plex Mono**, bundled as static TTFs in `assets/fonts/`
-and loaded with `expo-font`'s `useFonts` behind the existing splash screen.
-Both are OFL-licensed.
+**Plus Jakarta Sans** (UI text) **+ IBM Plex Mono** (every numeral), bundled as
+static TTFs in `assets/fonts/` and loaded with `expo-font`'s `useFonts` behind
+the splash screen. Both are OFL-licensed.
 
-Mono is not a stylistic flourish. Figures in this app are *measurements and
-codes*: aligned decimals in the ledger, batch codes (`B-24`), house tokens
-(`H2`), stock-unit id fragments (`…a3f9`). Mono aligns them for free — no
-`tabular-nums` workaround needed, which is the equivalent rule web has to
-enforce by hand (`web/docs/design.md` §3). At hero scale it reads as "this is a
-reading," which is exactly true.
+**The sans changed in v2.** IBM Plex Sans is a technical, slightly cold face —
+correct for a console, wrong for a tool a farm worker uses every morning. Plus
+Jakarta Sans is geometric, open, and noticeably friendlier at body sizes while
+holding up better at 11px than most humanist alternatives.
+
+**The mono did not change.** Figures in this app are *measurements and codes*:
+aligned decimals in a ledger, batch codes (`B-24`), house tokens (`H2`), stock
+id fragments (`…a3f9`). Mono aligns them for free — no `tabular-nums`
+workaround. IBM Plex Mono is already bundled; keep it.
+
+Weights to bundle: Jakarta Regular / Medium / SemiBold / Bold, Plex Mono Regular
+/ SemiBold. Six static TTFs. Don't add more — the scale below is the whole
+system.
 
 ### 3.1 Scale
 
 | Role | Face | Size / line | Notes |
 | --- | --- | --- | --- |
-| Reading | Plex Mono 600 | 44 / 40 | The hero figure. **At most one per screen.** |
-| Figure | Plex Mono 600 | 24 / 28 | Counts in lists, score chips |
-| Data | Plex Mono 400 | 13 / 18 | Codes, ids, timestamps, aligned columns |
-| Title | Plex Sans 600 | 20 / 26 | Screen and section titles |
-| Body | Plex Sans 400 | 16 / 24 | Everything else. **Never below 16 for content.** |
-| Label | Plex Sans 500 | 14 / 20 | Field labels, buttons |
-| Eyebrow | Plex Sans 500 | 11 / 14 | Uppercase, `letterSpacing: 0.08em`. Section headers. |
-
-Weights to bundle: Plex Sans Regular / Medium / SemiBold, Plex Mono Regular /
-SemiBold. Five static TTFs from IBM's own repo (`IBM/plex@6.4.2`), ~908KB
-total — Google Fonts only publishes the variable build, whose weight axis
-renders inconsistently across React Native platforms. Don't add more weights;
-the scale above is the whole system.
-
-**Bengali falls back.** Several house names are Bengali (`বাচ্চার সেড`) and IBM
-Plex has no Bengali glyphs, so those strings render in the platform's default
-font. Acceptable — but don't add a `letterSpacing` or line-height tweak that
-assumes Plex metrics on a field that can hold a house name.
+| `hero` | Plex Mono 600 | 40 / 44 | The one big figure. **At most one per screen.** |
+| `stat` | Plex Mono 600 | 28 / 32 | Figures inside stat cards |
+| `figure` | Plex Mono 600 | 20 / 26 | Counts in list rows, score chips |
+| `data` | Plex Mono 400 | 13 / 18 | Codes, ids, timestamps, aligned columns |
+| `h1` | Jakarta 700 | 26 / 32 | Screen title in the header |
+| `h2` | Jakarta 600 | 20 / 26 | Card titles, sheet titles |
+| `bodyStrong` | Jakarta 600 | 16 / 24 | Row titles, emphasised body |
+| `body` | Jakarta 400 | 16 / 24 | Everything else. **Never below 16 for content.** |
+| `label` | Jakarta 500 | 14 / 20 | Field labels, button text, tab labels |
+| `caption` | Jakarta 400 | 13 / 18 | Row meta, helper text, timestamps in prose |
+| `eyebrow` | Jakarta 600 | 11 / 14 | Uppercase, `letterSpacing 0.08em`. Section headers. |
 
 ### 3.2 Rules
 
-- **Every numeral is Plex Mono.** Counts, weights, readings, money, dates in
-  data rows, percentages, points. No exceptions — the alignment is the point.
-- **Every word is Plex Sans.** Including labels that sit next to figures.
-- Body text never drops below 16pt. Dense-table thinking from the web dashboard
-  does not transfer; there is no dense table here.
-- Support Dynamic Type up to ~130% without clipping. Test the dashboard at that
-  size, since it has the most stacked content.
+- **Every numeral is Plex Mono.** Counts, weights, readings, money, points,
+  percentages, dates in data rows. No exceptions — the alignment is the point.
+- **Every word is Jakarta.** Including labels that sit beside figures.
+- Body text never drops below 16pt. There is no dense table in this app.
+- Support Dynamic Type to ~130% without clipping. Test the dashboard first — it
+  has the most stacked content.
+- **Bengali falls back.** Several house names are Bengali (`বাচ্চার সেড`) and
+  neither bundled face has Bengali glyphs, so those strings render in the
+  platform default. Acceptable — but never apply a `letterSpacing` or
+  line-height tweak that assumes Jakarta metrics to a field that can hold a
+  house name.
 
 ---
 
-## 4. Structural devices
+## 4. Spacing, radius, layout
 
-Two, and both carry information. Neither is decoration.
+### 4.1 Spacing scale
 
-### 4.1 The ledger gutter
+4dp grid. Named by size, not by ordinal — `Spacing.lg` survives an insertion,
+`Spacing.three` does not.
 
-A 44dp left column holding the row's index token, separated from content by a
-hairline, with row rules crossing it.
+| Token | Value | Typical use |
+| --- | --- | --- |
+| `xs` | 4 | Icon-to-label gap, chip inner gap |
+| `sm` | 8 | Between a label and its field, tight stacks |
+| `md` | 12 | Between cards, between rows in a card |
+| `lg` | 16 | Card inner padding, standard block gap |
+| `xl` | 20 | **Screen horizontal padding** |
+| `xxl` | 24 | Between major sections |
+| `xxxl` | 32 | Above a screen's first card, below its last |
+| `huge` | 56 | Empty-state vertical breathing room |
+
+### 4.2 Radius
+
+Four values, not one — v1's single 8dp radius made cards and inputs
+indistinguishable, which is part of why screens read as flat.
+
+| Token | Value | Applies to |
+| --- | --- | --- |
+| `control` | 12 | Buttons, inputs, small tiles, icon squares |
+| `card` | 16 | Cards, tinted stat blocks, list containers |
+| `sheet` | 24 | Bottom sheet top corners only |
+| `pill` | 999 | Chips, badges, status pills, segmented toggles, avatars |
+
+### 4.3 Layout rules
+
+- **Screen horizontal padding: 20dp.** Cards span the full width inside it.
+- **Card inner padding: 16dp.** 12dp when the card is a dense list of rows.
+- **Gap between cards: 12dp.** Between sections: 24dp.
+- **Touch targets ≥ 48dp**, ≥ 12dp apart. Gloved, wet, or dirty hands.
+- **First card sits 16dp below the header.** Last card clears the tab bar by
+  24dp plus the safe-area inset.
+- **Primary action is bottom-anchored** — a sticky `<SubmitBar>` at the thumb,
+  content scrolling behind it. Never a button at the end of a scroll.
+- **Nothing is edge-to-edge except the tab bar, the header, and sheets.**
+
+### 4.4 Standard control sizes
+
+Fixed, so every screen agrees. `docs/layout/` never restates these — it names
+them.
+
+| Control | Height | Radius | Notes |
+| --- | --- | --- | --- |
+| Primary button | 52 | `control` | Full width inside padding. `primary` fill, `onPrimary` label. |
+| Secondary button | 48 | `control` | `surface` fill, 1px `line` border, `ink` label |
+| Ghost / text button | 44 | `control` | No fill, `primary` label |
+| Destructive button | 52 | `control` | `critical` fill, white label. Confirm dialog only. |
+| Text input | 52 | `control` | `surfaceAlt` fill, 1px `line`, 2px `primary` on focus |
+| Number input | 64 | `control` | Taller — holds `figure`-size mono digits |
+| Picker field | 52 | `control` | Same as input, with a trailing chevron |
+| Chip / filter | 36 | `pill` | 12dp horizontal padding |
+| Status pill | 24 | `pill` | 8dp horizontal padding, `caption` text |
+| Icon button | 44 × 44 | `control` | 24dp icon centred |
+| List row | ≥ 64 | — | 56 when the row has no second line |
+| Tab bar | 64 + safe area | — | See §6.1 |
+| Centre tab button | 58 × 58 | `pill` | Circle, `raised` elevation, sits 14dp proud of the bar |
+| FAB | 56 × 56 | `pill` | Only where a tab bar is absent |
+
+---
+
+## 5. Iconography
+
+**`@expo/vector-icons` → Feather**, already available; no new dependency.
+
+- Nav and action icons: **24dp**, stroke weight as shipped.
+- Inline row icons: **20dp**. Icons inside chips and pills: **16dp**.
+- Icons in tinted tiles: 20dp icon centred in a 40 × 40 `control`-radius tile
+  filled with the matching tint.
+- **Every icon that conveys status is paired with a word.** An icon alone is
+  decoration; an icon plus "Queued" is a status.
+
+Domain icons, fixed so the same concept looks the same everywhere:
+
+| Domain | Feather icon | Tint |
+| --- | --- | --- |
+| Mortality | `alert-circle` | `tintRed` |
+| Feed / consumption | `package` | `tintAmber` |
+| Weight | `bar-chart-2` | `tintBlue` |
+| Environment | `thermometer` | `tintBlue` |
+| Treatment | `plus-square` | `tintGreen` |
+| Houses | `home` | `tintGreen` |
+| Team | `users` | `tintGreen` |
+| Points / payroll | `award` | `tintAmber` |
+| Queue / sync | `refresh-cw` | `tintAmber` |
+
+---
+
+## 6. Structural devices
+
+Four. All carry information; none are decoration.
+
+### 6.1 The bottom tab bar
+
+**New in v2.** v1 had no tab bar — navigation was a FAB plus back-stack, and a
+worker three screens deep had no idea where they were or how to get home.
+
+```
+┌──────────────────────────────────────┐
+│                                      │
+│            screen content            │
+│                                      │
+├──────────────────────────────────────┤
+│                  ╭───╮               │
+│   ⌂       ▤     │ + │      ⚇      ○ │
+│  Home   Houses  ╰───╯    Team    Me  │
+└──────────────────────────────────────┘
+```
+
+- **64dp tall** plus the bottom safe-area inset, `surface` fill, 1px `line` top
+  border. No shadow — the border is enough and reads cleanly in sunlight.
+- **Four tabs plus a raised centre button.** Each tab is an equal-width column,
+  minimum 48dp wide: 24dp icon, 2dp gap, `label`-size text.
+- **Active tab:** icon and label switch to `primary`, and a `primarySoft` pill
+  (32dp tall, `pill` radius) sits behind the icon. Inactive: `muted`.
+- **The centre button is Log** — the app's most frequent action. 58dp `primary`
+  circle with a white 24dp `plus`, `raised` elevation, sitting 14dp above the
+  bar's top edge. It opens the log-type sheet (§6.4), it is not a route.
+- **Team is Manager-only.** For a Worker the bar renders four items — Home,
+  Houses, centre, Me — with the centre button still centred. The tab is removed,
+  never shown disabled.
+- **Hidden on** every form screen and every sheet, so the sticky submit bar owns
+  the bottom. Present on all list and detail screens.
+
+### 6.2 The ledger gutter
+
+Kept from v1, now living **inside cards** rather than on bare ground. A 44dp
+left column holding the row's index token, separated from content by a hairline,
+with row rules crossing it.
 
 ```
  H2 │ Environment reading
-    │ 09:00
-────┼──────────────────────────
+    │ 09:00                    ›
+────┼───────────────────────────
  H3 │ Weigh sample
-    │ 11:00
-────┼──────────────────────────
-  — │ Fix water line · front gate
+    │ 11:00                    ›
 ```
 
 The gutter holds **whatever that list is actually keyed by**:
@@ -188,79 +380,93 @@ The gutter holds **whatever that list is actually keyed by**:
 | Screen | Gutter carries |
 | --- | --- |
 | Dashboard tasks, house detail | House token (`H2`), em dash when not house-bound |
-| Score history | The signed points (`+3`, `−2`) |
-| Team list | Employee initials (`RH`) |
+| Score history | The signed points (`+3`, `−2`), coloured |
+| Team list | Employee initials (`RH`) in a `primarySoft` circle |
 
 Location is the first thing a worker scans for — they are standing in one house
-and everything else is noise. The gutter encodes that rather than decorating it.
+and everything else is noise. Implemented once as `<LedgerRow>`; never
+hand-rolled per screen.
 
-Implemented once as `<LedgerRow>`. Don't hand-roll the layout per screen.
-
-### 4.2 The day-cycle bar
+### 6.3 The day-cycle bar
 
 Five segments, filled by `day ÷ expected days`, rendered wherever a batch
 appears: `d21 ▓▓▓░░`.
 
 A batch is a cohort moving through a fixed ~35-day cycle, and day-of-cycle
-changes what every other number means — a 40g mortality reading is routine on
-day 3 and alarming on day 30. Day is computed client-side as
+changes what every other number means — a mortality reading that's routine on
+day 3 is alarming on day 30. Day is computed client-side as
 `today − batch.starting_date`; there is no endpoint for it and it doesn't need
 one.
 
-Implemented once as `<DayCycleBar>`.
+v2 spec: segments 20dp × 6dp, 3dp apart, `pill` radius. Filled segments
+`primary`, empty `line`. The `d21` label is `data`-size mono in `muted`, 6dp to
+the left. Implemented once as `<DayCycleBar>`.
 
-### 4.3 What not to add
+### 6.4 The log sheet
+
+The centre tab button opens a bottom sheet — not a route, not a menu.
+
+- `sheet`-radius top corners, `surface` fill, `sheet` elevation, 32dp grab
+  handle in `line` centred 8dp from the top.
+- One 64dp row per log type: 40dp tinted icon tile, title in `bodyStrong`,
+  one-line description in `caption`.
+- Rows are filtered through `can()` — the same component serves both roles with
+  no role branch in the JSX.
+- **Context carries through.** Opened from a house screen every row deep-links
+  with `?house_id=` already set. Opened from the dashboard, the form asks.
+
+### 6.5 What not to add
 
 - **No numbered markers** (01 / 02 / 03). Nothing in this app is a sequence.
-- **No cards with elevation.** Hairlines and ground changes carry structure;
-  shadows add visual noise that costs contrast in sunlight.
-- **No zebra striping, no tinted rows.** Rows separate by rule only.
+- **No zebra striping, no tinted list rows.** Rows inside a card separate by
+  hairline only; tints belong to stat cards and icon tiles.
+- **No gradients.** Not on buttons, not on cards, not behind the hero figure.
+- **No shadow above `raised`.** Nothing in this app needs to look like it's
+  floating an inch off the glass.
+- **No third elevation on a card.** A card inside a card is a layout bug.
 
 ---
 
-## 5. Spacing, radius, layout
+## 7. Components
 
-- **4dp grid**, matching the template's existing `Spacing` scale in
-  `src/constants/theme.ts` (`half 2 · one 4 · two 8 · three 16 · four 24 ·
-  five 32 · six 64`). Keep it — it's already there and it's fine.
-- **Radius: 8dp** for inputs, buttons and insets. One value, not a scale. A
-  scale is for a component library with 40 surfaces; this app has six.
-- **Touch targets ≥ 48dp**, ≥ 12dp apart. Gloved, wet, or dirty hands. The 32dp
-  targets that work with a mouse do not work here.
-- **Screen padding: 16dp** horizontal. The ledger gutter sits inside it.
-- **Primary action is bottom-anchored** — a sticky `<SubmitBar>` at the thumb,
-  content scrolling behind it. Never a button at the end of a scroll.
-
----
-
-## 6. Components
-
-Build these before the screens that need them — same discipline that made
-`StatusBadge` a prerequisite on web.
+Build these before the screens that need them. Exact per-screen composition
+lives in `docs/layout/`.
 
 | Component | Notes |
 | --- | --- |
-| `<LedgerRow>` | §4.1. The gutter device. |
-| `<DayCycleBar>` | §4.2. |
-| `<Reading>` | The hero Plex Mono figure + eyebrow caption. One per screen. |
+| `<Screen>` | Ground fill, safe areas, scroll container, tab-bar bottom inset |
+| `<Header>` | Screen title, optional back, optional trailing action. Gains `header` elevation on scroll. |
+| `<TabBar>` | §6.1. Four tabs + raised centre button, capability-filtered. |
+| `<Card>` | `surface`, `card` radius, `card` elevation, 16dp padding. The base container. |
+| `<StatCard>` | Tinted card holding one `stat` figure + eyebrow caption. Used in 2- and 3-up rows. |
+| `<Reading>` | The one `hero` figure per screen, with eyebrow caption. |
+| `<LedgerRow>` | §6.2. The gutter device. |
+| `<DayCycleBar>` | §6.3. |
 | `<ScoreChip>` | Signed points. `success` / `critical` only — never a third state. |
-| `<StatusPill>` | Task, batch, and stock-unit statuses → `neutral`/`success`/`warning`/`critical` + a word. Never colour alone (§1.2). |
-| `<SyncBanner>` | Queue depth, last-synced time, dead-letter count. Tappable to retry. |
-| `<SubmitBar>` | Sticky bottom. Carries the value it will write (§7). |
-| `<NumberField>` | `keyboardType="decimal-pad"`, Plex Mono input, unit suffix. |
+| `<StatusPill>` | Task, batch and stock statuses → `neutral`/`success`/`warning`/`critical` + a word. Never colour alone. |
+| `<SyncBanner>` | Queue depth, last-synced time, dead-letter count. `tintAmber`. Tappable to retry. |
+| `<SubmitBar>` | Sticky bottom, `sheet` elevation. Carries the value it will write (§8). |
+| `<Button>` | The five variants in §4.4. |
+| `<NumberField>` | 64dp, `decimal-pad`, mono input, unit suffix, optional stepper. |
+| `<TextField>` | 52dp, label above, helper/error below. |
+| `<PickerField>` | 52dp, opens a select sheet. |
+| `<SegmentedToggle>` | 44dp, `pill` radius, `primarySoft` active segment. |
+| `<Chip>` | 36dp selectable pill. Selected = `primarySoft` fill + `primary` border + `primary` label. |
+| `<LogSheet>` | §6.4. |
 | `<HousePicker>` `<BatchResolver>` `<EmployeePicker>` `<ItemPicker>` | The four pickers. Every field that can be a choice is one. |
-| `<QuickActionButton>` | The persistent FAB. Actions filtered through `can()`. |
+| `<EmptyState>` | Icon tile, title, one line of guidance, optional action button. |
+| `<Skeleton>` | `surfaceAlt` block, subtle 1.2s pulse. |
 
 **Empty and stale states are per-screen requirements, not a component.** A farm
 app runs where the network doesn't, so "nothing yet" and "as of three hours ago"
-are normal states. `docs/PRD.md` names both for every screen.
+are normal states. `docs/layout/` names both for every screen.
 
-**Loading:** skeleton rows that match the layout about to appear, not spinners —
-same reasoning as `web/docs/design.md` §5.
+**Loading:** skeleton blocks matching the layout about to appear, never
+spinners. A spinner tells a worker nothing; a skeleton tells them what's coming.
 
 ---
 
-## 7. Voice
+## 8. Voice
 
 Words are design material. Plain, active, and never apologetic about the ledger.
 The button names the record it writes, and the confirmation reuses that word.
@@ -281,71 +487,78 @@ Rules:
   happens next. The offline case is not an error at all — it's the normal path,
   and the copy should sound like it.
 - **Empty screens are invitations.** "Nothing assigned today" plus a pointer to
-  the quick-action button, never a blank panel.
-- Sentence case everywhere except eyebrows (§3.1), which are uppercase.
+  the Log button, never a blank panel.
+- Sentence case everywhere except eyebrows, which are uppercase.
 
 ---
 
-## 8. Motion
+## 9. Motion
 
-Two moments. No others.
+Short, purposeful, and mostly about confirming a write landed.
 
-1. **The save.** On submit, the new row slides into the ledger and the queue
-   counter ticks up. ~240ms. This is the app's core promise — *it's recorded* —
-   and the one thing worth animating.
-2. **The flush.** Pending dots resolve from `warning` to `neutral` in sequence
-   as the outbox drains.
+| Moment | Spec |
+| --- | --- |
+| **Press** | Scale to 0.97, 80ms. Every button, card and row. |
+| **The save** | New row slides into the ledger (240ms ease-out) and the queue counter ticks up. The app's core promise — *it's recorded*. |
+| **The flush** | Pending dots resolve `warning` → `neutral` in sequence as the outbox drains, 120ms apart. |
+| **Sheet** | Slides up 280ms `ease-out`, backdrop fades to 40% black. Dismisses on drag or backdrop tap. |
+| **Tab change** | Icon and label cross-fade to `primary` 160ms; the `primarySoft` pill scales in from 0.8. |
+| **Screen push** | Platform default. Don't customise it. |
 
-Both respect `AccessibilityInfo.isReduceMotionEnabled()` and fall back to an
-instant state change. **Losing the animation must not lose the feedback** — the
-confirmation still has to be visible, just not animated.
+All of it respects `AccessibilityInfo.isReduceMotionEnabled()` and falls back to
+an instant state change. **Losing the animation must not lose the feedback** —
+the confirmation still has to be visible, just not animated.
 
 `react-native-reanimated` is already in `package.json`. Nothing else is needed.
 
 ---
 
-## 9. Guardrails (do / don't)
+## 10. Guardrails (do / don't)
 
-- **Do** consume colour through the theme tokens via `useTheme()`. **Don't**
-  hardcode hex in a component — if a colour is needed twice it belongs in
-  `constants/theme.ts`.
-- **Do** keep every button, card and rule monochrome. **Don't** colour a
-  primary action, tint a card, or add a gradient. That's §2.1, the whole bet.
+- **Do** consume colour through theme tokens via `useTheme()`. **Don't** hardcode
+  hex in a component — a colour needed twice belongs in `constants/theme.ts`.
+- **Do** use `primary` for actions and positive outcomes freely. **Don't** use
+  `critical` on a control to make it prominent — it means dangerous or dead.
 - **Do** pair every status colour with an icon or word. **Don't** ship a bare
   coloured dot as the only signal.
-- **Do** set every numeral in Plex Mono. **Don't** mix Sans figures into a
-  column of Mono ones — the misalignment is exactly what the choice prevents.
-- **Do** ship light and dark values together for any new token. **Don't** add
-  one without the other in the same change.
+- **Do** put a semantic figure or icon on every tinted surface. **Don't** tint a
+  card that contains only neutral text — that's decoration.
+- **Do** set every numeral in Plex Mono. **Don't** mix Jakarta figures into a
+  column of mono ones — the misalignment is exactly what the choice prevents.
+- **Do** ship light and dark values together for any new token. **Don't** add one
+  without the other in the same change.
 - **Do** hold WCAG AA: body text ≥ 4.5:1, large text and icons ≥ 3:1, in both
-  themes. **Don't** put `muted` on `field` without checking — they're close in
-  lightness.
-- **Do** keep one hero `<Reading>` per screen. **Don't** stack three 44pt
-  figures; if everything is the hero, nothing is.
-- **Do** confirm before anything irreversible. **Don't** use `critical` on a
-  control just to make it prominent — it means dangerous or dead, nothing else.
+  themes. **Don't** put `muted` on `surfaceAlt` without checking — they're close.
+- **Do** keep one `hero` figure per screen. **Don't** stack three 40pt figures;
+  if everything is the hero, nothing is.
+- **Do** confirm before anything irreversible.
+- **Do** keep the tab bar visible on list and detail screens. **Don't** show it
+  on a form — the submit bar owns that space.
 
 ---
 
-## 10. Accessibility checklist
+## 11. Accessibility checklist
 
 - [ ] Every interactive element ≥ 48dp with an `accessibilityLabel`.
-- [ ] Status conveyed by icon or word, not colour alone (§1.2).
-- [ ] Text/background pairs meet AA contrast in **both** themes.
+- [ ] Status conveyed by icon or word, not colour alone.
+- [ ] Text/background pairs meet AA contrast in **both** themes, tints included.
 - [ ] Dynamic Type to 130% without clipping — check the dashboard first.
-- [ ] `isReduceMotionEnabled()` respected, with feedback preserved (§8).
+- [ ] `isReduceMotionEnabled()` respected, with feedback preserved (§9).
 - [ ] Numeric inputs open a numeric keyboard.
+- [ ] Tab bar items expose `accessibilityRole="tab"` and a selected state.
+- [ ] The centre Log button is labelled "Log an entry", not "Add".
 
 ---
 
-## 11. Where this lives
+## 12. Where this lives
 
 | What | File |
 | --- | --- |
-| Colour tokens, type scale, spacing | `src/constants/theme.ts` |
+| Colour, type, spacing, radius, elevation tokens | `src/constants/theme.ts` |
 | Theme hook | `src/hooks/use-theme.ts` |
-| Bundled fonts | `assets/fonts/` (IBM Plex Sans ×3, Plex Mono ×2) |
-| Screen inventory this system serves | `docs/PRD.md` |
+| Bundled fonts | `assets/fonts/` (Plus Jakarta Sans ×4, IBM Plex Mono ×2) |
+| **Per-screen layout blueprints** | **`docs/layout/`** |
+| Screen inventory and behaviour | `docs/PRD.md` |
 | Offline queue behaviour the UI reflects | `docs/offline-sync.md` |
 | Feature set + permission matrix | `server/docs/FEATURES.md` §3 |
 | Admin dashboard's system (shared vocabulary) | `web/docs/design.md` |

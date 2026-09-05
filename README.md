@@ -24,8 +24,9 @@ Read in this order:
 
 | Doc | What it covers |
 | --- | --- |
-| [`docs/PRD.md`](docs/PRD.md) | The 20 screens — purpose, layout, fields, empty states, endpoints |
-| [`docs/design.md`](docs/design.md) | The "Field Instrument" visual system — colour, type, structure, voice |
+| [`docs/PRD.md`](docs/PRD.md) | The 20 screens — purpose, behaviour, fields, empty states, endpoints |
+| [`docs/design.md`](docs/design.md) | The "Field Green" visual system — colour, type, spacing, components, voice |
+| [`docs/layout/`](docs/layout/README.md) | **Per-screen blueprints** — every size, position, state and tap target |
 | [`docs/offline-sync.md`](docs/offline-sync.md) | The write queue: how records survive no signal and don't duplicate |
 
 Upstream, in the other repos:
