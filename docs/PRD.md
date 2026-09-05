@@ -8,8 +8,14 @@ own PRD (`web/docs/PRD.md`). Don't pull admin screens into this build.
 
 - Feature set and permission matrix — `server/docs/FEATURES.md` §3
 - Visual system — `docs/design.md`
+- **Per-screen layout blueprints — `docs/layout/`** (exact sizes, positions, states)
 - Offline queue behaviour — `docs/offline-sync.md`
 - API reference — `server/docs/api.md`
+
+**This doc says what each screen does. `docs/layout/` says what it looks like.**
+Every screen in §6 links to its blueprint; where the two disagree about
+behaviour this doc wins, and where they disagree about layout the blueprint
+wins.
 
 ---
 
@@ -44,17 +50,39 @@ v1 covers the Worker tier (`FEATURES.md` §3.2) and the **full** Manager tier
 
 ## 2. Global app shell
 
+Full construction detail in [`docs/layout/00-app-shell.md`](layout/00-app-shell.md).
+
 **Root layout** provides, in order: the React Query client with an AsyncStorage
-persister, the session (identity + role), outbox initialisation, and the
-persistent `<QuickActionButton>`.
+persister, the session (identity + role), and outbox initialisation.
 
-**Screen header** — no tab bar. A stack with the dashboard as root. Every screen
-that can write shows the queue state (`<SyncBanner>`) at the top.
+**Navigation is a bottom tab bar** — four tabs plus a raised centre button:
 
-**Navigation** — expo-router file routes. The `(manager)` group holds every
+| Tab | Route | Gate |
+| --- | --- | --- |
+| Home | `/` | — |
+| Houses | `/houses` | — |
+| *(centre)* | opens the log sheet, §5 | — |
+| Team | `/team` | `assign_task` |
+| Me | `/me/performance` | — |
+
+**This replaced the v1 shell**, which had no tab bar — navigation was a floating
+action button plus a back stack, and a worker three screens deep had no way home
+and no sense of place. The tab bar is the single largest usability change in the
+v2 design pass.
+
+The tab bar is **hidden on every form screen** (all of `log/`, every Manager
+form, `tasks/[id]`, `profile`), where a sticky `<SubmitBar>` owns the bottom
+instead. No screen shows both.
+
+**Screen header** — 56dp, leading-aligned title, optional back, at most one
+trailing action. Every screen that can write shows the queue state
+(`<SyncBanner>`) beneath it, and **only when the queue is non-empty**.
+
+**Route groups** — expo-router file routes. The `(manager)` group holds every
 Manager screen; its `_layout.tsx` redirects to `/` when
 `!can(role, 'assign_task')`, so the tier is gated in one place rather than per
-screen.
+screen. Manager-only tabs and sheet rows are **removed**, never rendered
+disabled.
 
 ---
 
@@ -105,11 +133,11 @@ Encoded in `src/lib/permissions.ts`.
 
 ---
 
-## 5. The quick-action button
+## 5. The log sheet
 
-A persistent FAB in the root layout, hidden on form screens and on the profile
-screen. Opens a bottom sheet of actions filtered through `can()` — the same
-component serves both roles with no role branch in the JSX.
+The tab bar's raised centre button opens a bottom sheet of actions filtered
+through `can()` — the same component serves both roles with no role branch in
+the JSX. Layout in [`docs/layout/00-app-shell.md`](layout/00-app-shell.md#log-sheet--opened-by-the-centre-button).
 
 | Worker | Manager adds |
 | --- | --- |
@@ -119,10 +147,20 @@ component serves both roles with no role branch in the JSX.
 | Log environment reading | |
 | Log treatment | |
 
+**The centre button is not a route.** It has no screen and no back state — it
+opens a sheet. Making it a route would put a meaningless "Log" screen in the
+back stack.
+
 **Context carries through.** Opened from a house screen, every action
 deep-links with `?house_id=` already set, so the most common path — standing in
-House 2, logging House 2's mortality — never asks which house. Opened from the
-dashboard, the form asks.
+House 2, logging House 2's mortality — never asks which house, and the sheet
+shows that house's batch and live count under its title. Opened from the
+dashboard or the houses list, the form asks.
+
+House detail additionally surfaces the three daily logs — mortality, feed,
+weight — as tiles in the screen body, so the most common path is one tap rather
+than two. Environment and treatment stay sheet-only; surfacing five tiles makes
+all five equally forgettable.
 
 "Rate an employee" is the quick path the scoring loop depends on: two taps from
 anywhere to employee → criterion → reason. A manager who has to navigate three
@@ -134,67 +172,68 @@ degrades into month-end guesswork.
 ## 6. Screens
 
 Each follows the same template: **Purpose · Layout · Actions · Empty/Stale ·
-Endpoints · Notes.**
+Endpoints · Notes.** The **Layout** sections here are a sketch of intent; the
+buildable version — every size, position, state and tap target — is the
+matching file in [`docs/layout/`](layout/README.md).
+
+| § | Screen | Blueprint |
+| --- | --- | --- |
+| — | App shell, tab bar, log sheet | [00](layout/00-app-shell.md) |
+| 6.1 | Dashboard | [01](layout/01-dashboard.md) |
+| 6.2 | Profile / identity | [02](layout/02-profile.md) |
+| 6.3 | My performance | [03](layout/03-my-performance.md) |
+| 6.4 | Houses | [04](layout/04-houses.md) |
+| 6.5 | House detail | [05](layout/05-house-detail.md) |
+| 6.6 | Task detail | [06](layout/06-task-detail.md) |
+| 6.7 | Log mortality **(+ the shared form spine)** | [07](layout/07-log-mortality.md) |
+| 6.8 | Log feed / consumption | [08](layout/08-log-consumption.md) |
+| 6.9 | Log weight | [09](layout/09-log-weight.md) |
+| 6.10 | Log environment | [10](layout/10-log-environment.md) |
+| 6.11 | Log treatment | [11](layout/11-log-treatment.md) |
+| 6.12 | Team | [12](layout/12-team.md) |
+| 6.13 | Employee detail | [13](layout/13-employee-detail.md) |
+| 6.14 | Rate an employee | [14](layout/14-rate-employee.md) |
+| 6.15 | Assign a task | [15](layout/15-assign-task.md) |
+| 6.16 | House transfer | [16](layout/16-house-transfer.md) |
+| 6.17 | Feeding program | [17](layout/17-feeding-program.md) |
+| 6.18 | Receive stock | [18](layout/18-receive-stock.md) |
+| 6.19 | Report a discrepancy | [19](layout/19-report-discrepancy.md) |
+| 6.20 | Flag low stock | [20](layout/20-flag-low-stock.md) |
+
+**Routes moved in v2.** The four tab roots and their children now live under a
+`(tabs)` group — `index.tsx` is `(tabs)/index.tsx`, `houses/` is
+`(tabs)/houses/`, and so on. Form screens stay outside it so they render without
+a tab bar. The route line at the top of each blueprint is authoritative; the
+paths in the headings below are the v1 names and are kept only so the two docs
+diff cleanly.
 
 ### 6.1 Dashboard — `index.tsx`
 
 **Purpose.** The screen a worker opens by reflex. Answers "what do I owe today,
 and did my last entries actually save?"
 
-**Layout.**
+**Layout.** Full wireframe and anatomy in
+[`layout/01-dashboard.md`](layout/01-dashboard.md). In outline, top to bottom:
 
-```
-RAHIM
-Worker · House 2, 3
-● 2 QUEUED                 synced 10:42
-─────────────────────────────────────────
-TODAY                              3 SEP
+1. **Header** — greeting + name, settings action.
+2. **Sync banner**, only when the queue is non-empty.
+3. **Stat row** — two tinted cards: total live birds (`tintGreen`), month-to-date
+   points (`tintAmber`, tappable → §6.3).
+4. **Today's tasks card** — ledger rows keyed by house token, done tasks sunk
+   below pending, max four then a "2 of 4 ›" affordance.
+5. **Team card** `[C assign_task]` — ledger rows keyed by employee initials,
+   showing today's ratio and a month-to-date `<ScoreChip>`, sorted by pending
+   tasks descending.
+6. **Houses card** — ledger rows keyed by house token: live count, batch code,
+   `<DayCycleBar>`.
+7. **Manager action grid** `[C]` — a 2-up grid of the five structural actions:
+   Transfer, Feed plan, Receive, Discrepancy, Flag stock.
 
- H2 │ Environment reading
-    │ 09:00
-────┼────────────────────────────────────
- H3 │ Weigh sample
-    │ 11:00
-────┼────────────────────────────────────
- H2 │ Feed allocation              DONE
-────┼────────────────────────────────────
-  — │ Fix water line
-    │ front gate
-─────────────────────────────────────────
-SEPTEMBER
+The gutter holds employee initials on the team card instead of a house token —
+same device, same 44dp column, indexing whatever the list is keyed by.
 
-    +7                        +7.0%
-    POINTS                 PROJECTED
-─────────────────────────────────────────
-HOUSES
-
- H2   4,812      B-24   d21 ▓▓▓░░
- H3   5,000      B-25   d14 ▓▓░░░
-                                    (⊕)
-```
-
-Counts and the score are Plex Mono, so house rows align into columns without a
-table component. `+7` is `success`; a negative total is `critical`. Nothing else
-on this screen carries colour.
-
-**Manager adds**, behind `can(role, 'assign_task')`, between SEPTEMBER and
-HOUSES:
-
-```
-─────────────────────────────────────────
-TEAM                               ALL →
- RH │ Rahim              2/3        +7
-────┼────────────────────────────────────
- KM │ Karim              0/2        −2
-─────────────────────────────────────────
-MANAGER
-
- Transfer      Feed plan      Receive
- Discrepancy   Flag stock
-```
-
-The gutter holds employee initials here instead of a house token — same device,
-same 44dp column, indexing whatever the list is keyed by.
+**This screen has no hero figure.** Two stat cards carry the numbers; no single
+number here outranks the others. The hero belongs on §6.5.
 
 **Actions.** Task row → its form (§6.7–6.11) or the task detail (§6.6). Identity
 → §6.2. Score block → §6.3. House row → §6.5. Team row → §6.13.
@@ -240,30 +279,17 @@ enqueue time.
 **Purpose.** What my points are worth. The loop that makes performance-linked
 pay mean anything to the person being paid.
 
-**Layout.**
+**Layout.** Full wireframe and anatomy in
+[`layout/03-my-performance.md`](layout/03-my-performance.md). In outline:
 
-```
-MY PERFORMANCE                 SEPTEMBER ▾
-
-    +7                        +7.0%
-    POINTS                 PROJECTED
-─────────────────────────────────────────
-SCORE HISTORY
-
- +3 │ Attendance perfect          1 SEP
-    │ "Full month, no lateness"
-    │ Karim · Manager
-────┼────────────────────────────────────
- +2 │ Helped coworker            12 SEP
-────┼────────────────────────────────────
- −2 │ Pattern lateness           20 SEP
-─────────────────────────────────────────
-PAYROLL HISTORY
-
- AUG 2026    +5    +5.0%      ৳15,750
- JUL 2026    −2    −2.0%      ৳14,700
- JUN 2026     0     0.0%      ৳15,000
-```
+1. **Header** — title plus a month-picker chip.
+2. **Hero card** — the month's signed point total as the screen's one `hero`
+   figure, with the projected percentage and its "on next month's pay" footnote
+   beneath a divider.
+3. **Score history card** — ledger rows whose gutter carries the signed points;
+   criterion, reason in quotes, then who gave it.
+4. **Payroll history card** — month, points, percentage and amount in four
+   mono-aligned columns.
 
 The gutter carries the signed points — the one column you scan a score history
 for. Mono aligns the payroll figures without a table.
@@ -319,8 +345,11 @@ RECENT ACTIVITY in the gutter: last mortality, environment reading, weight
 sample and feed draw, each with a relative timestamp ("2h ago"). Then this
 house's open tasks.
 
-**Actions.** The `<QuickActionButton>` here carries `?house_id=` into every
-action — the single biggest tap-saver in the app.
+**Actions.** Three quick-log tiles in the screen body — mortality, feed, weight —
+plus the tab bar's centre button, which opens the log sheet with this house's
+context. All of them carry `?house_id=` into the form, which is the single
+biggest tap-saver in the app. The tiles are hidden when the house has no batch,
+since every log write needs one.
 
 **Empty.** No batch in this house → "Empty house," and the log actions hide,
 since every log write needs a batch.
@@ -438,33 +467,22 @@ The split is capability-driven, not two components.
 thing happened. The quality of the whole payroll system depends on this being
 fast enough to actually use.
 
-**Layout.**
+**Layout.** Full wireframe and anatomy in
+[`layout/14-rate-employee.md`](layout/14-rate-employee.md). In outline:
 
-```
-RATE                          [Rahim ▾]   ← hidden when ?employee_id= is set
+1. **Subject bar** — a `primarySoft` block showing who is being rated and their
+   month-to-date total. Tappable to change **only** when no `?employee_id=` was
+   passed; always shown, so a deep-linked manager can confirm the person before
+   committing points to their pay.
+2. **Positive criteria** — wrapping chips, each carrying its point value.
+3. **Negative criteria** — the same, visually separated, below a red eyebrow,
+   never the default scroll position.
+4. **"Other…"** — reveals an inline ±1..±5 stepper, excluding zero.
+5. **Reason** — required, validated before enqueue.
+6. **Submit bar** — "Record +2 points", signed and coloured.
 
-  POSITIVE
-  [+3 Attendance perfect] [+3 Early problem report]
-  [+3 Suggestion implemented] [+2 Zero negligent loss]
-  [+2 Accurate data entry] [+2 Biosecurity followed]
-  [+2 Helped coworker] [+2 Extra task] [+3 Team target]
-  [+2 Conflict resolved]
-
-  NEGATIVE
-  [−5 Falsified record] [−5 Negligent loss]
-  [−4 Biosecurity violation] [−4 Concealed problem]
-  [−3 Missed critical task] [−3 Equipment damage]
-  [−3 Conduct issue] [−3 Team supervision failure]
-  [−2 Unexcused absence] [−2 Pattern lateness]
-
-  [ Other … ]                        ← reveals a ±1..±5 stepper
-
-  Reason (required)
-  ┌────────────────────────────────┐
-  └────────────────────────────────┘
-─────────────────────────────────────
-        [ Record  +2 points ]
-```
+Selection is single across both groups; choosing a chip collapses the stepper
+and vice versa. They are the same field.
 
 **Actions.** Chips carry their point value. The value is **shown, never
 editable** — it's a server-side snapshot from `FIXED_CRITERION_POINTS`. `OTHER`
