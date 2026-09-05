@@ -90,7 +90,7 @@ a long task title in a truncating header loses the half that matters.
 | --- | --- |
 | Where | House name, or `location_note`. Never both — the server makes them mutually exclusive. |
 | Due | `Today 09:00 · in 2h`. Date in `data` mono, relative part `caption`. Goes `critical` and reads "· 3h overdue" when past. |
-| Assigned | `assigned_by.name · date` |
+| For | The assignee's name, from the `employee` relation. **There is no "assigned by" row**: `TaskAssignment` carries `assigned_by_id` with no relation, and a whole extra employee fetch for one name isn't worth it. Add it when the endpoint includes the relation. |
 | Type | The `TaskType.code` in `data` mono `muted`. **Row omitted when the task has no type.** |
 
 ### Completion note — mark-done branch only

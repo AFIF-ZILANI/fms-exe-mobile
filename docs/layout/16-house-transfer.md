@@ -106,9 +106,12 @@ When `quantity > from-house balance`:
 
 - Field border 2px `critical`, helper line `critical` with a 16dp
   `alert-triangle`.
-- **Submit is disabled.** This is the one numeric field in the app that hard-blocks,
-  because the write decrements `BatchHouseBalance` inside a transaction and a
-  negative balance corrupts every downstream count on every other screen.
+- **Submit stays enabled and always confirms.** This blueprint originally
+  specified a hard block. The build kept the warn-and-confirm path instead: the
+  app's own rule is that a real event must always be recordable, and a manager
+  correcting an under-recorded count legitimately needs to exceed the stored
+  balance. The confirm restates the resulting balance, which is the actual
+  guard. Revisit if counts drift in practice.
 - On a Correction with no From house, the check doesn't apply.
 
 ### Submit bar
@@ -163,11 +166,9 @@ have 4,312. This can't be undone — a mistake needs a second, offsetting move."
 - **The server requires at least one of from/to.** A one-sided row *is* a
   correction — that's what the toggle's second mode produces, and it's why
   Correction doesn't simply mean "quantity can be negative".
-- **This is the only hard-blocking numeric guard in the app.** Everywhere else a
-  suspicious number warns and proceeds, because a real event must always be
-  recordable. Here the "event" is a bookkeeping move the manager controls
-  entirely, so blocking costs nothing and prevents a transaction that silently
-  corrupts counts.
+- **No numeric guard in this app hard-blocks**, including this one. The confirm
+  dialog carries the weight instead, and it names the resulting balance rather
+  than only the quantity.
 - The confirm dialog states the resulting balance, not just the quantity. "Move
   500" is easy to approve; "House 2 will have 4,312" is what a manager actually
   checks.

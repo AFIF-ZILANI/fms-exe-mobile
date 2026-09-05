@@ -85,16 +85,17 @@ Record what was given to the flock, what dose, and why.
 | Field | Medication label | Vaccination label | Control | Required |
 | --- | --- | --- | --- | --- |
 | Name | "MEDICATION NAME" | "VACCINE NAME" | `<TextField>` `52h` | Yes |
-| Dosage | "DOSAGE" | "DOSE" | `<TextField>` `52h` | Yes |
+| Dosage | "DOSAGE" | "DOSE" | Medication: `<TextField>` `52h`. Vaccination: `<NumberField>` `64h`, whole doses. | Yes |
 | Cause | "CAUSE (OPTIONAL)" | "REASON (OPTIONAL)" | `<TextField>` `88h` | No |
 | Doctor | "DOCTOR (OPTIONAL)" | "DOCTOR (OPTIONAL)" | `<TextField>` `52h` | No |
 | Remarks | "REMARKS (OPTIONAL)" | "REMARKS (OPTIONAL)" | `<TextField>` `88h` | No |
 | Date | "DATE" | "DATE" | `<PickerField>` `52h` | Yes, defaults today |
 
 - Name is **focused on mount** when a house arrived prefilled.
-- Dosage is free text on purpose — "1 g per litre, 5 days" is how it's written on
-  the bottle and how a vet says it. A structured amount + unit + duration triple
-  would be more queryable and would be filled in wrong.
+- Medication dosage is free text on purpose — "1 g per litre, 5 days" is how
+  it's written on the bottle and how a vet says it. **Vaccination dosage is an
+  integer dose count**, because that's what the server stores, so the control
+  swaps with the toggle rather than staying one field.
 - **Doctor is optional and stays optional.** Treatments happen without one, and a
   required field here produces "N/A" in every row within a week.
 
