@@ -12,7 +12,6 @@ import { Colors, FontAssets, FontFamily } from '@/constants/theme';
 import { SessionProvider } from '@/lib/session';
 import { initOutbox } from '@/lib/outbox';
 import { useOutboxTriggers } from '@/lib/use-outbox';
-import { QuickActionButton } from '@/components/quick-action-button';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -26,11 +25,11 @@ const navLight = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    background: Colors.light.paper,
-    card: Colors.light.paper,
+    background: Colors.light.ground,
+    card: Colors.light.surface,
     text: Colors.light.ink,
     border: Colors.light.line,
-    primary: Colors.light.ink,
+    primary: Colors.light.primary,
   },
 };
 
@@ -38,11 +37,11 @@ const navDark = {
   ...DarkTheme,
   colors: {
     ...DarkTheme.colors,
-    background: Colors.dark.paper,
-    card: Colors.dark.paper,
+    background: Colors.dark.ground,
+    card: Colors.dark.surface,
     text: Colors.dark.ink,
     border: Colors.dark.line,
-    primary: Colors.dark.ink,
+    primary: Colors.dark.primary,
   },
 };
 
@@ -82,20 +81,18 @@ function RootStack() {
   useOutboxTriggers();
 
   return (
-    <>
-      <Stack
-        screenOptions={{
-          headerShadowVisible: false,
-          headerBackTitleStyle: { fontFamily: FontFamily.sans },
-          headerTitleStyle: { fontFamily: FontFamily.sansSemiBold, fontSize: 20 },
-        }}
-      >
-        {/* The (manager) group runs its own Stack, which supplies each of its
-            screens' headers. Without this the root Stack renders a second one
-            above it, titled with the raw group name. */}
-        <Stack.Screen name="(manager)" options={{ headerShown: false }} />
-      </Stack>
-      <QuickActionButton />
-    </>
+    <Stack
+      screenOptions={{
+        headerShadowVisible: false,
+        headerBackTitleStyle: { fontFamily: FontFamily.sans },
+        headerTitleStyle: { fontFamily: FontFamily.sansSemiBold, fontSize: 20 },
+      }}
+    >
+      {/* Both groups run their own navigator, which supplies their screens'
+          headers. Without this the root Stack renders a second one above it,
+          titled with the raw group name. */}
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="(manager)" options={{ headerShown: false }} />
+    </Stack>
   );
 }

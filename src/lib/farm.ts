@@ -23,9 +23,19 @@ export function expectedCycleDays(batch: Pick<Batch, 'starting_date' | 'expected
 }
 
 /** The ledger gutter's house token -- "H2", or an em dash when the row
- *  isn't house-bound (docs/design.md §4.1). */
+ *  isn't house-bound (docs/design.md §6.2). */
 export function houseToken(houseNumber: number | undefined | null): string {
   return houseNumber === undefined || houseNumber === null ? '—' : `H${houseNumber}`;
+}
+
+/** Two-letter initials for the gutter on team lists. Falls back to the first
+ *  two characters for a single-word or non-Latin name — several employees'
+ *  names are Bengali, where a word-split gives one token. */
+export function initials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '—';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 }
 
 /** First and last instant of the month containing `date`, as ISO strings --

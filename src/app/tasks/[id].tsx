@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   meta: { gap: Spacing.half, marginTop: Spacing.two },
   cta: {
     minHeight: MinTouchTarget,
-    borderRadius: Radius,
+    borderRadius: Radius.card,
     alignItems: 'center',
     justifyContent: 'center',
   },

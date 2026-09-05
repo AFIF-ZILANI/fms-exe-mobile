@@ -45,12 +45,12 @@ export function SegmentedToggle<T extends string>({
 }
 
 const styles = StyleSheet.create({
-  track: { flexDirection: 'row', borderWidth: 1, borderRadius: Radius, padding: 2 },
+  track: { flexDirection: 'row', borderWidth: 1, borderRadius: Radius.pill, padding: 2 },
   segment: {
     flex: 1,
     minHeight: MinTouchTarget - 4,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius - 2,
+    borderRadius: Radius.pill,
   },
 });

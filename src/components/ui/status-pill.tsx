@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.half,
     borderWidth: 1,
-    borderRadius: Radius,
+    borderRadius: Radius.pill,
   },
   dot: { width: 6, height: 6, borderRadius: 3 },
 });

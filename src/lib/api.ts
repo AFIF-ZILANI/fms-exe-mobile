@@ -1,10 +1,32 @@
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
+import Constants from 'expo-constants';
+
+const API_PORT = 5085;
 
 /**
- * Set EXPO_PUBLIC_API_BASE_URL in .env for a physical device — localhost
- * doesn't resolve from a phone. See README.md.
+ * Where the API lives.
+ *
+ * `localhost` is the phone itself on a device or an Android emulator, so it
+ * only works in the simulator and on web. Rather than make everyone hardcode
+ * a LAN IP that goes stale the next time DHCP moves the machine (it did), the
+ * host is derived from the Expo dev server the app was loaded from —
+ * `hostUri` is "192.168.0.101:8081" on a device, so the API is the same host
+ * on the API port.
+ *
+ * EXPO_PUBLIC_API_BASE_URL still wins when set, for a deployed API or a
+ * tunnel. See README.md.
  */
-const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:5085/api';
+function resolveBaseUrl(): string {
+  const explicit = process.env.EXPO_PUBLIC_API_BASE_URL;
+  if (explicit) return explicit;
+
+  const host = Constants.expoConfig?.hostUri?.split(':')[0];
+  if (host) return `http://${host}:${API_PORT}/api`;
+
+  return `http://localhost:${API_PORT}/api`;
+}
+
+export const BASE_URL = resolveBaseUrl();
 
 export type ListMeta = { page: number; limit: number; total: number; totalPages: number };
 export type Paginated<T> = { results: T[] } & ListMeta;

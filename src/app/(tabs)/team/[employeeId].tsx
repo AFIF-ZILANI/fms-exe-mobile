@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
   action: {
     flex: 1,
     minHeight: MinTouchTarget,
-    borderRadius: Radius,
+    borderRadius: Radius.card,
     alignItems: 'center',
     justifyContent: 'center',
   },

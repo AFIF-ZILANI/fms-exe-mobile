@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
     minHeight: MinTouchTarget,
     justifyContent: 'center',
     borderWidth: 1,
-    borderRadius: Radius,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.two,
   },
   sheet: { flex: 1, paddingHorizontal: Spacing.three },
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   search: {
     minHeight: MinTouchTarget,
     borderWidth: 1,
-    borderRadius: Radius,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.two,
     marginBottom: Spacing.two,
     fontSize: 16,

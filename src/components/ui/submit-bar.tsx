@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   },
   button: {
     minHeight: MinTouchTarget,
-    borderRadius: Radius,
+    borderRadius: Radius.control,
     alignItems: 'center',
     justifyContent: 'center',
   },

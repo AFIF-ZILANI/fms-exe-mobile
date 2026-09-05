@@ -53,6 +53,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: Spacing.two,
     borderWidth: 1,
-    borderRadius: Radius,
+    borderRadius: Radius.pill,
   },
 });

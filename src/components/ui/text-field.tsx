@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
   wrap: { gap: Spacing.one },
   input: {
     borderWidth: 1,
-    borderRadius: Radius,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.two,
     fontFamily: FontFamily.sans,

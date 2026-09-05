@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
     minHeight: MinTouchTarget,
     borderWidth: 1,
-    borderRadius: Radius,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.two,
   },
   input: { flex: 1, fontFamily: FontFamily.monoSemiBold, fontSize: 24, paddingVertical: Spacing.two },

@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.three,
     padding: Spacing.two,
     borderWidth: 1,
-    borderRadius: Radius,
+    borderRadius: Radius.card,
     gap: Spacing.half,
   },
   current: { gap: Spacing.half, marginBottom: Spacing.two },

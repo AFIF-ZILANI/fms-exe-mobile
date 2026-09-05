@@ -42,3 +42,24 @@ export function formatSignedPercent(value: number): string {
   const sign = value > 0 ? '+' : '';
   return `${sign}${value.toFixed(1)}%`;
 }
+
+export function formatSignedPoints(points: number): string {
+  return points > 0 ? `+${points}` : String(points);
+}
+
+const UUID_TAIL = /[-_\s]*[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+
+/**
+ * A batch code is a label a person reads at arm's length, but the field is
+ * admin-entered free text and real data has ids pasted into it
+ * ("ANALYTICS-ec18144e-7a83-40b5-82c6-86d32189f492" shipped to the v1
+ * dashboard as a house label). Strip a pasted uuid tail, cap what's left, and
+ * fall back to a short id fragment rather than rendering nothing.
+ */
+export function formatBatchCode(code?: string | null, id?: string | null): string {
+  const raw = code?.trim();
+  if (!raw) return id ? `…${id.slice(-4)}` : '—';
+
+  const label = raw.replace(UUID_TAIL, '').trim() || raw;
+  return label.length > 14 ? `${label.slice(0, 13)}…` : label;
+}
