@@ -21,7 +21,8 @@ export function ItemPicker({
   category,
   error,
 }: ItemPickerProps) {
-  const params = new URLSearchParams({ is_active: 'true', limit: '200' });
+  // The server caps limit at 100 and 400s above it.
+  const params = new URLSearchParams({ is_active: 'true', limit: '100' });
   if (unitTracked !== undefined) params.set('is_unit_tracked', String(unitTracked));
   if (category !== undefined) params.set('category', category);
 
