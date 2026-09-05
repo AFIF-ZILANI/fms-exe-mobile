@@ -1,20 +1,19 @@
 import { useState } from 'react';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { Screen } from '@/components/ui/screen';
+import { router, useLocalSearchParams } from 'expo-router';
+
+import { FormScreen } from '@/components/ui/form-screen';
 import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
 import { BatchResolver, useResolvedBatch } from '@/components/ui/batch-resolver';
 import { ItemPicker } from '@/components/ui/item-picker';
 import { NumberField } from '@/components/ui/number-field';
 import { TextField } from '@/components/ui/text-field';
-import { SubmitBar } from '@/components/ui/submit-bar';
-import { Section } from '@/components/ui/section';
 import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
 import type { Item } from '@/lib/types';
 
-/** docs/PRD.md §6.8. Items filtered to is_unit_tracked: false -- without QR
- *  in v1 this is the aggregate branch ConsumptionService already supports,
- *  not the coded stock_unit_id draw. */
+/** docs/layout/08-log-consumption.md. Items filtered to is_unit_tracked:false
+ *  — without QR in v1 this is the aggregate branch ConsumptionService already
+ *  supports, not the coded stock_unit_id draw. */
 export default function ConsumptionScreen() {
   const params = useLocalSearchParams<{ house_id?: string; task_id?: string }>();
   const { employee } = useSession();
@@ -55,34 +54,37 @@ export default function ConsumptionScreen() {
   };
 
   return (
-    <Screen scroll bottomInset={96}>
-      <Stack.Screen options={{ title: 'Consumption' }} />
-      <Section label="House" />
+    <FormScreen
+      title="Log feed"
+      dirty={!!item || !!quantity || !!note}
+      submit={{
+        label:
+          quantityNum > 0 && item
+            ? `Record ${quantity} ${item.unit} ${item.name.toLowerCase()}`
+            : 'Record feed',
+        onPress: handleSubmit,
+        disabled: !isValid,
+        loading: submitting,
+      }}
+    >
       <HousePicker value={house} onChange={setHouse} />
       <BatchResolver houseId={house?.id} />
 
-      <Section label="Item" />
       <ItemPicker value={item} onChange={setItem} unitTracked={false} />
 
-      <Section label="Quantity" />
+      {/* No steppers: feed quantities are typed, not nudged, and a stepper on
+          a decimal field is a mis-tap generator. The unit follows the item —
+          leaving "kg" selected after switching to a piece-counted supply
+          writes a quantity wrong by three orders of magnitude. */}
       <NumberField
         label="Quantity"
         value={quantity}
         onChangeText={setQuantity}
         unit={item?.unit}
-        
-        autoFocus
+        autoFocus={!!params.house_id}
       />
 
-      <Section label="Detail" />
-      <TextField label="Note" value={note} onChangeText={setNote} multiline />
-
-      <SubmitBar
-        label={quantityNum > 0 ? `Record ${quantity} ${item?.unit ?? ''}` : 'Record'}
-        onPress={handleSubmit}
-        disabled={!isValid}
-        loading={submitting}
-      />
-    </Screen>
+      <TextField label="Note (optional)" value={note} onChangeText={setNote} multiline />
+    </FormScreen>
   );
 }

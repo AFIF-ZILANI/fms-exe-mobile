@@ -1,32 +1,37 @@
 import { useState } from 'react';
 import { Pressable, View, StyleSheet } from 'react-native';
-import { Stack } from 'expo-router';
+
 import { Screen } from '@/components/ui/screen';
-import { Section } from '@/components/ui/section';
+import { Header } from '@/components/ui/header';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { LedgerRow } from '@/components/ui/ledger-row';
-import { Reading } from '@/components/ui/reading';
+import { Skeleton } from '@/components/ui/skeleton';
 import { AppText } from '@/components/ui/text';
-import { Spacing } from '@/constants/theme';
+import { Icon } from '@/components/ui/icon';
+import { Radius, Size, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useSession } from '@/lib/session';
 import { useGetData, type Paginated } from '@/lib/api';
 import { monthRange, clampAdjustment } from '@/lib/farm';
-import { formatMoney, formatSignedPercent } from '@/lib/format';
+import { formatMoney, formatSignedPercent, formatSignedPoints } from '@/lib/format';
 import type { ScoreEntry, PayrollRecord } from '@/lib/types';
 
-const monthLabel = (d: Date) => d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+const monthLabel = (d: Date) => d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 const shortDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase();
 
 /**
- * docs/PRD.md §6.3 -- what my points are worth. The loop that makes
- * performance-linked pay mean anything to the person being paid.
+ * docs/layout/03-my-performance.md — what my points are worth. The loop that
+ * makes performance-linked pay mean anything to the person being paid.
  *
  * The open month shows a PROJECTED percentage and no taka figure: the clamp
- * makes points and money non-linear near the edges, and PayrollRecord
- * doesn't exist until an Admin runs payroll. Past months show the real
- * locked figure, never editable.
+ * makes points and money non-linear near the edges, and PayrollRecord doesn't
+ * exist until an Admin runs payroll. Past months show the real locked figure,
+ * never editable.
  */
 export default function PerformanceScreen() {
+  const theme = useTheme();
   const { employee } = useSession();
   const [monthOffset, setMonthOffset] = useState(0);
 
@@ -35,7 +40,7 @@ export default function PerformanceScreen() {
   const { from, to } = monthRange(viewed);
   const isCurrentMonth = monthOffset === 0;
 
-  const { data: scores } = useGetData<Paginated<ScoreEntry>>(
+  const { data: scores, isLoading } = useGetData<Paginated<ScoreEntry>>(
     `/performance-score-entries?employee_id=${employee?.id ?? ''}&date_from=${from}&date_to=${to}&limit=100`,
     ['performance-score-entries', employee?.id ?? 'none', from],
     { enabled: !!employee },
@@ -50,111 +55,216 @@ export default function PerformanceScreen() {
   const entries = scores?.results ?? [];
   const points = entries.reduce((sum, e) => sum + e.points, 0);
   const projected = clampAdjustment(points);
+  const records = payroll?.results ?? [];
+
+  const pointsColor = points > 0 ? 'success' : points < 0 ? 'critical' : 'ink';
 
   return (
-    <Screen scroll bottomInset={96}>
-      <Stack.Screen options={{ title: 'My performance' }} />
+    <Screen>
+      <Header title="My performance" />
 
+      {/* Month stepper. Forward is disabled at the current month — there is no
+          future payroll to look at. */}
       <View style={styles.monthRow}>
-        <Pressable onPress={() => setMonthOffset((o) => o - 1)} accessibilityRole="button" hitSlop={12}>
-          <AppText variant="label" color="muted">
-            ‹ Prev
-          </AppText>
-        </Pressable>
+        <MonthButton icon="chevron-left" label="Previous month" onPress={() => setMonthOffset((o) => o - 1)} />
         <AppText variant="label">{monthLabel(viewed)}</AppText>
-        <Pressable
+        <MonthButton
+          icon="chevron-right"
+          label="Next month"
           onPress={() => setMonthOffset((o) => Math.min(0, o + 1))}
-          accessibilityRole="button"
-          hitSlop={12}
           disabled={isCurrentMonth}
-        >
-          <AppText variant="label" color={isCurrentMonth ? 'line' : 'muted'}>
-            Next ›
+        />
+      </View>
+
+      <Card style={styles.hero}>
+        <AppText variant="eyebrow" color="muted" style={styles.centre}>
+          Points this month
+        </AppText>
+
+        {isLoading ? (
+          <View style={styles.heroSkeleton}>
+            <Skeleton width="40%" height={44} />
+          </View>
+        ) : (
+          // Zero is shown as 0, never hidden — a blank where a number belongs
+          // reads as a bug. docs/layout/03-my-performance.md.
+          <AppText variant="hero" color={pointsColor} style={styles.centre}>
+            {formatSignedPoints(points)}
           </AppText>
-        </Pressable>
-      </View>
+        )}
 
-      <View style={styles.readings}>
-        <Reading
-          value={points > 0 ? `+${points}` : String(points)}
-          label="Points"
-          color={points > 0 ? 'success' : points < 0 ? 'critical' : 'ink'}
-        />
-        <Reading
-          value={formatSignedPercent(projected)}
-          label={isCurrentMonth ? 'Projected' : 'Adjustment'}
-          color="muted"
-        />
-      </View>
+        <View style={[styles.rule, { backgroundColor: theme.line }]} />
 
-      <Section label="Score history" />
-      {entries.length === 0 ? (
-        <AppText variant="body" color="muted">
-          No score entries yet this month.
+        <View style={styles.projected}>
+          <AppText variant="label" color="muted">
+            {isCurrentMonth ? 'Projected' : 'Adjustment'}
+          </AppText>
+          <AppText variant="figure" color={pointsColor}>
+            {formatSignedPercent(projected)}
+          </AppText>
+        </View>
+        <AppText variant="caption" color="muted" style={styles.centre}>
+          {isCurrentMonth ? "on next month's pay" : 'applied to this month'}
         </AppText>
-      ) : (
-        entries.map((entry) => (
-          <LedgerRow
-            key={entry.id}
-            gutter={entry.points > 0 ? `+${entry.points}` : String(entry.points)}
-            gutterColor={entry.points > 0 ? 'success' : 'critical'}
-          >
-            <View style={styles.entryHead}>
-              <AppText variant="body">{entry.criterion.replaceAll('_', ' ').toLowerCase()}</AppText>
-              <AppText variant="data" color="muted">
-                {shortDate(entry.date)}
-              </AppText>
-            </View>
-            <AppText variant="data" color="muted">
-              {entry.reason}
-            </AppText>
-            {entry.given_by && (
-              <AppText variant="data" color="muted">
-                {entry.given_by.name}
-              </AppText>
-            )}
-          </LedgerRow>
-        ))
-      )}
+      </Card>
 
-      <Section label="Payroll history" />
-      {(payroll?.results ?? []).length === 0 ? (
-        <AppText variant="body" color="muted">
-          First payroll runs at month end.
-        </AppText>
-      ) : (
-        payroll?.results.map((record) => {
-          const percent = Number(record.adjustment_percent);
-          return (
+      <Card rows eyebrow="Score history" style={styles.card}>
+        {isLoading ? (
+          <View style={styles.skeletons}>
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} height={44} />
+            ))}
+          </View>
+        ) : entries.length === 0 ? (
+          <EmptyState
+            compact
+            icon="award"
+            tint="tintAmber"
+            title="No score entries yet this month."
+          />
+        ) : (
+          entries.map((entry, i) => (
             <LedgerRow
-              key={record.id}
-              gutter={record.score_sum > 0 ? `+${record.score_sum}` : String(record.score_sum)}
-              gutterColor={record.score_sum > 0 ? 'success' : record.score_sum < 0 ? 'critical' : 'muted'}
+              key={entry.id}
+              gutter={formatSignedPoints(entry.points)}
+              gutterColor={entry.points > 0 ? 'success' : 'critical'}
+              last={i === entries.length - 1}
             >
               <View style={styles.entryHead}>
-                <AppText variant="body">
-                  {new Date(record.month).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                <AppText variant="bodyStrong" style={styles.flex}>
+                  {entry.criterion.replaceAll('_', ' ').toLowerCase()}
                 </AppText>
-                <AppText variant="figure">{formatMoney(record.final_salary)}</AppText>
+                <AppText variant="data" color="muted">
+                  {shortDate(entry.date)}
+                </AppText>
               </View>
-              <AppText variant="data" color="muted">
-                {formatSignedPercent(percent)} on {formatMoney(record.baseline_salary)}
-              </AppText>
+              {/* Never truncated to one line — this is the only place a worker
+                  sees *why* they were scored. */}
+              {entry.reason ? (
+                <AppText variant="body" color="inkSoft" numberOfLines={2}>
+                  &ldquo;{entry.reason}&rdquo;
+                </AppText>
+              ) : null}
+              {entry.given_by && (
+                <AppText variant="caption" color="muted">
+                  {entry.given_by.name}
+                </AppText>
+              )}
             </LedgerRow>
-          );
-        })
-      )}
+          ))
+        )}
+      </Card>
+
+      <Card rows eyebrow="Payroll history" style={styles.card}>
+        {records.length === 0 ? (
+          <EmptyState
+            compact
+            icon="calendar"
+            tint="surfaceAlt"
+            title="First payroll runs at month end."
+          />
+        ) : (
+          // Four mono columns — the one place mono's alignment is structural.
+          // PayrollRecord is immutable: no edit affordance, ever.
+          records.map((record, i) => (
+            <View
+              key={record.id}
+              style={[
+                styles.payrollRow,
+                i < records.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.line },
+              ]}
+            >
+              <AppText variant="data" color="muted" style={styles.flex}>
+                {new Date(record.month)
+                  .toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+                  .toUpperCase()}
+              </AppText>
+              <AppText
+                variant="data"
+                color={record.score_sum > 0 ? 'success' : record.score_sum < 0 ? 'critical' : 'muted'}
+                style={styles.colPoints}
+              >
+                {formatSignedPoints(record.score_sum)}
+              </AppText>
+              <AppText
+                variant="data"
+                color={record.score_sum > 0 ? 'success' : record.score_sum < 0 ? 'critical' : 'muted'}
+                style={styles.colPercent}
+              >
+                {formatSignedPercent(Number(record.adjustment_percent))}
+              </AppText>
+              <AppText variant="figure" style={styles.colMoney}>
+                {formatMoney(record.final_salary)}
+              </AppText>
+            </View>
+          ))
+        )}
+      </Card>
     </Screen>
   );
 }
 
+function MonthButton({
+  icon,
+  label,
+  onPress,
+  disabled,
+}: {
+  icon: 'chevron-left' | 'chevron-right';
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled }}
+      style={[
+        styles.monthButton,
+        { backgroundColor: theme.surface, borderColor: theme.line, opacity: disabled ? 0.4 : 1 },
+      ]}
+    >
+      <Icon name={icon} size={20} color={disabled ? 'muted' : 'ink'} />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  centre: { textAlign: 'center' },
   monthRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: Spacing.three,
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.md,
   },
-  readings: { flexDirection: 'row', gap: Spacing.five },
-  entryHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  monthButton: {
+    width: Size.iconButton,
+    height: Size.iconButton,
+    borderWidth: 1,
+    borderRadius: Radius.control,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hero: { padding: Spacing.xl },
+  heroSkeleton: { alignItems: 'center', paddingVertical: Spacing.xs },
+  rule: { height: 1, marginVertical: Spacing.lg },
+  projected: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm },
+  card: { marginTop: Spacing.md },
+  skeletons: { gap: Spacing.md, paddingHorizontal: Spacing.lg },
+  entryHead: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.sm },
+  payrollRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: Size.rowSingle,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
+  colPoints: { width: 48, textAlign: 'right' },
+  colPercent: { width: 64, textAlign: 'right' },
+  colMoney: { flex: 1, textAlign: 'right' },
 });

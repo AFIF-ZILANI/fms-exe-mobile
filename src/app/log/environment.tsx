@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { Screen } from '@/components/ui/screen';
+import { View, StyleSheet } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+
+import { FormScreen } from '@/components/ui/form-screen';
 import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
 import { BatchResolver, useResolvedBatch } from '@/components/ui/batch-resolver';
 import { NumberField } from '@/components/ui/number-field';
 import { PillSelect } from '@/components/ui/pill-select';
-import { SubmitBar } from '@/components/ui/submit-bar';
-import { Section } from '@/components/ui/section';
+import { AppText } from '@/components/ui/text';
+import { Spacing } from '@/constants/theme';
 import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
 
@@ -32,8 +34,33 @@ function defaultTimePeriod(hour: number): TimePeriod {
   return 'MIDNIGHT';
 }
 
-/** docs/PRD.md §6.10. Unlike consumption/weight, batch_id is REQUIRED by the
- *  server here -- submit stays blocked until a batch resolves. */
+/**
+ * Normal ranges are display constants, not server validation — they live here
+ * beside the form rather than in a migration. An out-of-range value is NOT an
+ * error: it's the reading, and frequently the whole reason someone opened the
+ * form. It warns and never blocks. docs/layout/10-log-environment.md.
+ */
+const RANGES: Record<string, [number, number]> = {
+  temperature: [18, 34],
+  humidity: [40, 70],
+  ammonia: [0, 20],
+  co2: [0, 3000],
+  pressure: [950, 1050],
+};
+
+function outOfRange(key: keyof typeof RANGES, value: string): boolean {
+  if (value.trim() === '') return false;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return false;
+  const [min, max] = RANGES[key];
+  return n < min || n > max;
+}
+
+/** docs/layout/10-log-environment.md. Unlike consumption/weight, batch_id is
+ *  REQUIRED by the server here — submit stays blocked until a batch resolves.
+ *
+ *  Five readings in one stacked column, not a grid: a worker walks the shed
+ *  once with the phone, and the form should match that walk. */
 export default function EnvironmentScreen() {
   const params = useLocalSearchParams<{ house_id?: string; task_id?: string }>();
   const { employee } = useSession();
@@ -45,12 +72,15 @@ export default function EnvironmentScreen() {
   const [ammonia, setAmmonia] = useState('');
   const [co2, setCo2] = useState('');
   const [pressure, setPressure] = useState('');
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>(() => defaultTimePeriod(new Date().getHours()));
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>(() =>
+    defaultTimePeriod(new Date().getHours()),
+  );
   const [submitting, setSubmitting] = useState(false);
 
   const { balance } = useResolvedBatch(house?.id);
   const values = [temperature, humidity, ammonia, co2, pressure];
-  const isValid = !!house && !!balance && values.every((v) => v.trim() !== '' && Number.isFinite(Number(v)));
+  const isValid =
+    !!house && !!balance && values.every((v) => v.trim() !== '' && Number.isFinite(Number(v)));
 
   const handleSubmit = async () => {
     if (!house || !balance || !employee) return;
@@ -77,24 +107,81 @@ export default function EnvironmentScreen() {
     }
   };
 
+  const filled = values.filter((v) => v.trim() !== '').length;
+
   return (
-    <Screen scroll bottomInset={96}>
-      <Stack.Screen options={{ title: 'Environment' }} />
-      <Section label="House" />
+    <FormScreen
+      title="Log environment"
+      dirty={filled > 0}
+      submit={{
+        label: filled > 0 ? `Record ${filled} of 5 readings` : 'Record readings',
+        onPress: handleSubmit,
+        disabled: !isValid,
+        loading: submitting,
+      }}
+    >
       <HousePicker value={house} onChange={setHouse} />
       <BatchResolver houseId={house?.id} />
 
-      <Section label="Readings" />
-      <NumberField label="Temperature" value={temperature} onChangeText={setTemperature} unit="°C"  autoFocus />
-      <NumberField label="Humidity" value={humidity} onChangeText={setHumidity} unit="%"  />
-      <NumberField label="Ammonia" value={ammonia} onChangeText={setAmmonia} unit="ppm"  />
-      <NumberField label="CO₂" value={co2} onChangeText={setCo2} unit="ppm"  />
-      <NumberField label="Air pressure" value={pressure} onChangeText={setPressure} unit="hPa"  />
+      <View style={styles.periodBlock}>
+        <AppText variant="eyebrow" color="muted">
+          Time of day
+        </AppText>
+        <PillSelect options={TIME_PERIODS} value={timePeriod} onChange={setTimePeriod} />
+      </View>
 
-      <Section label="Time of day" />
-      <PillSelect options={TIME_PERIODS} value={timePeriod} onChange={setTimePeriod} />
-
-      <SubmitBar label="Record reading" onPress={handleSubmit} disabled={!isValid} loading={submitting} />
-    </Screen>
+      <NumberField
+        label="Temperature"
+        value={temperature}
+        onChangeText={setTemperature}
+        unit="°C"
+        autoFocus
+        warn={outOfRange('temperature', temperature)}
+        helper={outOfRange('temperature', temperature) ? 'Outside 18–34 °C' : undefined}
+        helperColor="critical"
+      />
+      <NumberField
+        label="Humidity"
+        value={humidity}
+        onChangeText={setHumidity}
+        unit="%"
+        warn={outOfRange('humidity', humidity)}
+        helper={outOfRange('humidity', humidity) ? 'Outside 40–70 %' : undefined}
+        helperColor="critical"
+      />
+      {/* Ammonia is the reading that matters most and the one workers skip —
+          third in the column rather than last, for exactly that reason. */}
+      <NumberField
+        label="Ammonia"
+        value={ammonia}
+        onChangeText={setAmmonia}
+        unit="ppm"
+        warn={outOfRange('ammonia', ammonia)}
+        helper={outOfRange('ammonia', ammonia) ? 'Above 20 ppm' : undefined}
+        helperColor="critical"
+      />
+      <NumberField
+        label="CO₂"
+        value={co2}
+        onChangeText={setCo2}
+        unit="ppm"
+        warn={outOfRange('co2', co2)}
+        helper={outOfRange('co2', co2) ? 'Above 3,000 ppm' : undefined}
+        helperColor="critical"
+      />
+      <NumberField
+        label="Air pressure"
+        value={pressure}
+        onChangeText={setPressure}
+        unit="hPa"
+        warn={outOfRange('pressure', pressure)}
+        helper={outOfRange('pressure', pressure) ? 'Outside 950–1,050 hPa' : undefined}
+        helperColor="critical"
+      />
+    </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  periodBlock: { gap: Spacing.sm },
+});

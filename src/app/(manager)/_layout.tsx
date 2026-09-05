@@ -1,5 +1,4 @@
 import { Redirect, Stack } from 'expo-router';
-import { FontFamily } from '@/constants/theme';
 import { useSession } from '@/lib/session';
 import { can } from '@/lib/permissions';
 
@@ -11,12 +10,5 @@ export default function ManagerLayout() {
   const { employee, isLoading } = useSession();
   if (isLoading) return null;
   if (!can(employee?.role, 'assign_task')) return <Redirect href="/" />;
-  return (
-    <Stack
-      screenOptions={{
-        headerShadowVisible: false,
-        headerTitleStyle: { fontFamily: FontFamily.sansSemiBold, fontSize: 20 },
-      }}
-    />
-  );
+  return <Stack screenOptions={{ headerShown: false }} />;
 }

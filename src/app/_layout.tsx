@@ -8,7 +8,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 
-import { Colors, FontAssets, FontFamily } from '@/constants/theme';
+import { Colors, FontAssets } from '@/constants/theme';
 import { SessionProvider } from '@/lib/session';
 import { initOutbox } from '@/lib/outbox';
 import { useOutboxTriggers } from '@/lib/use-outbox';
@@ -80,19 +80,8 @@ export default function RootLayout() {
 function RootStack() {
   useOutboxTriggers();
 
-  return (
-    <Stack
-      screenOptions={{
-        headerShadowVisible: false,
-        headerBackTitleStyle: { fontFamily: FontFamily.sans },
-        headerTitleStyle: { fontFamily: FontFamily.sansSemiBold, fontSize: 20 },
-      }}
-    >
-      {/* Both groups run their own navigator, which supplies their screens'
-          headers. Without this the root Stack renders a second one above it,
-          titled with the raw group name. */}
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="(manager)" options={{ headerShown: false }} />
-    </Stack>
-  );
+  // Every screen draws its own 56dp <Header> (docs/layout/00-app-shell.md), so
+  // the navigator's header is off everywhere — left on, it stacks a second bar
+  // above each screen titled with the raw route name.
+  return <Stack screenOptions={{ headerShown: false }} />;
 }
