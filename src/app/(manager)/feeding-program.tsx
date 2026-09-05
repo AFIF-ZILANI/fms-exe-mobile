@@ -129,7 +129,7 @@ export default function FeedingProgramScreen() {
       <Section label="Add phase" />
       <PillSelect options={FEED_TYPES} value={feedType} onChange={setFeedType} />
       <ItemPicker value={item} onChange={setItem} category="FEED" />
-      <NumberField label="Start day" value={startDay} onChangeText={setStartDay} required allowDecimal={false} />
+      <NumberField label="Start day" value={startDay} onChangeText={setStartDay}  allowDecimal={false} />
       <NumberField label="End day" value={endDay} onChangeText={setEndDay} allowDecimal={false} />
 
       <SubmitBar label="Add phase" onPress={handleSubmit} disabled={!isValid} loading={submitting} />

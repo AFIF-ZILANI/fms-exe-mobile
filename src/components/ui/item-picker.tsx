@@ -12,7 +12,6 @@ type ItemPickerProps = {
   /** ItemCategory.code, e.g. "FEED" -- used by the feeding program screen. */
   category?: string;
   error?: string;
-  required?: boolean;
 };
 
 export function ItemPicker({
@@ -21,7 +20,6 @@ export function ItemPicker({
   unitTracked,
   category,
   error,
-  required = true,
 }: ItemPickerProps) {
   const params = new URLSearchParams({ is_active: 'true', limit: '200' });
   if (unitTracked !== undefined) params.set('is_unit_tracked', String(unitTracked));
@@ -43,7 +41,6 @@ export function ItemPicker({
       getSubLabel={(i) => i.category}
       onChange={onChange}
       loading={isLoading}
-      required={required}
       error={error}
       emptyLabel="No items found."
     />

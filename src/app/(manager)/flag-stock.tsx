@@ -77,7 +77,6 @@ export default function FlagStockScreen() {
           setItem(next);
           setTitle(`Low stock: ${next.name}`);
         }}
-        required={false}
       />
 
       <Section label="Type" />
@@ -87,7 +86,7 @@ export default function FlagStockScreen() {
       <PillSelect options={LEVELS} value={level} onChange={setLevel} />
 
       <Section label="Detail" />
-      <TextField label="Title" value={title} onChangeText={setTitle} required />
+      <TextField label="Title" value={title} onChangeText={setTitle}  />
       <TextField label="Description" value={description} onChangeText={setDescription} multiline />
 
       <SubmitBar label="Raise alert" onPress={handleSubmit} disabled={!isValid} loading={submitting} />

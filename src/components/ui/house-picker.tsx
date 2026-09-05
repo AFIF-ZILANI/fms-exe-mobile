@@ -39,10 +39,9 @@ type HousePickerProps = {
   value: House | null;
   onChange: (house: House) => void;
   error?: string;
-  required?: boolean;
 };
 
-export function HousePicker({ value, onChange, error, required = true }: HousePickerProps) {
+export function HousePicker({ value, onChange, error }: HousePickerProps) {
   const { data, isLoading } = useHouseOptions();
 
   return (
@@ -55,7 +54,6 @@ export function HousePicker({ value, onChange, error, required = true }: HousePi
       getSubLabel={(h) => h.type}
       onChange={onChange}
       loading={isLoading}
-      required={required}
       error={error}
       emptyLabel="No active houses."
     />

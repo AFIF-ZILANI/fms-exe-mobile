@@ -70,7 +70,7 @@ export default function ConsumptionScreen() {
         value={quantity}
         onChangeText={setQuantity}
         unit={item?.unit}
-        required
+        
         autoFocus
       />
 

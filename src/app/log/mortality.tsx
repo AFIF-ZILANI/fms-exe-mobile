@@ -80,7 +80,7 @@ export default function MortalityScreen() {
         value={count}
         onChangeText={setCount}
         unit="birds"
-        required
+        
         autoFocus
         allowDecimal={false}
       />

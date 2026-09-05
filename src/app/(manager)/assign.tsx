@@ -99,7 +99,7 @@ export default function AssignScreen() {
         loading={tasksLoading}
         emptyLabel="No tasks defined yet."
       />
-      <TextField label="Title" value={title} onChangeText={setTitle} required />
+      <TextField label="Title" value={title} onChangeText={setTitle}  />
       <TextField label="Description" value={description} onChangeText={setDescription} multiline />
 
       <Section label="Where" />
@@ -119,7 +119,7 @@ export default function AssignScreen() {
           value={locationNote}
           onChangeText={setLocationNote}
           placeholder="e.g. front gate"
-          required
+          
         />
       )}
 

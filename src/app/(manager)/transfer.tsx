@@ -106,7 +106,7 @@ export default function TransferScreen() {
       <HousePicker value={toHouse} onChange={setToHouse} />
 
       <Section label="Detail" />
-      <NumberField label="Quantity" value={quantity} onChangeText={setQuantity} unit="birds" required allowDecimal={false} />
+      <NumberField label="Quantity" value={quantity} onChangeText={setQuantity} unit="birds"  allowDecimal={false} />
       <SegmentedToggle
         options={[
           { value: 'TRANSFER', label: 'Transfer' },

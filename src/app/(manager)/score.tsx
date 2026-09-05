@@ -105,7 +105,7 @@ export default function ScoreScreen() {
       )}
 
       <Section label="Reason" />
-      <TextField label="Reason" value={reason} onChangeText={setReason} multiline required />
+      <TextField label="Reason" value={reason} onChangeText={setReason} multiline  />
 
       <SubmitBar
         label={criterion ? `Record ${points > 0 ? '+' : ''}${points} points` : 'Record'}

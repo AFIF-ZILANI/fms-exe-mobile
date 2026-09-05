@@ -85,11 +85,11 @@ export default function EnvironmentScreen() {
       <BatchResolver houseId={house?.id} />
 
       <Section label="Readings" />
-      <NumberField label="Temperature" value={temperature} onChangeText={setTemperature} unit="°C" required autoFocus />
-      <NumberField label="Humidity" value={humidity} onChangeText={setHumidity} unit="%" required />
-      <NumberField label="Ammonia" value={ammonia} onChangeText={setAmmonia} unit="ppm" required />
-      <NumberField label="CO₂" value={co2} onChangeText={setCo2} unit="ppm" required />
-      <NumberField label="Air pressure" value={pressure} onChangeText={setPressure} unit="hPa" required />
+      <NumberField label="Temperature" value={temperature} onChangeText={setTemperature} unit="°C"  autoFocus />
+      <NumberField label="Humidity" value={humidity} onChangeText={setHumidity} unit="%"  />
+      <NumberField label="Ammonia" value={ammonia} onChangeText={setAmmonia} unit="ppm"  />
+      <NumberField label="CO₂" value={co2} onChangeText={setCo2} unit="ppm"  />
+      <NumberField label="Air pressure" value={pressure} onChangeText={setPressure} unit="hPa"  />
 
       <Section label="Time of day" />
       <PillSelect options={TIME_PERIODS} value={timePeriod} onChange={setTimePeriod} />

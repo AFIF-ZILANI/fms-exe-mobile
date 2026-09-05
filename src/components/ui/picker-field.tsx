@@ -9,10 +9,15 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { AppText } from '@/components/ui/text';
-import { Divider } from '@/components/ui/divider';
-import { MinTouchTarget, Radius, Spacing } from '@/constants/theme';
+import { Icon } from '@/components/ui/icon';
+import { Radius, Size, Spacing, elevation } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+
+/** Below this a search field is furniture. docs/layout/08-log-consumption.md. */
+const SEARCH_THRESHOLD = 12;
 
 type PickerFieldProps<T> = {
   label: string;
@@ -23,18 +28,19 @@ type PickerFieldProps<T> = {
   getSubLabel?: (item: T) => string | undefined;
   onChange: (item: T) => void;
   placeholder?: string;
-  required?: boolean;
   error?: string;
+  helper?: string;
   loading?: boolean;
+  /** Forces the search field on or off; defaults to "only past 12 options". */
   searchable?: boolean;
   emptyLabel?: string;
+  disabled?: boolean;
 };
 
 /**
- * Every field that can be a choice is a choice -- docs/design.md §5. The one
- * selection primitive HousePicker/EmployeePicker/ItemPicker and the rest
- * build on, so the "pick house or fragment-search a lot" interaction only
- * gets written once.
+ * Every field that can be a choice is a choice — docs/design.md §7. The one
+ * selection primitive HousePicker/EmployeePicker/ItemPicker build on, so the
+ * interaction only gets written once.
  */
 export function PickerField<T>({
   label,
@@ -45,23 +51,27 @@ export function PickerField<T>({
   getSubLabel,
   onChange,
   placeholder = 'Select…',
-  required,
   error,
+  helper,
   loading,
-  searchable = true,
+  searchable,
   emptyLabel = 'Nothing to choose from.',
+  disabled,
 }: PickerFieldProps<T>) {
   const theme = useTheme();
+  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+
+  const showSearch = searchable ?? options.length > SEARCH_THRESHOLD;
 
   const filtered = useMemo(() => {
     if (!query.trim()) return options;
     const q = query.trim().toLowerCase();
     return options.filter((opt) => {
-      const label = getLabel(opt).toLowerCase();
+      const l = getLabel(opt).toLowerCase();
       const sub = getSubLabel?.(opt)?.toLowerCase() ?? '';
-      return label.includes(q) || sub.includes(q);
+      return l.includes(q) || sub.includes(q);
     });
   }, [options, query, getLabel, getSubLabel]);
 
@@ -72,51 +82,66 @@ export function PickerField<T>({
 
   return (
     <View style={styles.wrap}>
-      <AppText variant="label" color="muted">
+      <AppText variant="eyebrow" color="muted">
         {label}
-        {required ? ' *' : ''}
       </AppText>
+
       <Pressable
         onPress={() => setOpen(true)}
+        disabled={disabled}
         accessibilityRole="button"
+        accessibilityLabel={`${label}: ${value ? getLabel(value) : placeholder}`}
         style={[
           styles.field,
-          { backgroundColor: theme.field, borderColor: error ? theme.critical : theme.line },
+          {
+            backgroundColor: theme.surfaceAlt,
+            borderColor: error ? theme.critical : theme.line,
+            borderWidth: error ? 2 : 1,
+            opacity: disabled ? 0.5 : 1,
+          },
         ]}
       >
-        <AppText variant="body" color={value ? 'ink' : 'muted'}>
+        <AppText variant="body" color={value ? 'ink' : 'muted'} numberOfLines={1} style={styles.flex}>
           {value ? getLabel(value) : placeholder}
         </AppText>
+        <Icon name="chevron-down" size={20} color="muted" />
       </Pressable>
-      {error !== undefined && (
-        <AppText variant="data" color="critical">
+
+      {error ? (
+        <AppText variant="caption" color="critical">
           {error}
         </AppText>
-      )}
+      ) : helper ? (
+        <AppText variant="caption" color="muted">
+          {helper}
+        </AppText>
+      ) : null}
 
       <Modal visible={open} animationType="slide" onRequestClose={close} transparent>
-        <SafeAreaView style={[styles.sheet, { backgroundColor: theme.paper }]}>
+        <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="Dismiss" />
+        <SafeAreaView
+          style={[styles.sheet, { backgroundColor: theme.surface }, elevation(scheme, 'sheet')]}
+          edges={['bottom']}
+        >
+          <View style={[styles.handle, { backgroundColor: theme.line }]} />
           <View style={styles.sheetHeader}>
-            <AppText variant="title">{label}</AppText>
-            <Pressable onPress={close} accessibilityRole="button" hitSlop={12}>
-              <AppText variant="label" color="muted">
-                Close
-              </AppText>
-            </Pressable>
+            <AppText variant="h2">{label}</AppText>
           </View>
-          {searchable && (
+
+          {showSearch && (
             <TextInput
               value={query}
               onChangeText={setQuery}
               placeholder="Search…"
               placeholderTextColor={theme.muted}
+              autoCorrect={false}
               style={[
                 styles.search,
-                { color: theme.ink, backgroundColor: theme.field, borderColor: theme.line },
+                { color: theme.ink, backgroundColor: theme.surfaceAlt, borderColor: theme.line },
               ]}
-              autoFocus
             />
           )}
+
           {loading ? (
             <ActivityIndicator style={styles.loading} color={theme.muted} />
           ) : filtered.length === 0 ? (
@@ -127,7 +152,9 @@ export function PickerField<T>({
             <FlatList
               data={filtered}
               keyExtractor={getKey}
-              ItemSeparatorComponent={Divider}
+              ItemSeparatorComponent={() => (
+                <View style={[styles.rule, { backgroundColor: theme.line }]} />
+              )}
               renderItem={({ item }) => {
                 const selected = value !== null && getKey(item) === getKey(value);
                 const sub = getSubLabel?.(item);
@@ -138,21 +165,20 @@ export function PickerField<T>({
                       close();
                     }}
                     accessibilityRole="button"
-                    style={styles.row}
+                    style={({ pressed }) => [
+                      styles.row,
+                      pressed && { backgroundColor: theme.surfaceAlt },
+                    ]}
                   >
-                    <View>
-                      <AppText variant="body">{getLabel(item)}</AppText>
-                      {sub !== undefined && (
-                        <AppText variant="data" color="muted">
+                    <View style={styles.flex}>
+                      <AppText variant="bodyStrong">{getLabel(item)}</AppText>
+                      {sub ? (
+                        <AppText variant="caption" color="muted">
                           {sub}
                         </AppText>
-                      )}
+                      ) : null}
                     </View>
-                    {selected && (
-                      <AppText variant="label" color="ink">
-                        ✓
-                      </AppText>
-                    )}
+                    {selected ? <Icon name="check" size={20} color="primary" /> : null}
                   </Pressable>
                 );
               }}
@@ -165,36 +191,48 @@ export function PickerField<T>({
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: Spacing.one },
+  wrap: { gap: Spacing.xs },
+  flex: { flex: 1 },
   field: {
-    minHeight: MinTouchTarget,
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderRadius: Radius.control,
-    paddingHorizontal: Spacing.two,
-  },
-  sheet: { flex: 1, paddingHorizontal: Spacing.three },
-  sheetHeader: {
+    minHeight: Size.input,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: Spacing.three,
+    gap: Spacing.sm,
+    borderRadius: Radius.control,
+    paddingHorizontal: Spacing.lg,
   },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  sheet: {
+    maxHeight: '80%',
+    borderTopLeftRadius: Radius.sheet,
+    borderTopRightRadius: Radius.sheet,
+  },
+  handle: {
+    width: 32,
+    height: 4,
+    borderRadius: Radius.pill,
+    alignSelf: 'center',
+    marginTop: Spacing.sm,
+  },
+  sheetHeader: { padding: Spacing.xl, paddingBottom: Spacing.md },
   search: {
-    minHeight: MinTouchTarget,
+    minHeight: Size.input,
     borderWidth: 1,
     borderRadius: Radius.control,
-    paddingHorizontal: Spacing.two,
-    marginBottom: Spacing.two,
+    paddingHorizontal: Spacing.lg,
+    marginHorizontal: Spacing.xl,
+    marginBottom: Spacing.md,
     fontSize: 16,
   },
   row: {
-    minHeight: MinTouchTarget,
+    minHeight: Size.row,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: Spacing.two,
+    gap: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
   },
-  loading: { marginTop: Spacing.five },
-  empty: { marginTop: Spacing.five, textAlign: 'center' },
+  rule: { height: 1, marginLeft: Spacing.xl },
+  loading: { padding: Spacing.xxl },
+  empty: { padding: Spacing.xl },
 });

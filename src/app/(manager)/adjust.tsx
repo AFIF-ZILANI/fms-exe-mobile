@@ -121,7 +121,7 @@ export default function AdjustScreen() {
           {onRecord.toLocaleString()} {item?.unit ?? ''}
         </AppText>
       </View>
-      <NumberField label="Counted" value={counted} onChangeText={setCounted} unit={item?.unit} required />
+      <NumberField label="Counted" value={counted} onChangeText={setCounted} unit={item?.unit}  />
 
       {item && counted.trim() !== '' && Number.isFinite(countedNum) && (
         <View style={{ marginTop: 8 }}>
@@ -134,7 +134,7 @@ export default function AdjustScreen() {
       )}
 
       <Section label="Why" />
-      <TextField label="Reason" value={reason} onChangeText={setReason} required />
+      <TextField label="Reason" value={reason} onChangeText={setReason}  />
       <TextField label="Note" value={note} onChangeText={setNote} multiline />
 
       <SubmitBar label="Report discrepancy" onPress={handleSubmit} disabled={!isValid} loading={submitting} />

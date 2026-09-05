@@ -68,7 +68,7 @@ export default function WeightScreen() {
         value={averageWeight}
         onChangeText={setAverageWeight}
         unit="g"
-        required
+        
         autoFocus
       />
       <NumberField
@@ -76,7 +76,7 @@ export default function WeightScreen() {
         value={sampleSize}
         onChangeText={setSampleSize}
         unit="birds"
-        required
+        
         allowDecimal={false}
       />
 

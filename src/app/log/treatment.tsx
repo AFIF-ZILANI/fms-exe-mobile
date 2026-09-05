@@ -90,12 +90,12 @@ export default function TreatmentScreen() {
         label={type === 'medication' ? 'Medicine name' : 'Vaccine name'}
         value={name}
         onChangeText={setName}
-        required
+        
       />
       {type === 'vaccination' ? (
-        <NumberField label="Dosage" value={dosage} onChangeText={setDosage} unit="doses" required allowDecimal={false} />
+        <NumberField label="Dosage" value={dosage} onChangeText={setDosage} unit="doses"  allowDecimal={false} />
       ) : (
-        <TextField label="Dosage" value={dosage} onChangeText={setDosage} placeholder="e.g. 2ml/L" required />
+        <TextField label="Dosage" value={dosage} onChangeText={setDosage} placeholder="e.g. 2ml/L"  />
       )}
       <TextField label="Cause" value={cause} onChangeText={setCause} />
       <PickerField
@@ -107,7 +107,6 @@ export default function TreatmentScreen() {
         getSubLabel={(d) => d.specialty ?? undefined}
         onChange={setDoctor}
         loading={doctorsLoading}
-        required={false}
         placeholder="None"
         emptyLabel="No doctors on file."
       />

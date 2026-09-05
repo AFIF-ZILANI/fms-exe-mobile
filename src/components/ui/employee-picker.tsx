@@ -28,7 +28,6 @@ type EmployeePickerProps = {
   role?: EmployeeRole;
   label?: string;
   error?: string;
-  required?: boolean;
 };
 
 export function EmployeePicker({
@@ -37,7 +36,6 @@ export function EmployeePicker({
   role,
   label = 'Employee',
   error,
-  required = true,
 }: EmployeePickerProps) {
   const qs = role ? `role=${role}&limit=100` : 'limit=100';
   const { data, isLoading } = useGetData<Paginated<Employee>>(`/employees?${qs}`, [
@@ -55,7 +53,6 @@ export function EmployeePicker({
       getSubLabel={(e) => e.role}
       onChange={onChange}
       loading={isLoading}
-      required={required}
       error={error}
       emptyLabel="No employees yet."
     />
