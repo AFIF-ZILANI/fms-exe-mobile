@@ -49,7 +49,7 @@ export default function ReceiveScreen() {
   );
 
   const { data: purchaseItems, isLoading: lotsLoading } = useGetData<Paginated<PurchaseItem>>(
-    '/purchase-items?limit=200',
+    '/purchase-items?limit=100',
     ['purchase-items'],
   );
 

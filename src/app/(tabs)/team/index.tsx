@@ -39,12 +39,14 @@ export default function TeamScreen() {
   }, []);
 
   const { data: tasks } = useGetData<Paginated<TaskAssignment>>(
-    `/task-assignments?due_to=${endOfToday}&limit=200`,
+    // The server caps limit at 100; asking for more is a 400, which is how
+    // this screen silently showed zeros for every stat.
+    `/task-assignments?due_to=${endOfToday}&limit=100`,
     ['task-assignments', 'team-today'],
   );
 
   const { data: scores } = useGetData<Paginated<ScoreEntry>>(
-    `/performance-score-entries?date_from=${from}&date_to=${to}&limit=500`,
+    `/performance-score-entries?date_from=${from}&date_to=${to}&limit=100`,
     ['performance-score-entries', 'team-mtd', from],
   );
 
