@@ -37,6 +37,9 @@ export default function TaskDetailScreen() {
 
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // Read once at mount. Calling Date.now() during render is impure (the
+  // React Compiler rejects it), and the overdue line doesn't need to tick.
+  const [now] = useState(() => Date.now());
 
   const { data: task, isLoading, isError } = useGetData<TaskAssignment>(
     `/task-assignments/${id}`,
@@ -77,7 +80,7 @@ export default function TaskDetailScreen() {
 
   const formRoute = routeForTaskType(task.task.task_type?.code);
   const isOpen = task.status === 'PENDING';
-  const overdue = isOpen && new Date(task.due_at).getTime() < Date.now();
+  const overdue = isOpen && new Date(task.due_at).getTime() < now;
   const isManager = can(employee?.role, 'assign_task');
 
   const openForm = () => {
