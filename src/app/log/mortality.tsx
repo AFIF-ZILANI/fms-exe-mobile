@@ -1,20 +1,23 @@
 import { useState } from 'react';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Alert } from 'react-native';
-import { Screen } from '@/components/ui/screen';
+import { router, useLocalSearchParams } from 'expo-router';
+
+import { FormScreen } from '@/components/ui/form-screen';
 import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
 import { BatchResolver, useResolvedBatch } from '@/components/ui/batch-resolver';
 import { NumberField } from '@/components/ui/number-field';
 import { TextField } from '@/components/ui/text-field';
-import { SubmitBar } from '@/components/ui/submit-bar';
-import { Section } from '@/components/ui/section';
 import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
 
-/** docs/PRD.md §6.7. Count is focused on mount -- it's the reason this
- *  screen exists. Warns (doesn't block) past 2% of the house's live birds,
- *  since a fat-fingered 50 for 5 is the costly typo here and this write
- *  decrements BatchHouseBalance for real. */
+/** Warn past this share of the house's live birds. A fat-fingered 50 for 5 is
+ *  the costly typo here, and this write decrements BatchHouseBalance for real.
+ *  docs/layout/07-log-mortality.md. */
+const WARN_RATIO = 0.02;
+
+/** docs/layout/07-log-mortality.md. Count is focused on mount — it's the
+ *  reason this screen exists. Warns but never blocks: a real mass-mortality
+ *  event is exactly when the app must not argue. */
 export default function MortalityScreen() {
   const params = useLocalSearchParams<{ house_id?: string; task_id?: string }>();
   const { employee } = useSession();
@@ -28,7 +31,14 @@ export default function MortalityScreen() {
   const { balance } = useResolvedBatch(house?.id);
   const countNum = Number(count);
   const isValid = !!house && !!balance && countNum > 0 && Number.isInteger(countNum);
-  const overThreshold = balance ? countNum > balance.quantity * 0.02 : false;
+  const overThreshold = balance ? countNum > balance.quantity * WARN_RATIO : false;
+
+  // The cheapest possible sanity check, and it catches the decimal-place error
+  // a threshold on absolute count never would: 12 deaths is routine in a flock
+  // of 5,000 and catastrophic in a flock of 200.
+  const share = balance && balance.quantity > 0 && countNum > 0
+    ? (countNum / balance.quantity) * 100
+    : null;
 
   const doSubmit = async () => {
     if (!house || !balance || !employee) return;
@@ -56,7 +66,7 @@ export default function MortalityScreen() {
     if (overThreshold) {
       Alert.alert(
         `Record ${countNum} deaths in ${house?.name}?`,
-        `That's more than 2% of the ${balance?.quantity.toLocaleString()} live birds in this house.`,
+        `That's ${share?.toFixed(1)}% of the ${balance?.quantity.toLocaleString()} live birds in this house.`,
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Record', style: 'destructive', onPress: doSubmit },
@@ -68,32 +78,38 @@ export default function MortalityScreen() {
   };
 
   return (
-    <Screen scroll bottomInset={96}>
-      <Stack.Screen options={{ title: 'Mortality' }} />
-      <Section label="House" />
+    <FormScreen
+      title="Log mortality"
+      dirty={!!count || !!causeNote}
+      submit={{
+        label: countNum > 0 ? `Record ${countNum} death${countNum === 1 ? '' : 's'}` : 'Record mortality',
+        onPress: handleSubmit,
+        disabled: !isValid,
+        loading: submitting,
+      }}
+    >
       <HousePicker value={house} onChange={setHouse} />
       <BatchResolver houseId={house?.id} />
 
-      <Section label="Count" />
       <NumberField
-        label="Count died"
+        label="Birds that died"
         value={count}
         onChangeText={setCount}
-        unit="birds"
-        required
         autoFocus
         allowDecimal={false}
+        steppers
+        warn={overThreshold}
+        helper={
+          share === null
+            ? undefined
+            : overThreshold
+              ? `${countNum} is ${share.toFixed(1)}% of the flock. Unusual — check the count.`
+              : `${share.toFixed(2)}% of the flock`
+        }
+        helperColor={overThreshold ? 'warning' : 'muted'}
       />
 
-      <Section label="Detail" />
-      <TextField label="Cause note" value={causeNote} onChangeText={setCauseNote} multiline />
-
-      <SubmitBar
-        label={countNum > 0 ? `Record ${countNum} death${countNum === 1 ? '' : 's'}` : 'Record'}
-        onPress={handleSubmit}
-        disabled={!isValid}
-        loading={submitting}
-      />
-    </Screen>
+      <TextField label="Cause (optional)" value={causeNote} onChangeText={setCauseNote} multiline />
+    </FormScreen>
   );
 }

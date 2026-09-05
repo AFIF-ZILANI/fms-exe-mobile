@@ -300,7 +300,14 @@ them.
 
 ## 5. Iconography
 
-**`@expo/vector-icons` → Feather**, already available; no new dependency.
+**`@expo/vector-icons` → Feather.** Added in v2 — v1 shipped no icon library at
+all and drew its few glyphs as literal text ("✓"), which is a large part of why
+screens read as unfinished. This is the Expo-recommended icon package; install
+it with `npx expo install @expo/vector-icons`.
+
+Consume it through `<Icon>` and `<IconTile>` (`src/components/ui/icon.tsx`),
+never by importing Feather directly — the wrappers are what keep sizes and
+theme colours consistent.
 
 - Nav and action icons: **24dp**, stroke weight as shipped.
 - Inline row icons: **20dp**. Icons inside chips and pills: **16dp**.

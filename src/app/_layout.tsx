@@ -8,11 +8,10 @@ import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 
-import { Colors, FontAssets, FontFamily } from '@/constants/theme';
+import { Colors, FontAssets } from '@/constants/theme';
 import { SessionProvider } from '@/lib/session';
 import { initOutbox } from '@/lib/outbox';
 import { useOutboxTriggers } from '@/lib/use-outbox';
-import { QuickActionButton } from '@/components/quick-action-button';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -26,11 +25,11 @@ const navLight = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    background: Colors.light.paper,
-    card: Colors.light.paper,
+    background: Colors.light.ground,
+    card: Colors.light.surface,
     text: Colors.light.ink,
     border: Colors.light.line,
-    primary: Colors.light.ink,
+    primary: Colors.light.primary,
   },
 };
 
@@ -38,11 +37,11 @@ const navDark = {
   ...DarkTheme,
   colors: {
     ...DarkTheme.colors,
-    background: Colors.dark.paper,
-    card: Colors.dark.paper,
+    background: Colors.dark.ground,
+    card: Colors.dark.surface,
     text: Colors.dark.ink,
     border: Colors.dark.line,
-    primary: Colors.dark.ink,
+    primary: Colors.dark.primary,
   },
 };
 
@@ -81,21 +80,8 @@ export default function RootLayout() {
 function RootStack() {
   useOutboxTriggers();
 
-  return (
-    <>
-      <Stack
-        screenOptions={{
-          headerShadowVisible: false,
-          headerBackTitleStyle: { fontFamily: FontFamily.sans },
-          headerTitleStyle: { fontFamily: FontFamily.sansSemiBold, fontSize: 20 },
-        }}
-      >
-        {/* The (manager) group runs its own Stack, which supplies each of its
-            screens' headers. Without this the root Stack renders a second one
-            above it, titled with the raw group name. */}
-        <Stack.Screen name="(manager)" options={{ headerShown: false }} />
-      </Stack>
-      <QuickActionButton />
-    </>
-  );
+  // Every screen draws its own 56dp <Header> (docs/layout/00-app-shell.md), so
+  // the navigator's header is off everywhere — left on, it stacks a second bar
+  // above each screen titled with the raw route name.
+  return <Stack screenOptions={{ headerShown: false }} />;
 }

@@ -1,17 +1,22 @@
 import { useState } from 'react';
-import { Stack } from 'expo-router';
-import { View } from 'react-native';
-import { Screen } from '@/components/ui/screen';
+import { View, StyleSheet } from 'react-native';
+
+import { FormScreen } from '@/components/ui/form-screen';
 import { BatchPicker } from '@/components/ui/batch-picker';
 import { ItemPicker } from '@/components/ui/item-picker';
 import { NumberField } from '@/components/ui/number-field';
 import { PillSelect } from '@/components/ui/pill-select';
-import { SubmitBar } from '@/components/ui/submit-bar';
-import { Section } from '@/components/ui/section';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { LedgerRow } from '@/components/ui/ledger-row';
+import { StatusPill } from '@/components/ui/status-pill';
 import { AppText } from '@/components/ui/text';
+import { Icon } from '@/components/ui/icon';
+import { Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
 import { useGetData, type Paginated } from '@/lib/api';
+import { dayOfCycle, expectedCycleDays } from '@/lib/farm';
 import type { Batch, Item } from '@/lib/types';
 
 type FeedType = 'PRE_STARTER' | 'STARTER' | 'GROWER' | 'FINISHER' | 'LAYER';
@@ -32,10 +37,34 @@ type FeedingProgramEntry = {
   item: Item;
 };
 
-/** docs/PRD.md §6.17. The server doesn't validate day ranges, so a silent
- *  gap or overlap means a batch with no feed type on some day -- flagged
- *  here rather than assumed away. */
+/** Gaps and overlaps in the day ranges. The server doesn't validate these, so
+ *  a silent gap means a batch with no feed type on day 12 and nobody finds out
+ *  until the feed hint on the consumption form says "no programme".
+ *  docs/layout/17-feeding-program.md. */
+function findProblems(rows: FeedingProgramEntry[]): string[] {
+  const problems: string[] = [];
+  for (let i = 0; i < rows.length - 1; i++) {
+    const row = rows[i];
+    const next = rows[i + 1];
+    if (row.end_day === null) {
+      problems.push(`Open-ended phase from d${row.start_day} overlaps later phases`);
+      continue;
+    }
+    if (next.start_day > row.end_day + 1) {
+      problems.push(`No feed set for days ${row.end_day + 1}–${next.start_day - 1}`);
+    } else if (next.start_day <= row.end_day) {
+      problems.push(`Days ${next.start_day}–${row.end_day} are covered twice`);
+    }
+  }
+  return problems;
+}
+
+/** docs/layout/17-feeding-program.md — which feed a batch gets, on which days.
+ *  A viewer with an editing affordance, not a form: the timeline is the whole
+ *  reason this is a screen, because a gap on day 12 is invisible in three rows
+ *  of text and obvious in one bar. */
 export default function FeedingProgramScreen() {
+  const theme = useTheme();
   const submit = useQueuedSubmit();
 
   const [batch, setBatch] = useState<Batch | null>(null);
@@ -51,18 +80,21 @@ export default function FeedingProgramScreen() {
     { enabled: !!batch },
   );
 
+  const rows = [...(existing?.results ?? [])].sort((a, b) => a.start_day - b.start_day);
+  const problems = findProblems(rows);
+
   const startNum = Number(startDay);
   const endNum = endDay.trim() ? Number(endDay) : null;
   const isValid =
-    !!batch && !!feedType && !!item && startNum >= 0 && Number.isInteger(startNum) &&
+    !!batch &&
+    !!feedType &&
+    !!item &&
+    startNum >= 0 &&
+    Number.isInteger(startNum) &&
     (endDay.trim() === '' || (endNum !== null && endNum >= startNum));
 
-  const rows = [...(existing?.results ?? [])].sort((a, b) => a.start_day - b.start_day);
-  const hasGapOrOverlap = rows.some((row, i) => {
-    const next = rows[i + 1];
-    if (!next || row.end_day === null) return false;
-    return next.start_day !== row.end_day + 1;
-  });
+  const today = batch ? dayOfCycle(batch.starting_date) : 0;
+  const total = batch ? expectedCycleDays(batch) : 35;
 
   const handleSubmit = async () => {
     if (!batch || !feedType || !item) return;
@@ -78,9 +110,9 @@ export default function FeedingProgramScreen() {
           ...(endNum !== null && { end_day: endNum }),
         },
       });
-      // Stays on the screen to add the next phase -- but only clears the
-      // fields once the write is actually queued, so a failure doesn't wipe
-      // what the manager just typed.
+      // Stays on the screen to add the next phase — but only clears the fields
+      // once the write is actually queued, so a failure doesn't wipe what the
+      // manager just typed.
       if (queued) {
         setFeedType(null);
         setItem(null);
@@ -93,46 +125,161 @@ export default function FeedingProgramScreen() {
   };
 
   return (
-    <Screen scroll bottomInset={96}>
-      <Stack.Screen options={{ title: 'Feeding program' }} />
-      <Section label="Batch" />
+    <FormScreen
+      title="Feeding program"
+      dirty={!!feedType || !!item || !!startDay}
+      submit={{
+        label: 'Add phase',
+        onPress: handleSubmit,
+        disabled: !isValid,
+        loading: submitting,
+      }}
+    >
       <BatchPicker value={batch} onChange={setBatch} />
 
       {batch && (
-        <>
-          <Section label="Current program" />
+        <Card rows eyebrow="Program" style={styles.card}>
           {rows.length === 0 ? (
-            <AppText variant="body" color="muted">
-              No feeding program set for this batch.
-            </AppText>
+            <EmptyState
+              compact
+              icon="calendar"
+              tint="tintAmber"
+              title="No feeding program set for this batch."
+              body="Add a phase below to start."
+            />
           ) : (
-            <View>
-              {rows.map((row) => (
-                <LedgerRow key={row.id} gutter={`d${row.start_day}`}>
-                  <AppText variant="body">{row.item.name}</AppText>
+            <>
+              {/* Opacity steps rather than distinct hues: the phases don't mean
+                  anything different from each other, they're just adjacent. */}
+              <View style={styles.timelineWrap}>
+                <View style={styles.axis}>
                   <AppText variant="data" color="muted">
-                    {FEED_TYPES.find((f) => f.value === row.feed_type)?.label} · day {row.start_day}
-                    {row.end_day !== null ? `–${row.end_day}` : '–'}
+                    d0
                   </AppText>
-                </LedgerRow>
-              ))}
-              {hasGapOrOverlap && (
-                <AppText variant="data" color="warning" style={{ marginTop: 8 }}>
-                  Day ranges overlap or leave a gap -- check the schedule.
+                  <AppText variant="data" color="muted">
+                    d{total}
+                  </AppText>
+                </View>
+                <View style={[styles.timeline, { backgroundColor: theme.surfaceAlt }]}>
+                  {rows.map((row, i) => {
+                    const end = row.end_day ?? total;
+                    const width = Math.max(0, Math.min(total, end) - row.start_day) / total;
+                    return (
+                      <View
+                        key={row.id}
+                        style={{
+                          flex: Math.max(width, 0.01),
+                          backgroundColor: theme.primary,
+                          opacity: 1 - i * 0.22,
+                        }}
+                      />
+                    );
+                  })}
+                </View>
+                <AppText variant="caption" color="muted">
+                  Today is d{today}
                 </AppText>
-              )}
-            </View>
+              </View>
+
+              {rows.map((row, i) => {
+                const end = row.end_day;
+                const isCurrent = today >= row.start_day && (end === null || today <= end);
+                return (
+                  <LedgerRow
+                    key={row.id}
+                    // 52dp: "11–24" doesn't fit the standard 44. The one gutter
+                    // width exception in the app.
+                    gutterWidth={52}
+                    gutter={`${row.start_day}–${end ?? ''}`}
+                    last={i === rows.length - 1}
+                  >
+                    <View style={styles.rowHead}>
+                      <AppText variant="bodyStrong" style={styles.flex}>
+                        {FEED_TYPES.find((f) => f.value === row.feed_type)?.label ?? row.feed_type}
+                      </AppText>
+                      {isCurrent ? <StatusPill status="CURRENT" /> : null}
+                    </View>
+                    <AppText variant="caption" color="muted">
+                      {row.item.name}
+                    </AppText>
+                  </LedgerRow>
+                );
+              })}
+            </>
           )}
-        </>
+        </Card>
       )}
 
-      <Section label="Add phase" />
-      <PillSelect options={FEED_TYPES} value={feedType} onChange={setFeedType} />
-      <ItemPicker value={item} onChange={setItem} category="FEED" />
-      <NumberField label="Start day" value={startDay} onChangeText={setStartDay} required allowDecimal={false} />
-      <NumberField label="End day" value={endDay} onChangeText={setEndDay} allowDecimal={false} />
+      {problems.length > 0 && (
+        <View style={[styles.warning, { backgroundColor: theme.tintAmber }]}>
+          <Icon name="alert-triangle" size={20} color="warning" />
+          <View style={styles.flex}>
+            {problems.slice(0, 3).map((p) => (
+              <AppText key={p} variant="caption">
+                {p}
+              </AppText>
+            ))}
+            {problems.length > 3 ? (
+              <AppText variant="caption" color="muted">
+                and {problems.length - 3} more
+              </AppText>
+            ) : null}
+          </View>
+        </View>
+      )}
 
-      <SubmitBar label="Add phase" onPress={handleSubmit} disabled={!isValid} loading={submitting} />
-    </Screen>
+      <View style={styles.group}>
+        <AppText variant="eyebrow" color="muted">
+          Add a phase
+        </AppText>
+        <PillSelect options={FEED_TYPES} value={feedType} onChange={setFeedType} />
+      </View>
+
+      <ItemPicker value={item} onChange={setItem} category="FEED" />
+
+      <View style={styles.days}>
+        <View style={styles.flex}>
+          <NumberField
+            label="Start day"
+            value={startDay}
+            onChangeText={setStartDay}
+            allowDecimal={false}
+          />
+        </View>
+        <View style={styles.flex}>
+          <NumberField
+            label="End day"
+            value={endDay}
+            onChangeText={setEndDay}
+            allowDecimal={false}
+            helper="Blank = open-ended"
+          />
+        </View>
+      </View>
+    </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  card: { marginTop: Spacing.xs },
+  group: { gap: Spacing.sm },
+  timelineWrap: { gap: Spacing.xs, paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md },
+  axis: { flexDirection: 'row', justifyContent: 'space-between' },
+  timeline: {
+    flexDirection: 'row',
+    height: 24,
+    borderRadius: Radius.pill,
+    overflow: 'hidden',
+    gap: 2,
+  },
+  rowHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  warning: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    padding: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.card,
+  },
+  days: { flexDirection: 'row', gap: Spacing.md },
+});

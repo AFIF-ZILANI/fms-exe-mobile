@@ -30,7 +30,8 @@ between them.
 │ └────────────────────────────────────┘ │
 │                                        │
 │  TIME PERIOD                           │
-│ ( Morning ) ( Midday ) ( Evening )     │  Segmented  44h
+│ (Morning)(Noon)(Afternoon)(Evening)    │  Wrapping pills, 7 options
+│ (Night)(Midnight)(Late night)          │
 │                                        │
 │  READINGS                              │
 │ ┌──────────────────────────┐ ┌───────┐ │
@@ -64,8 +65,8 @@ between them.
 | --- | --- |
 | Eyebrow | "TIME PERIOD" |
 | Container | `44h`, `pill` radius, `surfaceAlt` fill, 3dp inner padding, full width |
-| Segments | Three equal, `38h`, `pill` radius. Active: `surface` fill, `card` elevation, `label` `ink`. Inactive: transparent, `label` `muted`. |
-| Default | From the device clock — Morning < 12:00, Midday < 17:00, else Evening. **Overridable**, because a reading taken at noon may be logged at four. |
+| Segments | **Seven**, not three: Morning · Noon · Afternoon · Evening · Night · Midnight · Late night, matching the server's `time_period` enum. Rendered as a wrapping `<PillSelect>` rather than a segmented bar, which cannot fit seven. |
+| Default | From the device clock. **Overridable**, because a reading taken at noon may be logged at four. |
 
 ### Readings — five `<NumberField>` rows, `64h` each, `↕8` apart
 
@@ -107,9 +108,9 @@ form.
 
 ### Partial readings
 
-All five fields are optional individually; **at least one is required.** The
-submit label counts what's filled — "Record 5 readings", "Record 3 readings",
-"Record 1 reading" — and disables at zero with the label "Record readings".
+**All five are required** — the server's schema demands every field, so submit
+stays disabled until all five are filled. The label still counts progress
+("Record 3 of 5 readings") so the worker can see what's missing.
 
 ---
 

@@ -6,13 +6,12 @@ type BatchPickerProps = {
   value: Batch | null;
   onChange: (batch: Batch) => void;
   error?: string;
-  required?: boolean;
 };
 
 /** Used by Transfer (C16) and Feeding program (C17) -- the two Manager
  *  screens that act on a batch directly rather than resolving one from a
  *  house. */
-export function BatchPicker({ value, onChange, error, required = true }: BatchPickerProps) {
+export function BatchPicker({ value, onChange, error }: BatchPickerProps) {
   const { data, isLoading } = useGetData<Paginated<Batch>>('/batches?status=RUNNING&limit=100', [
     'batches',
     'running',
@@ -28,7 +27,6 @@ export function BatchPicker({ value, onChange, error, required = true }: BatchPi
       getSubLabel={(b) => b.breed}
       onChange={onChange}
       loading={isLoading}
-      required={required}
       error={error}
       emptyLabel="No running batches."
     />

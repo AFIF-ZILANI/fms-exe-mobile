@@ -106,8 +106,13 @@ search text preserved.
 | --- | --- |
 | Gutter | 24dp radio, `primary` when selected, `line` ring when not |
 | Line 1 | Supplier `bodyStrong` `ink` |
-| Line 2 | `item.name · quantity unit`, `caption` `muted` |
-| Line 3 | `date · ৳amount`, `data` mono `muted` |
+| Line 2 | `item.name · base_quantity`, `caption` `muted` |
+| Line 3 | Purchase date, `data` mono `muted` |
+
+**Supplier name is not available.** `Purchase` carries `supplier_id` with no
+relation, so the lot is labelled by its item, not its supplier. Same for the
+unit rows: `StockUnit` has no `item` relation, so a result row shows the id
+tail and status only. Add either when the endpoint includes the relation.
 | Selected | Row background `primarySoft`, `card` radius |
 | Order | Purchase date descending — the truck at the gate is usually the most recent lot |
 

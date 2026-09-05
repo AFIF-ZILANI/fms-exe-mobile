@@ -39,15 +39,16 @@ type HousePickerProps = {
   value: House | null;
   onChange: (house: House) => void;
   error?: string;
-  required?: boolean;
+  /** Overrides the "House" eyebrow — the transfer form needs "To". */
+  label?: string;
 };
 
-export function HousePicker({ value, onChange, error, required = true }: HousePickerProps) {
+export function HousePicker({ value, onChange, error, label = 'House' }: HousePickerProps) {
   const { data, isLoading } = useHouseOptions();
 
   return (
     <PickerField
-      label="House"
+      label={label}
       value={value}
       options={data?.results ?? []}
       getKey={(h) => h.id}
@@ -55,7 +56,6 @@ export function HousePicker({ value, onChange, error, required = true }: HousePi
       getSubLabel={(h) => h.type}
       onChange={onChange}
       loading={isLoading}
-      required={required}
       error={error}
       emptyLabel="No active houses."
     />

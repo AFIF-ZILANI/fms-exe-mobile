@@ -1,20 +1,19 @@
 import { useState } from 'react';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { Screen } from '@/components/ui/screen';
+import { router, useLocalSearchParams } from 'expo-router';
+
+import { FormScreen } from '@/components/ui/form-screen';
 import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
 import { BatchResolver, useResolvedBatch } from '@/components/ui/batch-resolver';
 import { NumberField } from '@/components/ui/number-field';
-import { SubmitBar } from '@/components/ui/submit-bar';
-import { Section } from '@/components/ui/section';
 import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
 
-/** docs/PRD.md §6.9. The server enforces one sample per (batch, house, day)
- *  -- `date` is truncated to midnight so same-day resubmits actually collide
- *  on that constraint instead of always landing as distinct timestamps.
- *  There's no update endpoint for WeightRecords (create+list only), so a
- *  same-day duplicate surfaces through the outbox's normal dead-letter path
- *  (docs/offline-sync.md §4.3) rather than a bespoke "replace" flow. */
+/** docs/layout/09-log-weight.md. The server enforces one sample per
+ *  (batch, house, day) — `date` is truncated to midnight so same-day
+ *  resubmits actually collide on that constraint instead of always landing as
+ *  distinct timestamps. There's no update endpoint for WeightRecords
+ *  (create+list only), so a same-day duplicate surfaces through the outbox's
+ *  normal dead-letter path rather than a bespoke "replace" flow. */
 export default function WeightScreen() {
   const params = useLocalSearchParams<{ house_id?: string; task_id?: string }>();
   const { employee } = useSession();
@@ -56,19 +55,26 @@ export default function WeightScreen() {
   };
 
   return (
-    <Screen scroll bottomInset={96}>
-      <Stack.Screen options={{ title: 'Weight sample' }} />
-      <Section label="House" />
+    <FormScreen
+      title="Log weight"
+      dirty={!!averageWeight || !!sampleSize}
+      submit={{
+        label: avgNum > 0 ? `Record ${avgNum.toLocaleString()} g average` : 'Record weight',
+        onPress: handleSubmit,
+        disabled: !isValid,
+        loading: submitting,
+      }}
+    >
       <HousePicker value={house} onChange={setHouse} />
       <BatchResolver houseId={house?.id} />
 
-      <Section label="Sample" />
+      {/* Grams is a fixed suffix, not a picker — the server stores grams and
+          there is no second unit. */}
       <NumberField
         label="Average weight"
         value={averageWeight}
         onChangeText={setAverageWeight}
         unit="g"
-        required
         autoFocus
       />
       <NumberField
@@ -76,11 +82,8 @@ export default function WeightScreen() {
         value={sampleSize}
         onChangeText={setSampleSize}
         unit="birds"
-        required
         allowDecimal={false}
       />
-
-      <SubmitBar label="Record sample" onPress={handleSubmit} disabled={!isValid} loading={submitting} />
-    </Screen>
+    </FormScreen>
   );
 }
