@@ -64,9 +64,21 @@ npx expo lint
 npx tsc --noEmit
 ```
 
-**Pointing at the API.** The server binds `localhost:5085`, which a physical
-phone can't reach. Set the API base URL to your machine's LAN IP and add that
-origin to `ALLOWED_ORIGINS` in `server/.env`.
+**Pointing at the API.** Nothing to configure. `src/lib/api.ts` derives the API
+host from the Expo dev server the app was loaded from, so a phone, a simulator
+and the browser all reach `<that host>:5085/api` without a setting.
+
+Set `EXPO_PUBLIC_API_BASE_URL` in `.env` **only** for a deployed API or a
+tunnel — never for a LAN IP. Two traps make a hardcoded IP worse than useless:
+
+- **DHCP moves the machine.** A LAN IP that worked yesterday silently times out
+  today, and every screen just hangs on "Loading…" with no error.
+- **`.env` is read when the dev server starts**, and `EXPO_PUBLIC_*` values are
+  inlined into the bundle. Editing or deleting `.env` does nothing until you
+  restart with `npx expo start --clear`.
+
+If screens hang with no data and no console error, that pair is the first thing
+to check: `curl` the URL the app is using, then restart the dev server.
 
 See [`AGENTS.md`](AGENTS.md) for Expo conventions — in particular, check the
 versioned docs before writing against any Expo API rather than working from
