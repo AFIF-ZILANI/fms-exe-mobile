@@ -93,6 +93,14 @@ function buildActions(role: string | undefined, houseId: string | null): LogActi
       tint: 'tintAmber',
       manager: true,
     },
+    {
+      label: 'Link items',
+      description: 'Scan QR codes onto a delivery',
+      path: '/link',
+      icon: 'maximize',
+      tint: 'tintGreen',
+      manager: true,
+    },
   ];
 }
 

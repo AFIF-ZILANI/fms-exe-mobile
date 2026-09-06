@@ -28,7 +28,7 @@ type ScoreEntry = { id: string; points: number; employee_id: string };
 const MANAGER_ACTIONS: { label: string; path: string; icon: IconName }[] = [
   { label: 'Transfer', path: '/transfer', icon: 'shuffle' },
   { label: 'Feed plan', path: '/feeding-program', icon: 'calendar' },
-  { label: 'Receive', path: '/receive', icon: 'download' },
+  { label: 'Link items', path: '/link', icon: 'maximize' },
   { label: 'Discrepancy', path: '/adjust', icon: 'clipboard' },
   { label: 'Flag stock', path: '/flag-stock', icon: 'flag' },
 ];
