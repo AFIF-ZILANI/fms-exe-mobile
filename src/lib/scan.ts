@@ -76,6 +76,21 @@ export function releaseScan(state: ScanState, id: string): void {
   state.lastSeenAt.delete(id);
 }
 
+/** Outcome of one bind attempt, as the scanner needs to see it. */
+export type BindResult = { ok: true } | { ok: false; message: string; retryable: boolean };
+
+/**
+ * Whether rescanning the same label could plausibly succeed.
+ *
+ * Only a transport-level failure is worth another try. A 409 (already bound),
+ * 404 (unknown code) or 400 (wrong item for this lot) is settled for this code
+ * against this lot — releasing it would mean a label left in frame re-POSTs
+ * and re-buzzes every cooldown, forever.
+ */
+export function isRetryable(status: number): boolean {
+  return status === 0 || status >= 500;
+}
+
 /** Turns a bind failure into something a person at a farm gate can act on.
  *  The server's own wording is preferred where it's already plain. */
 export function bindErrorMessage(status: number, detail: string | undefined): string {

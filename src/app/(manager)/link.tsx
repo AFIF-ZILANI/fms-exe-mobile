@@ -18,7 +18,7 @@ import { FontFamily, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useSession } from '@/lib/session';
 import { ApiError, apiFetch, useGetData, type Paginated } from '@/lib/api';
-import { bindErrorMessage } from '@/lib/scan';
+import { bindErrorMessage, isRetryable, type BindResult } from '@/lib/scan';
 import type { PurchaseItem, StockUnit } from '@/lib/types';
 
 const MIN_QUERY = 3;
@@ -76,9 +76,8 @@ export default function LinkItemsScreen() {
   const offline = network.isConnected === false;
   const linked = rows.filter((r) => r.state === 'ok').length;
 
-  /** Returns null on success, or a message to show beside the code. */
-  const bind = async (id: string): Promise<string | null> => {
-    if (!lot) return 'Pick a lot first.';
+  const bind = async (id: string): Promise<BindResult> => {
+    if (!lot) return { ok: false, message: 'Pick a lot first.', retryable: false };
     try {
       await apiFetch(`/stock-units/${id}/bind`, {
         method: 'POST',
@@ -89,21 +88,29 @@ export default function LinkItemsScreen() {
       });
       // Anything showing unit counts or unassigned units is now stale.
       void queryClient.invalidateQueries({ queryKey: ['stock-units'] });
-      return null;
+      return { ok: true };
     } catch (err) {
-      if (err instanceof ApiError) return bindErrorMessage(err.status, err.message);
-      return 'Something went wrong.';
+      if (err instanceof ApiError) {
+        return {
+          ok: false,
+          message: bindErrorMessage(err.status, err.message),
+          retryable: isRetryable(err.status),
+        };
+      }
+      return { ok: false, message: 'Something went wrong.', retryable: true };
     }
   };
 
   const bindManually = async (id: string) => {
-    const error = await bind(id);
+    const result = await bind(id);
     const label = `…${id.slice(-7)}`;
     setRows((prev) => [
-      { id, label, state: error ? 'error' : 'ok', ...(error && { message: error }) },
+      result.ok
+        ? { id, label, state: 'ok' as const }
+        : { id, label, state: 'error' as const, message: result.message },
       ...prev,
     ]);
-    if (!error) {
+    if (result.ok) {
       setQuery('');
       setManual(false);
     }

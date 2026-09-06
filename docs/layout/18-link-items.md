@@ -155,15 +155,40 @@ codes work."
 The logic lives in `src/lib/scan.ts` and is unit-tested in `scan.test.ts` —
 the only part of this feature verifiable without a device.
 
-| Situation | Result |
-| --- | --- |
-| Payload isn't a UUID | "Not a ZeroD stock code". **No request** — the QR payload *is* the StockUnit id, so anything else came off another label. |
-| First sight of a valid code | Bind it |
-| Same code still in frame | Silent. `onBarcodeScanned` fires continuously; a 1.5s per-code cooldown absorbs it. |
-| Code already linked this session | Silent, and the cooldown refreshes. Reporting it as an error would make the screen unusable. |
-| A bind is already in flight | Ignored — one request at a time, so a fast pan can't interleave. |
-| Bind succeeds | Green flash, count +1, row prepended |
-| Bind fails | Red flash with the server's message, error row prepended, and the code is **released** so the same label can be rescanned once the problem is fixed |
+| Situation | Buzz | Result |
+| --- | --- | --- |
+| Payload isn't a UUID | error | "Not a ZeroD stock code". **No request** — the QR payload *is* the StockUnit id, so anything else came off another label. |
+| First sight of a valid code | — | Bind it |
+| **Same code still in frame** | **none** | **Silent.** `onBarcodeScanned` fires many times a second; a 1.5s per-code cooldown absorbs it. This is the guard that makes everything below safe to report. |
+| **Same code presented again after the cooldown** | warning | Amber flash, "Already linked in this session". **No new row** — the code is already in the list from when it worked. |
+| A bind is already in flight | — | Ignored: one request at a time, so a fast pan can't interleave. |
+| Bind succeeds | success | Green flash, count +1, row prepended |
+| Bind fails, retryable (no connection, 5xx) | error | Red flash, error row, and the code is **released** so the label can be rescanned once the problem is fixed |
+| Bind fails, settled (409/404/400) | error | Red flash, error row, and the code stays **marked** — see below |
+
+**The cooldown is what makes duplicate reporting possible.** Without it, a
+label resting in frame would fire an alert and a vibration ten times a second.
+With it, "still in frame" and "shown to me again on purpose" are different
+events, and only the second is worth telling anyone about.
+
+**A settled rejection is never released.** `isRetryable()` releases only a
+transport failure (status 0, or 5xx). A 409 "already bound", a 404 unknown
+code, or a 400 wrong-item is decided for that code against that lot — if those
+released, an already-bound label left in frame would re-POST and re-vibrate on
+every cooldown, forever. Instead it falls through to the duplicate path and
+goes quiet after one report.
+
+### Vibration
+
+`expo-haptics`, via `lib/haptics.ts`. On a noisy farm gate with the phone at
+arm's length the operator is looking at the pallet, not the screen, so the buzz
+is the primary channel and the colour flash is the confirmation they get when
+they do look.
+
+Fire-and-forget and never allowed to throw: haptics are silently unavailable in
+Low Power Mode, when the user has turned them off, on some browsers, and on
+devices with no vibration hardware. Feedback failing must not interrupt the
+scan it was reporting on.
 
 **Error copy** (`bindErrorMessage`):
 
@@ -231,6 +256,9 @@ the only part of this feature verifiable without a device.
   more useful and needs `purchase_item_id` adding to
   `listStockUnitsQuerySchema` server-side — one line mirroring `status`. Worth
   doing; not done here because it's a change in another repo.
-- No haptics yet. On a noisy farm gate with the phone at arm's length, a buzz
-  per scan would carry better than a colour flash — `expo-haptics` is in Expo
-  Go, so it's a small addition when someone has used this for real.
+- **Two different "already" cases, both reported.** A code scanned earlier in
+  *this session* is caught client-side (amber, "Already linked in this
+  session"). A code bound in some *earlier* session is caught by the server's
+  409 and reads "Already linked · in stock" in red. The operator needs to tell
+  those apart: the first is their own double-scan, the second means the unit
+  belongs to another delivery.

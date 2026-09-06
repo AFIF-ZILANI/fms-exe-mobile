@@ -9,6 +9,7 @@ import {
   COOLDOWN_MS,
   bindErrorMessage,
   classifyScan,
+  isRetryable,
   isStockCode,
   markSent,
   newScanState,
@@ -82,6 +83,41 @@ assert.equal(isStockCode(''), false);
   const s = newScanState();
   assert.deepEqual(classifyScan(s, 'hello', 1000), { kind: 'invalid', payload: 'hello' });
   assert.equal(s.seen.size, 0);
+}
+
+// --- a code held in frame is silent, but a deliberate rescan reports --------
+// The distinction the whole screen rests on: 'cooldown' fires many times a
+// second and must stay silent; 'duplicate' is the operator presenting the same
+// label again on purpose, and gets a warning.
+{
+  const s = newScanState();
+  classifyScan(s, A, 1000);
+  markSent(s, A);
+
+  // Ten frames while the label sits in view — every one suppressed.
+  for (let t = 1010; t < 1000 + COOLDOWN_MS; t += 100) {
+    assert.equal(classifyScan(s, A, t).kind, 'cooldown');
+  }
+  // Taken away and shown again.
+  assert.equal(classifyScan(s, A, 1000 + COOLDOWN_MS + 1).kind, 'duplicate');
+}
+
+// --- retryability decides whether a label can be rescanned -----------------
+assert.equal(isRetryable(0), true, 'lost connection is worth another try');
+assert.equal(isRetryable(500), true);
+assert.equal(isRetryable(503), true);
+assert.equal(isRetryable(409), false, 'already bound is settled — never retry');
+assert.equal(isRetryable(404), false, 'unknown code stays unknown');
+assert.equal(isRetryable(400), false, 'wrong item for this lot is settled');
+
+// A settled rejection must stay marked, so a label left in frame does not
+// re-POST and re-buzz on every cooldown.
+{
+  const s = newScanState();
+  classifyScan(s, A, 1000);
+  markSent(s, A);
+  // 409 -> not retryable -> not released.
+  assert.equal(classifyScan(s, A, 1000 + COOLDOWN_MS + 1).kind, 'duplicate');
 }
 
 // --- error copy -------------------------------------------------------------
