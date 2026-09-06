@@ -567,10 +567,17 @@ ghost preserves the v1 search for a torn or unreadable label.
 
 **Scan rules.** The QR payload **is** the StockUnit id, so a scan binds
 directly with no lookup step. A payload that isn't a UUID never reaches the
-network. A code held in frame is absorbed by a 1.5s per-code cooldown, and one
-already linked this session is ignored silently rather than reported as an
-error. A *failed* bind releases the code so the same label can be rescanned
-once the problem is fixed.
+network. A code resting in frame is absorbed silently by a 1.5s per-code
+cooldown — without which a single label would alert and vibrate ten times a
+second — but the same code *presented again* after that window is reported as
+"Already linked in this session". A bind that fails for a reason another
+attempt could fix (no connection, 5xx) releases the code for rescanning; one
+that is settled (409 already bound, 404 unknown, 400 wrong item) stays marked,
+so an already-bound label left in frame goes quiet instead of re-POSTing.
+
+**Feedback.** Every reported scan vibrates — success, warning and error are
+distinct patterns (`expo-haptics`). At a farm gate the operator is looking at
+the pallet, not the screen.
 
 **Empty.** No lot chosen → "Pick a lot to link into." No tracked lots → "No
 QR-tracked purchase lots." Permission denied → an "Allow camera" prompt, never

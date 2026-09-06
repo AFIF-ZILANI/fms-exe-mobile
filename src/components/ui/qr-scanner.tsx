@@ -9,6 +9,8 @@ import { Icon } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { classifyScan, markSent, newScanState, releaseScan } from '@/lib/scan';
+import type { BindResult } from '@/lib/scan';
+import { buzz } from '@/lib/haptics';
 
 export type ScanRow = {
   id: string;
@@ -23,8 +25,9 @@ type QrScannerProps = {
   onClose: () => void;
   /** Shown in the header so the operator can see what they're linking into. */
   context: string;
-  /** Performs the bind. Resolves to null on success, or a message to show. */
-  onScan: (id: string) => Promise<string | null>;
+  /** Performs the bind. Resolves to ok, or a message plus whether rescanning
+   *  the same label could still work. */
+  onScan: (id: string) => Promise<BindResult>;
   /** Rows for this session, newest first. Owned by the parent. */
   rows: ScanRow[];
   /** Emits one row per completed attempt; the parent prepends it. Passing a
@@ -51,7 +54,7 @@ export function QrScanner({
 }: QrScannerProps) {
   const theme = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
-  const [flash, setFlash] = useState<null | { state: 'ok' | 'error'; text: string }>(null);
+  const [flash, setFlash] = useState<null | { state: 'ok' | 'warn' | 'error'; text: string }>(null);
 
   // Session state is a ref, not React state: onBarcodeScanned fires many times
   // a second and every one of them must see the latest set, not a value closed
@@ -59,7 +62,7 @@ export function QrScanner({
   const session = useRef(newScanState());
   const inFlight = useRef(false);
 
-  const show = (state: 'ok' | 'error', text: string) => {
+  const show = (state: 'ok' | 'warn' | 'error', text: string) => {
     setFlash({ state, text });
     setTimeout(() => setFlash(null), 1400);
   };
@@ -70,11 +73,22 @@ export function QrScanner({
 
       const outcome = classifyScan(session.current, payload, Date.now());
 
-      // Duplicates and cooldown hits are silent: a label sitting in frame is
-      // normal, and reporting it as an error would make the screen unusable.
-      if (outcome.kind === 'cooldown' || outcome.kind === 'duplicate') return;
+      // Still in frame. Silent, and no buzz: onBarcodeScanned fires many times
+      // a second, so reporting this would vibrate continuously and make the
+      // screen unusable. This is the guard that makes the rest safe to report.
+      if (outcome.kind === 'cooldown') return;
+
+      // Presented again after the cooldown, so the operator meant to scan it.
+      // Tell them it's already done rather than looking like nothing happened.
+      // No new row — the code is already in the list from when it worked.
+      if (outcome.kind === 'duplicate') {
+        buzz('warning');
+        show('warn', 'Already linked in this session');
+        return;
+      }
 
       if (outcome.kind === 'invalid') {
+        buzz('error');
         show('error', 'Not a ZeroD stock code');
         return;
       }
@@ -83,18 +97,22 @@ export function QrScanner({
       markSent(session.current, outcome.id);
 
       try {
-        const error = await onScan(outcome.id);
+        const result = await onScan(outcome.id);
         const label = `…${outcome.id.slice(-7)}`;
 
-        if (error) {
-          // Released so the operator can fix the problem and rescan the same
-          // label without waiting out a session.
-          releaseScan(session.current, outcome.id);
-          show('error', error);
-          onScanned({ id: outcome.id, label, state: 'error', message: error });
+        if (!result.ok) {
+          // Released only when another attempt could plausibly work — a lost
+          // connection, say. A settled rejection (already bound, unknown code)
+          // stays marked, so the label can sit in frame without re-POSTing and
+          // re-buzzing every cooldown.
+          if (result.retryable) releaseScan(session.current, outcome.id);
+          buzz('error');
+          show('error', result.message);
+          onScanned({ id: outcome.id, label, state: 'error', message: result.message });
           return;
         }
 
+        buzz('success');
         show('ok', `Linked ${label}`);
         onScanned({ id: outcome.id, label, state: 'ok' });
       } finally {
@@ -163,10 +181,14 @@ export function QrScanner({
               <View
                 style={[
                   styles.flash,
-                  { backgroundColor: flash.state === 'ok' ? theme.primary : theme.critical },
+                  { backgroundColor: flashColor(flash, theme) },
                 ]}
               >
-                <Icon name={flash.state === 'ok' ? 'check' : 'alert-circle'} size={20} color="onPrimary" />
+                <Icon
+                  name={flash.state === 'ok' ? 'check' : flash.state === 'warn' ? 'rotate-cw' : 'alert-circle'}
+                  size={20}
+                  color="onPrimary"
+                />
                 <AppText variant="label" color="onPrimary" style={styles.flex} numberOfLines={2}>
                   {flash.text}
                 </AppText>
@@ -221,9 +243,15 @@ export function QrScanner({
   );
 }
 
-function flashColor(flash: { state: 'ok' | 'error' } | null, theme: ReturnType<typeof useTheme>) {
+function flashColor(
+  flash: { state: 'ok' | 'warn' | 'error' } | null,
+  theme: ReturnType<typeof useTheme>,
+) {
   if (!flash) return 'rgba(255,255,255,0.6)';
-  return flash.state === 'ok' ? theme.primary : theme.critical;
+  if (flash.state === 'ok') return theme.primary;
+  // A duplicate is "you already did that", not bad news — amber, per the
+  // status vocabulary in docs/design.md §2.4.
+  return flash.state === 'warn' ? theme.warning : theme.critical;
 }
 
 function Blocked({
