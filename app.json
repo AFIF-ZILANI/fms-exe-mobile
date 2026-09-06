@@ -42,7 +42,14 @@
         }
       ],
       "expo-sqlite",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "ZeroD Farms uses the camera to scan the QR code on a stock unit and link it to the delivery it arrived on.",
+          "recordAudioAndroid": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

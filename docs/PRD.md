@@ -145,7 +145,7 @@ the JSX. Layout in [`docs/layout/00-app-shell.md`](layout/00-app-shell.md#log-sh
 | Log feed / consumption | Assign a task |
 | Log weight sample | Report stock discrepancy |
 | Log environment reading | |
-| Log treatment | |
+| Log treatment | Link items |
 
 **The centre button is not a route.** It has no screen and no back state — it
 opens a sheet. Making it a route would put a meaningless "Log" screen in the
@@ -196,7 +196,7 @@ matching file in [`docs/layout/`](layout/README.md).
 | 6.15 | Assign a task | [15](layout/15-assign-task.md) |
 | 6.16 | House transfer | [16](layout/16-house-transfer.md) |
 | 6.17 | Feeding program | [17](layout/17-feeding-program.md) |
-| 6.18 | Receive stock | [18](layout/18-receive-stock.md) |
+| 6.18 | Link items (QR scan) | [18](layout/18-link-items.md) |
 | 6.19 | Report a discrepancy | [19](layout/19-report-discrepancy.md) |
 | 6.20 | Flag low stock | [20](layout/20-flag-low-stock.md) |
 
@@ -555,26 +555,43 @@ ranges, so a silent gap means a batch with no feed type on day 12.
 
 ---
 
-### 6.18 Receive stock — `(manager)/receive.tsx`
+### 6.18 Link items — `(manager)/link.tsx`
 
-**Purpose.** Bind a physical coded unit to the purchase lot it arrived on, at
-the farm gate.
+**Purpose.** Bind pre-printed QR codes to the purchase lot they arrived on, at
+the farm gate — a whole pallet without stopping between units.
 
-**Layout.** Search field ("last few characters from the label") → results from
-`GET /stock-units?q=&status=UNASSIGNED`, each showing its id tail in Mono → pick
-one → pick the `PurchaseItem` lot (supplier, item, date) → confirm.
+**Layout.** Lot picker (filtered to `is_unit_tracked`) → lot summary card with
+the running linked count → **Scan codes**, which opens a full-screen camera
+that stays open and binds each code as it's read. A **Type a code instead**
+ghost preserves the v1 search for a torn or unreadable label.
 
-**Empty.** No match → "No unassigned unit matches that," plus the reminder that
-partial codes work.
+**Scan rules.** The QR payload **is** the StockUnit id, so a scan binds
+directly with no lookup step. A payload that isn't a UUID never reaches the
+network. A code held in frame is absorbed by a 1.5s per-code cooldown, and one
+already linked this session is ignored silently rather than reported as an
+error. A *failed* bind releases the code so the same label can be rescanned
+once the problem is fixed.
 
-**Endpoints.** `GET /stock-units?q=&status=UNASSIGNED`, `GET /purchase-items`,
-`POST /stock-units/:id/bind` with `bound_by_id`.
+**Empty.** No lot chosen → "Pick a lot to link into." No tracked lots → "No
+QR-tracked purchase lots." Permission denied → an "Allow camera" prompt, never
+a blank black screen.
 
-**Notes.** `listStockUnitsQuerySchema.q` is a substring match on the unit id,
-documented as accepting "a full scanned id or a fragment" — which is why v1
-needs no camera. This is the screen QR replaces in v2: the scan fills the same
-search field and everything downstream is unchanged. Search-first means the
-camera is an input optimisation later, not a rewrite.
+**Offline.** **This screen stops working, and says so.** It is the one
+exception to §3's "every write queues first": each bind is validated by the
+server as it happens, because linking the wrong unit to a lot is expensive and
+silent, and every check that catches it lives server-side.
+
+**Endpoints.** `GET /purchase-items`, `GET /stock-units?q=&status=UNASSIGNED`
+(fallback only), `POST /stock-units/:id/bind` with `bound_by_id`.
+
+**Notes.** This replaced the v1 unit-first **Receive stock** screen. Downstream
+is unchanged — same endpoint, same rules — but a scanner makes lot-first,
+many-units the natural shape, because the expensive step is now picking the lot
+rather than entering the code.
+
+`listStockUnitsQuerySchema` has **no `purchase_item_id` filter**, so the count
+shown is per-session rather than per-lot. "12 of 40 linked" would be more
+useful and is one line server-side, mirroring `status`.
 
 **The lot picker must show only `is_unit_tracked` items.** `StockUnitService.bind`
 rejects a lot whose item isn't flagged, with *"X isn't tracked by QR code — use
@@ -624,9 +641,11 @@ Don't scope-creep these into this pass:
 
 - **No auth.** Google OAuth replaces the profile switcher, at which point the §4
   matrix moves server-side as real middleware.
-- **No QR scan.** `expo-camera` needs a development build; the `q` fragment
-  search covers §6.18 and §6.8. First thing to add in v2 — a faster input path
-  for existing flows, not new functionality.
+- ~~**No QR scan.**~~ **Shipped.** `expo-camera` runs in Expo Go on SDK 57, so
+  this needed no development build after all. §6.18 is now scan-first; the `q`
+  fragment search survives there as the fallback for an unreadable label. §6.8
+  still has no unit draw — that remains aggregate-only until `stock_unit_id`
+  consumption is designed.
 - **No Intern tier** (`FEATURES.md` §3.4) — one key in `CAPABILITIES`, plus the
   "assist" nuance on weight sampling that the matrix leaves undefined.
 - **No recurring tasks.** Managers create each assignment.

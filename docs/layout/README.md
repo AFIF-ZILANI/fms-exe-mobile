@@ -36,7 +36,7 @@ disagree about *how it looks*, the blueprint wins.
 | [15](15-assign-task.md) | Assign a task | `(manager)/assign.tsx` | Manager |
 | [16](16-house-transfer.md) | House transfer | `(manager)/transfer.tsx` | Manager |
 | [17](17-feeding-program.md) | Feeding program | `(manager)/feeding-program.tsx` | Manager |
-| [18](18-receive-stock.md) | Receive stock | `(manager)/receive.tsx` | Manager |
+| [18](18-link-items.md) | Link items (QR scan) | `(manager)/link.tsx` | Manager |
 | [19](19-report-discrepancy.md) | Report a discrepancy | `(manager)/adjust.tsx` | Manager |
 | [20](20-flag-low-stock.md) | Flag low stock | `(manager)/flag-stock.tsx` | Manager |
 
