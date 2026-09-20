@@ -97,7 +97,6 @@ export default function EnvironmentScreen() {
           co2_ppm: Number(co2),
           air_pressure_hpa: Number(pressure),
           time_period: timePeriod,
-          recorded_by_id: employee.profile.id,
         },
         taskId: params.task_id,
       });

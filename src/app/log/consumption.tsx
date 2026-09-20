@@ -41,7 +41,6 @@ export default function ConsumptionScreen() {
           quantity: quantityNum,
           unit: item.unit,
           date: new Date().toISOString(),
-          recorded_by_id: employee.profile.id,
           ...(balance && { batch_id: balance.batch_id }),
           ...(note.trim() && { note: note.trim() }),
         },

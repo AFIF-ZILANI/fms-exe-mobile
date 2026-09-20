@@ -43,7 +43,6 @@ export default function WeightScreen() {
           average_wt_grams: avgNum,
           sample_size: sampleNum,
           date: today.toISOString(),
-          measured_by_id: employee.profile.id,
           ...(balance && { batch_id: balance.batch_id }),
         },
         taskId: params.task_id,

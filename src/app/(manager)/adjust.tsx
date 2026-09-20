@@ -104,7 +104,6 @@ export default function AdjustScreen() {
           quantity_before: onRecord,
           quantity_after: countedNum,
           reason: reason.trim(),
-          recorded_by_id: employee.profile.id,
           ...(note.trim() && { note: note.trim() }),
         },
       });

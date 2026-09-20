@@ -69,7 +69,6 @@ export default function TreatmentScreen() {
           batch_id: balance.batch_id,
           [nameField]: name.trim(),
           dosage: isVaccination ? Number(dosage) : dosage.trim(),
-          administered_by_id: employee.profile.id,
           ...(cause.trim() && { cause: cause.trim() }),
           ...(doctor && { doctor_id: doctor.id }),
           ...(remarks.trim() && { remarks: remarks.trim() }),

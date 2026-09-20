@@ -77,7 +77,6 @@ export default function AssignScreen() {
         endpoint: '/task-assignments',
         body: {
           employee_id: employee.id,
-          assigned_by_id: actor.profile.id,
           task_id: task.id,
           title: title.trim(),
           due_at: dueAt.toISOString(),
