@@ -51,7 +51,6 @@ export default function MortalityScreen() {
           house_id: house.id,
           count_died: countNum,
           date: new Date().toISOString(),
-          recorded_by_id: employee.profile.id,
           ...(causeNote.trim() && { cause_note: causeNote.trim() }),
         },
         taskId: params.task_id,

@@ -83,7 +83,6 @@ export default function LinkItemsScreen() {
         method: 'POST',
         body: JSON.stringify({
           purchase_item_id: lot.id,
-          ...(employee?.profile.id && { bound_by_id: employee.profile.id }),
         }),
       });
       // Anything showing unit counts or unassigned units is now stale.

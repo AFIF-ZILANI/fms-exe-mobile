@@ -84,7 +84,6 @@ export default function ScoreScreen() {
         endpoint: '/performance-score-entries',
         body: {
           employee_id: employee.id,
-          given_by_id: actor.profile.id,
           criterion,
           reason: reason.trim(),
           date: new Date().toISOString(),

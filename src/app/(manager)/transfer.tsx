@@ -67,7 +67,6 @@ export default function TransferScreen() {
           to_house_id: toHouse.id,
           quantity: quantityNum,
           reason,
-          recorded_by_id: employee.profile.id,
         },
       });
       if (queued) router.back();
