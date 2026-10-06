@@ -210,6 +210,14 @@ export async function flush(): Promise<void> {
         await remove(row.key);
         reachedServer = true;
       } catch (err) {
+        // The session ended (expired, deactivated) or a temp password is pending: the write
+        // itself is fine, so keep it and stop -- everything behind it would fail the same way.
+        if (
+          err instanceof ApiError &&
+          (err.status === 401 || err.code === 'PASSWORD_CHANGE_REQUIRED')
+        ) {
+          break;
+        }
         if (err instanceof ApiError && err.status === 409) {
           reachedServer = true;
           if (err.isReplayConflict()) {

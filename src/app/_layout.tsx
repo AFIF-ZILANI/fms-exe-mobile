@@ -1,6 +1,14 @@
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import {
+  DarkTheme,
+  DefaultTheme,
+  Stack,
+  ThemeProvider,
+  useRouter,
+  useSegments,
+  type Href,
+} from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -9,7 +17,7 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 
 import { Colors, FontAssets } from '@/constants/theme';
-import { SessionProvider } from '@/lib/session';
+import { SessionProvider, useSession } from '@/lib/session';
 import { initOutbox } from '@/lib/outbox';
 import { useOutboxTriggers } from '@/lib/use-outbox';
 
@@ -83,5 +91,32 @@ function RootStack() {
   // Every screen draws its own 56dp <Header> (docs/layout/00-app-shell.md), so
   // the navigator's header is off everywhere — left on, it stacks a second bar
   // above each screen titled with the raw route name.
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <>
+      <AuthGate />
+      <Stack screenOptions={{ headerShown: false }} />
+    </>
+  );
+}
+
+/** Sends people to login without a session, to the forced password change on a temp password,
+ *  and away from login once signed in. change-password stays reachable when signed in (Profile). */
+function AuthGate() {
+  const { signedIn, mustChangePassword, isLoading } = useSession();
+  const segments = useSegments();
+  const router = useRouter();
+  const first = segments[0] as string | undefined;
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!signedIn) {
+      if (first !== 'login') router.replace('/login' as Href);
+    } else if (mustChangePassword) {
+      if (first !== 'change-password') router.replace('/change-password' as Href);
+    } else if (first === 'login') {
+      router.replace('/');
+    }
+  }, [signedIn, mustChangePassword, isLoading, first, router]);
+
+  return null;
 }

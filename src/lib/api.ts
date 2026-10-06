@@ -1,5 +1,6 @@
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
 import Constants from 'expo-constants';
+import { getToken, notifyUnauthorized } from '@/lib/auth-token';
 
 const API_PORT = 5085;
 
@@ -38,7 +39,7 @@ type Problem = {
   title: string;
   status: number;
   detail: string;
-  extensions?: { fields?: Record<string, string> };
+  extensions?: { fields?: Record<string, string>; code?: string };
 };
 
 /**
@@ -50,6 +51,8 @@ type Problem = {
 export class ApiError extends Error {
   status: number;
   fields?: Record<string, string>;
+  /** Machine-readable reason on some 4xx, e.g. PASSWORD_CHANGE_REQUIRED. */
+  code?: string;
 
   constructor(status: number, body: unknown) {
     const problem = toProblem(status, body);
@@ -57,6 +60,7 @@ export class ApiError extends Error {
     this.name = 'ApiError';
     this.status = status;
     this.fields = problem.extensions?.fields;
+    this.code = problem.extensions?.code;
   }
 
   /** True when this 409 is the offline-replay case — the write already landed
@@ -95,10 +99,12 @@ function unwrap<T>(raw: Envelope<unknown>): T {
 export async function apiFetch<T>(endpoint: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
+    const token = getToken();
     res = await fetch(`${BASE_URL}${endpoint}`, {
       ...init,
       headers: {
         ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...init?.headers,
       },
     });
@@ -109,11 +115,23 @@ export async function apiFetch<T>(endpoint: string, init?: RequestInit): Promise
   }
 
   if (res.status === 429) {
-    throw new ApiError(429, await res.text().catch(() => 'Too many requests'));
+    // The global limiter's 429 is plain text, the login lockout's is JSON.
+    const text = await res.text().catch(() => 'Too many requests');
+    let body: unknown = text;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      /* plain text */
+    }
+    throw new ApiError(429, body);
   }
 
   const body = await res.json().catch(() => null);
-  if (!res.ok) throw new ApiError(res.status, body);
+  if (!res.ok) {
+    // Not for /auth/*: a wrong password is a 401 too, and the login screen shows that itself.
+    if (res.status === 401 && !endpoint.startsWith('/auth/')) notifyUnauthorized();
+    throw new ApiError(res.status, body);
+  }
   return unwrap<T>(body as Envelope<unknown>);
 }
 

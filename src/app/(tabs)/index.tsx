@@ -43,7 +43,7 @@ function greeting(now = new Date()): string {
 /** docs/layout/01-dashboard.md — the screen a worker opens by reflex. */
 export default function DashboardScreen() {
   const theme = useTheme();
-  const { employee, isLoading } = useSession();
+  const { employee, isLoading, refresh } = useSession();
   const isManager = can(employee?.role, 'assign_task');
   const { from, to } = useMemo(() => monthRange(new Date()), []);
 
@@ -76,6 +76,7 @@ export default function DashboardScreen() {
 
   if (isLoading) return <Screen />;
 
+  // Signed in but the profile didn't load (first launch offline, or a failed fetch).
   if (!employee) {
     return (
       <Screen>
@@ -83,9 +84,9 @@ export default function DashboardScreen() {
         <EmptyState
           icon="user"
           tint="primarySoft"
-          title="Who are you?"
-          body="No login yet — pick who you are to start recording."
-          action={{ label: 'Choose identity', onPress: () => router.push('/profile') }}
+          title="Couldn't load your profile."
+          body="Check your connection and try again."
+          action={{ label: 'Try again', onPress: () => void refresh().catch(() => undefined) }}
         />
       </Screen>
     );
