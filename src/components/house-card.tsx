@@ -32,9 +32,13 @@ export function HouseCard({ line }: { line: HouseLine }) {
     <Pressable
       onPress={() => router.push(`/houses/${house.id}` as Href)}
       accessibilityRole="button"
-      accessibilityLabel={`${house.name}, ${
-        running && balance ? `${balance.quantity.toLocaleString()} birds` : 'empty'
-      }`}
+      accessibilityLabel={[
+        house.name,
+        running && balance ? `${balance.quantity.toLocaleString()} birds` : 'empty',
+        progress ? `${progress.label}${progress.over ? ', past plan' : ''}` : null,
+      ]
+        .filter(Boolean)
+        .join(', ')}
       style={({ pressed }) => [
         styles.card,
         { backgroundColor: pressed ? theme.surfaceAlt : theme.surface },
@@ -78,10 +82,7 @@ export function HouseCard({ line }: { line: HouseLine }) {
 
           {progress ? (
             <View style={styles.progress}>
-              <View
-                style={[styles.track, { backgroundColor: theme.line }]}
-                accessibilityLabel={progress.label}
-              >
+              <View style={[styles.track, { backgroundColor: theme.line }]}>
                 <View
                   style={[
                     styles.fill,

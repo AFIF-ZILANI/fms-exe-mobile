@@ -20,7 +20,8 @@ is not how people look for a house; and nothing said how the farm as a whole sto
 
 ## Rules
 - The name leads and the number is only a badge, because numbers are not unique.
-- "Running" means a positive balance in the house; a house with several positive balances uses the first (as before).
+- "Running" means a positive balance in the house; a house with several positive balances uses the first (as before). A running house whose batch details did not load still shows its birds, just without a batch code or progress bar.
+- The screen waits for **both** the houses and the bird counts before showing any status or total (otherwise every house would read "Empty"). If either fails with nothing cached it shows the error state with Retry; offline with nothing cached it says "You're offline." Cached data from Home shows immediately.
 - Numbers and ordering come from `lib/houses-summary.ts` (tested: `bun src/lib/houses-summary.test.ts`).
 - Light and dark use the existing tokens; chips have a 6dp `hitSlop` to reach 48dp.
 

@@ -54,8 +54,13 @@ export default function HousesScreen() {
   };
 
   // Wait for BOTH queries: houses without their bird counts would all read "Empty" and the tiles 0.
-  const ready = !houses.isLoading && !balances.isLoading;
+  // `isPending` (no data yet), not `isLoading`: offline with nothing cached a query is paused, which
+  // `isLoading` reports as "not loading" and would show "no houses" or every house as Empty.
+  const ready = !houses.isPending && !balances.isPending;
   const failed = (houses.isError && !houses.data) || (balances.isError && !balances.data);
+  const offlineNoData =
+    (houses.isPending && houses.fetchStatus === 'paused') ||
+    (balances.isPending && balances.fetchStatus === 'paused');
 
   const refresh = async () => {
     setRefreshing(true);
@@ -120,7 +125,17 @@ export default function HousesScreen() {
         </>
       ) : null}
 
-      {!ready ? (
+      {offlineNoData ? (
+        <Card style={styles.state}>
+          <EmptyState
+            compact
+            icon="wifi-off"
+            tint="surfaceAlt"
+            title="You're offline."
+            body="Houses load when you're back online."
+          />
+        </Card>
+      ) : !ready ? (
         <View style={styles.list}>
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} height={112} />
@@ -133,7 +148,10 @@ export default function HousesScreen() {
             icon="alert-circle"
             tint="tintRed"
             title="Couldn't load houses."
-            action={{ label: 'Retry', onPress: () => void refresh() }}
+            action={{
+              label: 'Retry',
+              onPress: () => void Promise.all([houses.refetch(), balances.refetch()]),
+            }}
           />
         </Card>
       ) : lines.length === 0 ? (
