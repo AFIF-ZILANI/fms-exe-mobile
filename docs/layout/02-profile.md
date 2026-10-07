@@ -1,5 +1,10 @@
 # 02 · Profile / Identity
 
+> **Superseded 2026-10-07.** This blueprint describes the old profile-picker screen, which no longer exists.
+> The Profile screen is now the employee profile described in [`../profile-redesign-design.md`](../profile-redesign-design.md)
+> (identity card, at-a-glance tiles, contact / employment / personal / emergency contact, settings with the
+> light/dark choice, log out). The sections below are kept for history only.
+
 **Route:** `src/app/profile.tsx` · **Tier:** Both · **Tab bar:** hidden
 
 ---

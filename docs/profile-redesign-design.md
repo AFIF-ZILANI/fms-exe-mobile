@@ -1,6 +1,6 @@
 # Employee profile redesign
 
-Status: **Approved to build** (user said "go ahead" on 2026-10-07 after asking for the info list, layout and plan in one go).
+Status: **Built** (2026-10-07). Not verified on a device: tap-to-call/mail, the native light/dark override, the profile photo. Note: on web the light/dark choice saves but cannot re-theme (react-native-web has no override); it works natively.
 
 ## Goal
 
