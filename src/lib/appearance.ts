@@ -19,16 +19,17 @@ export async function loadAppearance(): Promise<AppearancePref> {
 
 /** Every screen reads the scheme through one hook, so overriding it here re-themes the app. */
 export function applyAppearance(pref: AppearancePref): void {
-  Appearance.setColorScheme(nativeScheme(pref));
+  // react-native-web has no override, so on web the choice is saved but cannot re-theme.
+  if (typeof Appearance.setColorScheme === 'function') Appearance.setColorScheme(nativeScheme(pref));
 }
 
 async function saveAppearance(pref: AppearancePref): Promise<void> {
-  applyAppearance(pref);
   try {
     await AsyncStorage.setItem(KEY, pref);
   } catch {
     // The choice still applies for this session; it just won't survive a restart.
   }
+  applyAppearance(pref);
 }
 
 /** The current choice and a setter that applies and saves it. */

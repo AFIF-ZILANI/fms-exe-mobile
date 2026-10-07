@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 
-import { parseAppearance, schemeFor, nativeScheme } from './appearance-pref';
+import { parseAppearance, nativeScheme } from './appearance-pref';
 
 assert.equal(parseAppearance('light'), 'light');
 assert.equal(parseAppearance('dark'), 'dark');
@@ -16,11 +16,6 @@ assert.equal(parseAppearance('Dark'), 'system', 'case matters: only exact saved 
 assert.equal(parseAppearance('blue'), 'system');
 assert.equal(parseAppearance(1), 'system');
 assert.equal(parseAppearance({ a: 1 }), 'system');
-
-// "Match phone" is null to React Native's override API.
-assert.equal(schemeFor('system'), null);
-assert.equal(schemeFor('light'), 'light');
-assert.equal(schemeFor('dark'), 'dark');
 
 // Native scheme for React Native 0.86.3: 'unspecified' follows the system.
 assert.equal(nativeScheme('system'), 'unspecified');

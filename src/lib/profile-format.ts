@@ -5,40 +5,40 @@
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-/** `D Mon YYYY` from the stored UTC calendar date, so it never shifts a day with the phone's timezone. */
-export function formatDate(iso: string): string {
+/** `D Mon YYYY` from the stored UTC calendar date, so it never shifts a day with the phone's timezone.
+ *  Null for an unparsable date, so callers show "Not provided" instead of a dash. */
+export function formatDate(iso: string): string | null {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) return null;
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
-function wholeMonths(from: Date, to: Date): number {
-  let months = (to.getUTCFullYear() - from.getUTCFullYear()) * 12 + (to.getUTCMonth() - from.getUTCMonth());
-  if (to.getUTCDate() < from.getUTCDate()) months -= 1;
+/** Stored dates are UTC calendar dates; "today" is the calendar date where the person is,
+ *  so both sides are reduced to a plain year/month/day before comparing. */
+function ymd(d: Date, local: boolean) {
+  return local
+    ? { y: d.getFullYear(), m: d.getMonth(), d: d.getDate() }
+    : { y: d.getUTCFullYear(), m: d.getUTCMonth(), d: d.getUTCDate() };
+}
+
+function wholeMonths(from: Date, now: Date): number {
+  const f = ymd(from, false);
+  const t = ymd(now, true);
+  let months = (t.y - f.y) * 12 + (t.m - f.m);
+  if (t.d < f.d) months -= 1;
   return Math.max(months, 0);
 }
 
-function wholeDays(from: Date, to: Date): number {
-  return Math.max(Math.floor((to.getTime() - from.getTime()) / 86_400_000), 0);
+function wholeDays(from: Date, now: Date): number {
+  const f = ymd(from, false);
+  const t = ymd(now, true);
+  return Math.max(Math.round((Date.UTC(t.y, t.m, t.d) - Date.UTC(f.y, f.m, f.d)) / 86_400_000), 0);
 }
 
-/** "1 yr 7 mo", "7 mo", "12 days", "Joined today". Never negative. */
-export function formatTenure(joinedIso: string, now: Date): string {
-  const joined = new Date(joinedIso);
-  const months = wholeMonths(joined, now);
-  if (months >= 1) {
-    const years = Math.floor(months / 12);
-    const rest = months % 12;
-    return [years ? `${years} yr` : '', rest ? `${rest} mo` : ''].filter(Boolean).join(' ');
-  }
-  const days = wholeDays(joined, now);
-  if (days === 0) return 'Joined today';
-  return `${days} day${days === 1 ? '' : 's'}`;
-}
-
-/** The short form for a stat tile: "1y 7m", "7m", "12d", "New". */
+/** The short form for a stat tile: "1y 7m", "7m", "12d", "New" (also for a future or unparsable date). */
 export function formatTenureShort(joinedIso: string, now: Date): string {
   const joined = new Date(joinedIso);
+  if (Number.isNaN(joined.getTime())) return 'New';
   const months = wholeMonths(joined, now);
   if (months >= 1) {
     const years = Math.floor(months / 12);
@@ -53,19 +53,18 @@ export function formatTenureShort(joinedIso: string, now: Date): string {
 export function ageFromDob(dobIso: string | null | undefined, now: Date): number | null {
   if (!dobIso) return null;
   const dob = new Date(dobIso);
-  if (Number.isNaN(dob.getTime()) || dob.getTime() > now.getTime()) return null;
-  let age = now.getUTCFullYear() - dob.getUTCFullYear();
-  const beforeBirthday =
-    now.getUTCMonth() < dob.getUTCMonth() ||
-    (now.getUTCMonth() === dob.getUTCMonth() && now.getUTCDate() < dob.getUTCDate());
-  if (beforeBirthday) age -= 1;
-  return age;
+  if (Number.isNaN(dob.getTime())) return null;
+  const b = ymd(dob, false);
+  const t = ymd(now, true);
+  let age = t.y - b.y;
+  if (t.m < b.m || (t.m === b.m && t.d < b.d)) age -= 1;
+  return age < 0 ? null : age;
 }
 
 /** Last four digits only. A phone can be shared or lost, so the head of the id never appears;
  *  an id of four digits or fewer would be the whole number, so it reveals nothing at all. */
 export function maskNid(nid: string | null | undefined): string | null {
-  const v = nid?.trim();
+  const v = nid?.replace(/\D/g, '');
   if (!v) return null;
   if (v.length <= 4) return '••••';
   return `•••• ${v.slice(-4)}`;

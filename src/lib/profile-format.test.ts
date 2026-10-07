@@ -10,7 +10,6 @@ import {
   educationLabel,
   formatDate,
   formatExperience,
-  formatTenure,
   formatTenureShort,
   hasEmergencyContact,
   maritalLabel,
@@ -22,24 +21,23 @@ import {
 // --- dates: the stored UTC calendar date, never shifted by the phone's timezone ---
 assert.equal(formatDate('2025-03-12T00:00:00.000Z'), '12 Mar 2025');
 assert.equal(formatDate('2025-12-01T23:59:59.000Z'), '1 Dec 2025');
-assert.equal(formatDate('not a date'), '—');
+assert.equal(formatDate('not a date'), null);
 
-// --- tenure ---------------------------------------------------------------------
-const now = new Date('2026-10-07T09:00:00.000Z');
-assert.equal(formatTenure('2025-03-07T00:00:00.000Z', now), '1 yr 7 mo');
-assert.equal(formatTenure('2026-03-07T00:00:00.000Z', now), '7 mo');
-assert.equal(formatTenure('2025-10-07T00:00:00.000Z', now), '1 yr', 'exactly a year, no "0 mo"');
-assert.equal(formatTenure('2026-09-25T00:00:00.000Z', now), '12 days');
-assert.equal(formatTenure('2026-10-06T00:00:00.000Z', now), '1 day');
-assert.equal(formatTenure('2026-10-07T01:00:00.000Z', now), 'Joined today');
-assert.equal(formatTenure('2026-12-01T00:00:00.000Z', now), 'Joined today', 'a future join date never goes negative');
+// --- tenure: "today" is the local calendar date, stored dates are UTC calendar dates ---
+const now = new Date(2026, 9, 7, 9, 0, 0);
 assert.equal(formatTenureShort('2025-03-07T00:00:00.000Z', now), '1y 7m');
 assert.equal(formatTenureShort('2026-03-07T00:00:00.000Z', now), '7m');
+assert.equal(formatTenureShort('2025-10-07T00:00:00.000Z', now), '1y', 'exactly a year, no "0m"');
 assert.equal(formatTenureShort('2026-09-25T00:00:00.000Z', now), '12d');
-assert.equal(formatTenureShort('2026-10-07T01:00:00.000Z', now), 'New');
+assert.equal(formatTenureShort('2026-10-06T00:00:00.000Z', now), '1d');
+assert.equal(formatTenureShort('2026-10-07T00:00:00.000Z', now), 'New');
+assert.equal(formatTenureShort('2026-10-07T00:00:00.000Z', new Date(2026, 9, 7, 0, 30)), 'New', 'joined today, just after local midnight');
+assert.equal(formatTenureShort('2026-12-01T00:00:00.000Z', now), 'New', 'a future join date never goes negative');
+assert.equal(formatTenureShort('not a date', now), 'New', 'never NaN');
 
 // --- age: birthday boundaries ----------------------------------------------------
 assert.equal(ageFromDob('1994-10-07T00:00:00.000Z', now), 32, 'birthday today');
+assert.equal(ageFromDob('1994-10-07T00:00:00.000Z', new Date(2026, 9, 7, 0, 30)), 32, 'birthday today, just after local midnight');
 assert.equal(ageFromDob('1994-10-08T00:00:00.000Z', now), 31, 'birthday tomorrow');
 assert.equal(ageFromDob('1994-10-06T00:00:00.000Z', now), 32, 'birthday yesterday');
 assert.equal(ageFromDob(null, now), null);
@@ -54,6 +52,9 @@ assert.equal(maskNid('123'), '••••', 'a short id reveals nothing');
 assert.equal(maskNid('1234'), '••••', 'exactly four digits would be the whole id');
 assert.equal(maskNid(''), null);
 assert.equal(maskNid('   '), null);
+assert.equal(maskNid('12-34'), '••••', 'separators are not digits');
+assert.equal(maskNid('1234-5678-90'), '•••• 7890');
+assert.equal(maskNid('abc-'), null, 'no digits at all');
 assert.equal(maskNid(null), null);
 assert.ok(!String(maskNid('9988776655')).includes('99887'), 'the head of the id is never present');
 

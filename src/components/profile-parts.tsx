@@ -30,6 +30,7 @@ export function ProfileHeader({ employee }: { employee: Employee }) {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const photo = employee.profile.avatar?.image_url;
   const status = statusLabel(employee.employment_status);
+  const joined = formatDate(employee.joining_date);
 
   return (
     <View style={[styles.hero, { backgroundColor: theme.surface }, elevation(scheme, 'card')]}>
@@ -66,9 +67,11 @@ export function ProfileHeader({ employee }: { employee: Employee }) {
         ) : null}
       </View>
 
-      <AppText variant="caption" color="muted" style={styles.centre}>
-        Joined {formatDate(employee.joining_date)}
-      </AppText>
+      {joined ? (
+        <AppText variant="caption" color="muted" style={styles.centre}>
+          Joined {joined}
+        </AppText>
+      ) : null}
     </View>
   );
 }

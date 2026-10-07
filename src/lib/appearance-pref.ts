@@ -7,11 +7,6 @@ export function parseAppearance(raw: unknown): AppearancePref {
   return raw === 'light' || raw === 'dark' ? raw : 'system';
 }
 
-/** The argument React Native's `Appearance.setColorScheme` wants: `null` follows the phone. */
-export function schemeFor(pref: AppearancePref): 'light' | 'dark' | null {
-  return pref === 'system' ? null : pref;
-}
-
 /** Native scheme for React Native 0.86.3: 'unspecified' follows the system, not null. */
 export function nativeScheme(pref: AppearancePref): 'light' | 'dark' | 'unspecified' {
   return pref === 'system' ? 'unspecified' : pref;

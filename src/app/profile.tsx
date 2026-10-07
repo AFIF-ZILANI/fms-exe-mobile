@@ -47,7 +47,7 @@ const APPEARANCE_OPTIONS = [
  *  who to call in an emergency, and the app's settings. Read-only. */
 export default function ProfileScreen() {
   const theme = useTheme();
-  const { employee: saved, logout } = useSession();
+  const { employee: saved, logout, signedIn, refresh } = useSession();
   const { data: outbox } = useOutboxSummary();
   const [appearance, setAppearance] = useAppearance();
   // Read once: calling new Date() during render is impure (the React Compiler rejects it).
@@ -68,6 +68,7 @@ export default function ProfileScreen() {
     { enabled: !!employee },
   );
   const points = (scores?.results ?? []).reduce((sum, s) => sum + s.points, 0);
+  const pointsReady = !!scores;
 
   const onLogout = () => {
     const pending = (outbox?.pendingCount ?? 0) + (outbox?.deadLetterCount ?? 0);
@@ -82,6 +83,9 @@ export default function ProfileScreen() {
     void logout();
   };
 
+  // After logout the session clears before the route unmounts; render nothing rather than flash.
+  if (!signedIn) return null;
+
   if (!employee) {
     return (
       <Screen>
@@ -91,7 +95,11 @@ export default function ProfileScreen() {
           tint="primarySoft"
           title="Couldn't load your profile."
           body="Check your connection and try again."
+          action={{ label: 'Try again', onPress: () => void refresh().catch(() => {}) }}
         />
+        <View style={styles.logout}>
+          <Button variant="destructive" label="Log out" onPress={onLogout} block />
+        </View>
       </Screen>
     );
   }
@@ -112,10 +120,10 @@ export default function ProfileScreen() {
 
       <View style={styles.stats}>
         <StatCard
-          value={formatSignedPoints(points)}
+          value={pointsReady ? formatSignedPoints(points) : '…'}
           eyebrow={`Points · ${now.toLocaleDateString(undefined, { month: 'short' })}`}
           tint="tintAmber"
-          valueColor={points > 0 ? 'success' : points < 0 ? 'critical' : 'ink'}
+          valueColor={!pointsReady ? 'muted' : points > 0 ? 'success' : points < 0 ? 'critical' : 'ink'}
           icon={<IconTile name="award" tint="tintAmber" color="warning" />}
           onPress={() => router.push('/me/performance')}
         />
@@ -197,7 +205,7 @@ export default function ProfileScreen() {
         Something wrong? Ask your manager. Only they can change these details.
       </AppText>
 
-      <Card eyebrow="Settings" style={styles.card}>
+      <Card rows eyebrow="Settings" style={styles.card}>
         <View style={styles.appearance}>
           <AppText variant="label" color="muted">
             Appearance
@@ -209,12 +217,10 @@ export default function ProfileScreen() {
             onChange={setAppearance}
           />
         </View>
-      </Card>
-
-      <Card rows style={styles.card}>
+        <View style={[styles.rule, { backgroundColor: theme.line }]} />
         <NavRow label="My performance" onPress={() => router.push('/me/performance')} />
         <NavRow label="Change password" onPress={() => router.push('/change-password' as Href)} />
-        <InfoRow label="App version" value={Constants.expoConfig?.version ?? '—'} last />
+        <InfoRow label="App version" value={Constants.expoConfig?.version} last />
       </Card>
 
       <View style={styles.logout}>
@@ -228,7 +234,8 @@ const styles = StyleSheet.create({
   stats: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.md },
   card: { marginTop: Spacing.md },
   note: { marginTop: Spacing.md, paddingHorizontal: Spacing.xs },
-  appearance: { gap: Spacing.sm },
+  appearance: { gap: Spacing.sm, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md },
+  rule: { height: 1, marginLeft: Spacing.lg },
   warning: {
     flexDirection: 'row',
     alignItems: 'center',

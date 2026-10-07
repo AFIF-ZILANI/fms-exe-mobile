@@ -65,8 +65,9 @@ export default function RootLayout() {
     void loadAppearance().then((pref) => {
       try {
         applyAppearance(pref);
-      } catch {
+      } catch (e) {
         // If appearance application fails, we still mark ready so the splash doesn't hang.
+        console.warn('Could not apply saved appearance', e);
       }
       setAppearanceReady(true);
     });
