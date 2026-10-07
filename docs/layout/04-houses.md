@@ -1,5 +1,7 @@
 # 04 · Houses
 
+> **Superseded 2026-10-07:** the Houses list is now summary tiles, All/Running/Empty chips and one card per house; see [`../houses-redesign-design.md`](../houses-redesign-design.md). The ledger-row layout below is kept for history.
+
 **Route:** `src/app/(tabs)/houses/index.tsx` · **Tab:** Houses · **Tier:** Both
 
 ---
