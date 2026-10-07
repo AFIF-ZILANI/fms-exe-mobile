@@ -63,6 +63,13 @@ function buildActions(role: string | undefined, houseId: string | null): LogActi
       icon: 'plus-square',
       tint: 'tintGreen',
     },
+    {
+      label: 'Move to house',
+      description: 'Scan units into a house',
+      path: withHouse('/scan/allocate'),
+      icon: 'arrow-right',
+      tint: 'tintGreen',
+    },
   ];
 
   if (!can(role, 'assign_task')) return worker;
