@@ -25,7 +25,7 @@ v2 keeps what worked and fixes what didn't:
 | Kept from v1 | Changed in v2 |
 | --- | --- |
 | Figures are the content — numerals get the display treatment | Numerals now sit **inside stat cards**, not floating on bare ground |
-| Never colour-alone for status (icon or word always) | Colour is now **structural too** — brand green carries primary actions |
+| Never colour-alone for status (icon or word always) | Colour is now **structural too** — brand indigo carries primary actions |
 | One status vocabulary shared with the web dashboard | Added tinted surfaces, so a screen has depth without shouting |
 | Mono for every numeral, so columns align for free | Sans changed to a friendlier geometric face (see §3) |
 | 48dp targets, bottom-anchored primary actions | Added a **persistent bottom tab bar** — v1's FAB-only nav left workers lost |
@@ -37,7 +37,7 @@ them scannable. v2's bet is different and stated in §2.1.
 
 ---
 
-## 1. Direction: "Field Green"
+## 1. Direction: "Field Indigo" (was "Field Green" until 2026-10-07)
 
 **A calm, modern instrument that still looks alive.** It is read at arm's length,
 in direct sun and in a dim barn, by someone wearing gloves who is already doing
@@ -61,8 +61,9 @@ Four consequences drive every decision here:
 
 ### 1.1 Principles
 
-1. **Green is the app.** Brand green carries primary actions, active navigation,
-   selected states and positive outcomes. It should be visible on every screen.
+1. **Indigo is the app.** Brand indigo carries primary actions, active navigation
+   and selected states. It should be visible on every screen. Green is no longer
+   the brand: it means `success` only (positive outcomes, synced, healthy).
 2. **Never colour-alone for status.** Non-negotiable — colourblind safety, and
    screenshots that get forwarded. Every status carries an icon **or** a word.
 3. **One status vocabulary across both clients.** A CRITICAL alert is the same
@@ -80,11 +81,11 @@ Four consequences drive every decision here:
 
 ### 2.1 The bet
 
-**Brand green is structural; the other saturated colours stay semantic.**
+**Brand indigo is structural; the other saturated colours stay semantic.**
 
-Green is free to appear anywhere it means "this is the app, this is the action,
-this is good" — buttons, the active tab, selected chips, positive scores, a
-house that's healthy. Red, amber and blue are **not** free: they keep v1's
+Indigo is free to appear anywhere it means "this is the app, this is the action"
+— buttons, the active tab, selected chips, links, progress bars. Green, red, amber
+and blue are **not** free: they keep v1's
 discipline and appear only when a value means something (a mortality figure, an
 unsynced write, an out-of-range reading).
 
@@ -103,29 +104,30 @@ The neutral ground the whole UI is built on.
 
 | Token | Light | Dark | Use |
 | --- | --- | --- | --- |
-| `ground` | `#F5F8F6` | `#0E1613` | The page background behind cards |
-| `surface` | `#FFFFFF` | `#16201C` | Card fill, sheet fill, header fill |
-| `surfaceAlt` | `#F1F4F2` | `#1D2925` | Input wells, insets, pressed rows, skeletons |
-| `ink` | `#0F1613` | `#E9EFEB` | Primary text, hero figures |
-| `inkSoft` | `#46534C` | `#AEBAB3` | Secondary text, card body copy |
-| `muted` | `#6B7A72` | `#7E8D85` | Captions, eyebrows, placeholder, inactive tabs |
-| `line` | `#E2E8E4` | `#27332E` | Hairlines, card borders, dividers, input borders |
+| `ground` | `#F6F7F9` | `#0F1117` | The page background behind cards |
+| `surface` | `#FFFFFF` | `#171A22` | Card fill, sheet fill, header fill |
+| `surfaceAlt` | `#F0F2F5` | `#1F232D` | Input wells, insets, pressed rows, skeletons |
+| `ink` | `#0F1419` | `#E9ECF1` | Primary text, hero figures |
+| `inkSoft` | `#434B57` | `#B0B7C3` | Secondary text, card body copy |
+| `muted` | `#636C7A` | `#808998` | Captions, eyebrows, placeholder, inactive tabs |
+| `line` | `#E3E6EB` | `#272C37` | Hairlines, card borders, dividers, input borders |
 
-Dark `ground` and `surface` carry a faint green cast rather than being pure
-grey — it keeps the two themes recognisably the same product.
+Neutrals are a cool grey (a faint blue cast in dark) so they sit with the indigo
+brand. Light `muted` and every brand pair clear WCAG AA (4.5:1) — checked 2026-10-07.
 
 ### 2.3 Brand tokens
 
 | Token | Light | Dark | Use |
 | --- | --- | --- | --- |
-| `primary` | `#1B8A5A` | `#34D399` | Primary buttons, active tab, links, focus rings, selected state |
-| `primaryPressed` | `#146E47` | `#2BB983` | Pressed state of anything `primary` |
-| `primarySoft` | `#E7F5EE` | `#12332A` | Selected chip fill, active tab pill, soft badge fill |
-| `onPrimary` | `#FFFFFF` | `#04150E` | Text and icons on a `primary` fill |
+| `primary` | `#4F46E5` | `#818CF8` | Primary buttons, active tab, links, focus rings, selected state |
+| `primaryPressed` | `#3B33C4` | `#6366F1` | Pressed state of anything `primary` |
+| `primarySoft` | `#ECEBFD` | `#1B1A3D` | Selected chip fill, active tab pill, soft badge fill |
+| `onPrimary` | `#FFFFFF` | `#0B0A26` | Text and icons on a `primary` fill |
 
-**`primary` doubles as `success`.** They are the same value on purpose — in this
-product green means both "the brand" and "this went well," and splitting them
-into two near-identical greens reads as a mistake rather than as a distinction.
+**`primary` is no longer `success`.** Until 2026-10-07 they were the same green. The
+brand is now indigo and `success` keeps the green, so "positive" never reads as "the
+button colour". `info` is a darker, cyan-leaning blue so it can't be mistaken for
+the indigo.
 
 ### 2.4 Semantic tokens
 
@@ -133,10 +135,10 @@ Names match `web/docs/design.md` so one word means one thing across both clients
 
 | Token | Light | Dark | Field-app usage |
 | --- | --- | --- | --- |
-| `success` | `#1B8A5A` | `#34D399` | Positive score entries, in-range readings, synced. Same value as `primary`. |
+| `success` | `#1B8A5A` | `#34D399` | Positive score entries, in-range readings, synced. Its own green, separate from `primary`. |
 | `critical` | `#DC2626` | `#FF7B6B` | Mortality figures, negative scores, errors, out-of-range readings, destructive confirms |
 | `warning` | `#D97706` | `#FBBF24` | **Queued / unsynced writes**, low stock, nearing expiry, over-threshold input warnings |
-| `info` | `#2563EB` | `#60A5FA` | Fresh-from-network marker, informational banners |
+| `info` | `#0369A1` | `#38BDF8` | Fresh-from-network marker, informational banners |
 | `neutral` | = `muted` | = `muted` | Done, cancelled, closed, inactive — no action needed |
 
 Mobile-specific meanings worth stating, since they don't exist on web:
@@ -156,7 +158,7 @@ never as a border. They give a screen depth without adding saturation.
 | `tintGreen` | `#E7F5EE` | `#12332A` | Bird counts, positive stats, healthy houses |
 | `tintAmber` | `#FEF5E7` | `#2A2110` | Points / payroll stats, queue banner |
 | `tintRed` | `#FDECEC` | `#2B1616` | Mortality stats, error banners |
-| `tintBlue` | `#E9F0FE` | `#101E33` | Environment readings, info banners |
+| `tintBlue` | `#E6F4FB` | `#0F2230` | Environment readings, info banners |
 
 **Rule:** a tinted surface always carries a matching semantic-coloured figure or
 icon. A tinted card with only neutral ink inside it is decoration — remove the
@@ -171,7 +173,7 @@ a shadow on a dark ground is invisible and only costs render time.
 | --- | --- | --- | --- |
 | `flat` | none | none | Rows inside a card, list items |
 | `card` | `y2 blur8 rgba(15,22,19,0.05)` + `y1 blur2 rgba(15,22,19,0.03)` | `1px solid line` | Every card |
-| `raised` | `y4 blur12 rgba(27,138,90,0.24)` | `y4 blur12 rgba(0,0,0,0.4)` | Centre tab button, FAB |
+| `raised` | `y4 blur12 rgba(79,70,229,0.24)` | `y4 blur12 rgba(0,0,0,0.4)` | Centre tab button, FAB |
 | `sheet` | `y-4 blur24 rgba(15,22,19,0.12)` | `y-4 blur24 rgba(0,0,0,0.5)` | Bottom sheets, sticky submit bar |
 | `header` | `y1 blur3 rgba(15,22,19,0.04)` on scroll only | `1px bottom line` on scroll only | Screen header once content scrolls under it |
 

@@ -87,7 +87,7 @@ export default function TeamScreen() {
           value={String(onShift)}
           eyebrow="On shift"
           tint="tintGreen"
-          icon={<IconTile name="users" tint="primarySoft" color="primary" />}
+          icon={<IconTile name="users" tint="tintGreen" color="success" />}
         />
         <StatCard
           value={`${totals.done}/${totals.total}`}
