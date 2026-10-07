@@ -1,11 +1,12 @@
 /**
  * "Field Green" design tokens — see docs/design.md.
  *
- * Brand green is structural: it carries primary actions, active navigation,
- * selected states and positive outcomes, and should be visible on every
- * screen. The other saturated colours stay semantic — a `critical` thing is
- * always bad news, a `warning` thing is always "not on the server yet". Tints
- * are card fills only, never text and never borders.
+ * Brand indigo is structural: it carries primary actions, active navigation
+ * and selected states, and should be visible on every screen. Green is now
+ * only `success` (positive outcomes, synced). The other saturated colours stay
+ * semantic — a `critical` thing is always bad news, a `warning` thing is always
+ * "not on the server yet", `info` is a lighter cyan-leaning blue kept clear of
+ * the indigo. Tints are card fills only, never text and never borders.
  *
  * Replaces the v1 "Field Instrument" monochrome system, whose one-colour bet
  * made every screen equally quiet and therefore none of them scannable.
@@ -18,71 +19,71 @@ import { Platform } from 'react-native';
 export const Colors = {
   light: {
     // Foundation
-    ground: '#F5F8F6',
+    ground: '#F6F7F9',
     surface: '#FFFFFF',
-    surfaceAlt: '#F1F4F2',
-    ink: '#0F1613',
-    inkSoft: '#46534C',
-    muted: '#6B7A72',
-    line: '#E2E8E4',
+    surfaceAlt: '#F0F2F5',
+    ink: '#0F1419',
+    inkSoft: '#434B57',
+    muted: '#636C7A',
+    line: '#E3E6EB',
 
     // Brand
-    primary: '#1B8A5A',
-    primaryPressed: '#146E47',
-    primarySoft: '#E7F5EE',
+    primary: '#4F46E5',
+    primaryPressed: '#3B33C4',
+    primarySoft: '#ECEBFD',
     onPrimary: '#FFFFFF',
 
-    // Semantic. `success` is deliberately the same value as `primary`.
+    // Semantic. `success` is its own green, no longer tied to the brand colour.
     success: '#1B8A5A',
     critical: '#DC2626',
     warning: '#D97706',
-    info: '#2563EB',
-    neutral: '#6B7A72',
+    info: '#0369A1',
+    neutral: '#636C7A',
 
     // Tint surfaces — card fills only
     tintGreen: '#E7F5EE',
     tintAmber: '#FEF5E7',
     tintRed: '#FDECEC',
-    tintBlue: '#E9F0FE',
+    tintBlue: '#E6F4FB',
 
     /** @deprecated v1 name. Use `surface` (fills) or `onPrimary` (text on a fill). */
     paper: '#FFFFFF',
     /** @deprecated v1 name. Use `surfaceAlt`. */
-    field: '#F1F4F2',
+    field: '#F0F2F5',
   },
   dark: {
     // Foundation — a faint green cast, so both themes read as one product
-    ground: '#0E1613',
-    surface: '#16201C',
-    surfaceAlt: '#1D2925',
-    ink: '#E9EFEB',
-    inkSoft: '#AEBAB3',
-    muted: '#7E8D85',
-    line: '#27332E',
+    ground: '#0F1117',
+    surface: '#171A22',
+    surfaceAlt: '#1F232D',
+    ink: '#E9ECF1',
+    inkSoft: '#B0B7C3',
+    muted: '#808998',
+    line: '#272C37',
 
     // Brand
-    primary: '#34D399',
-    primaryPressed: '#2BB983',
-    primarySoft: '#12332A',
-    onPrimary: '#04150E',
+    primary: '#818CF8',
+    primaryPressed: '#6366F1',
+    primarySoft: '#1B1A3D',
+    onPrimary: '#0B0A26',
 
     // Semantic
     success: '#34D399',
     critical: '#FF7B6B',
     warning: '#FBBF24',
-    info: '#60A5FA',
-    neutral: '#7E8D85',
+    info: '#38BDF8',
+    neutral: '#808998',
 
     // Tint surfaces
     tintGreen: '#12332A',
     tintAmber: '#2A2110',
     tintRed: '#2B1616',
-    tintBlue: '#101E33',
+    tintBlue: '#0F2230',
 
     /** @deprecated v1 name. Use `surface` (fills) or `onPrimary` (text on a fill). */
-    paper: '#16201C',
+    paper: '#171A22',
     /** @deprecated v1 name. Use `surfaceAlt`. */
-    field: '#1D2925',
+    field: '#1F232D',
   },
 } as const;
 
@@ -239,7 +240,7 @@ export function elevation(scheme: 'light' | 'dark', level: 'card' | 'raised' | '
         boxShadow: '0px 2px 8px rgba(15,22,19,0.05), 0px 1px 2px rgba(15,22,19,0.03)',
       };
     case 'raised':
-      return { boxShadow: '0px 4px 12px rgba(27,138,90,0.24)' };
+      return { boxShadow: '0px 4px 12px rgba(79,70,229,0.24)' };
     case 'sheet':
       return { boxShadow: '0px -4px 24px rgba(15,22,19,0.12)' };
   }

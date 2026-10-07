@@ -131,7 +131,7 @@ export default function DashboardScreen() {
           value={birds.toLocaleString()}
           eyebrow="Birds"
           tint="tintGreen"
-          icon={<IconTile name="home" tint="primarySoft" color="primary" />}
+          icon={<IconTile name="home" tint="tintGreen" color="success" />}
         />
         <StatCard
           value={formatSignedPoints(points)}
