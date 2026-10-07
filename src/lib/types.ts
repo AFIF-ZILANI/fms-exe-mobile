@@ -11,7 +11,12 @@ export type Profile = {
   mobile: string;
   email?: string | null;
   is_active: boolean;
+  address?: string | null;
+  avatar?: { image_url: string } | null;
 };
+
+export type MaritalStatus = 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED';
+export type EmploymentStatus = 'APPOINTED' | 'PROBATION' | 'CONFIRMED' | 'TERMINATED';
 
 export type Employee = {
   id: string;
@@ -21,6 +26,18 @@ export type Employee = {
   joining_date: string;
   rating: number | null;
   profile: Profile;
+  // Hire profile (GET /employees/:id). Optional: older rows predate it.
+  date_of_birth?: string | null;
+  marital_status?: MaritalStatus | null;
+  education?: string | null;
+  experience?: string | null;
+  experience_years?: number | null;
+  nid_number?: string | null;
+  emergency_name?: string | null;
+  emergency_relation?: string | null;
+  emergency_phone?: string | null;
+  employment_status?: EmploymentStatus;
+  probation_end_date?: string | null;
 };
 
 export type House = {

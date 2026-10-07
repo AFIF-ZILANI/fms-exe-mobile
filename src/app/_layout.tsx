@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
+import { applyAppearance, loadAppearance } from '@/lib/appearance';
 import {
   DarkTheme,
   DefaultTheme,
@@ -57,6 +58,21 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [fontsLoaded, fontError] = useFonts(FontAssets);
 
+  // The saved light/dark choice is applied before the first frame, so there is no flash of the
+  // wrong theme. loadAppearance never rejects (it falls back to "Match phone").
+  const [appearanceReady, setAppearanceReady] = useState(false);
+  useEffect(() => {
+    void loadAppearance().then((pref) => {
+      try {
+        applyAppearance(pref);
+      } catch (e) {
+        // If appearance application fails, we still mark ready so the splash doesn't hang.
+        console.warn('Could not apply saved appearance', e);
+      }
+      setAppearanceReady(true);
+    });
+  }, []);
+
   // Started early so the sync banner has a queue to read, but deliberately
   // NOT awaited: every outbox function awaits initOutbox() itself, and
   // gating the first render on storage means a slow or wedged database
@@ -66,13 +82,15 @@ export default function RootLayout() {
     void initOutbox();
   }, []);
 
+  const ready = (fontsLoaded || !!fontError) && appearanceReady;
+
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    if (ready) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [ready]);
 
-  if (!fontsLoaded && !fontError) return null;
+  if (!ready) return null;
 
   return (
     <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
