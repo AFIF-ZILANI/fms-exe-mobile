@@ -77,12 +77,15 @@ UNASSIGNED --bind--> IN_STOCK --first consumption--> IN_USE --manual--> CONSUMED
 
 ## 6. Open items to settle in the plan
 
-1. **Quantity and unit on a whole-unit consume.** The server still requires
-   `quantity` and `unit` on every consumption, and converts to the item's base unit
-   (`toBaseQuantity`). The existing form sends `unit: item.unit`. For an item whose
-   unit is mL, `quantity: 1` would mean 1 mL, not one bottle. Check how pack units and
-   conversions are modelled for tracked items before choosing what to send. Do not
-   guess.
+1. **Quantity and unit on a whole-unit consume. (Resolved 2026-10-07.)**
+   A `StockUnit` is one pack of its `PurchaseItem`'s unit (`PurchaseItem.quantity` +
+   `PurchaseItem.unit`, e.g. 12 BOTTLE). A whole-unit consume therefore sends
+   `quantity: 1` and `unit: <purchase_item.unit>`. `toBaseQuantity` converts it with
+   `ItemUnit.factor_to_base`. If the purchase unit equals `Item.unit` no conversion is
+   needed; otherwise the item needs an `ItemUnit` row for that unit with
+   `is_usable = true`, or the server rejects with "'X' is not a valid unit for using this
+   item". The scan screen must show that message plainly. Do not send `item.unit` for a
+   coded unit (that would mean 1 mL, not 1 bottle).
 2. **Offline.** Bind requires a connection today because the checks are server-side.
    Decide per action whether Allocate / Consume may queue offline (the server's
    status checks would then run at sync time and a failure becomes a dead letter) or
