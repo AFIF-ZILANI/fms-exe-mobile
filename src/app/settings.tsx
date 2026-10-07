@@ -73,6 +73,10 @@ export default function SettingsScreen() {
       <Card rows eyebrow="Sync" style={styles.card}>
         <InfoRow label="Status" value={status} />
         <InfoRow label="Last synced" value={lastSynced} />
+        <NavRow
+          label={failed > 0 ? `Sync center · ${failed} need attention` : 'Sync center'}
+          onPress={() => router.push('/sync' as Href)}
+        />
         <View style={[styles.rule, { backgroundColor: theme.line }]} />
         <View style={styles.syncAction}>
           <Button variant="secondary" label="Sync now" icon="refresh-cw" onPress={() => void syncNow()} loading={syncing} block />

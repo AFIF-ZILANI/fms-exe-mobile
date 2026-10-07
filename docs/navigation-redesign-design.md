@@ -1,6 +1,6 @@
 # Navigation redesign
 
-Status: **Phase 1 built** (2026-10-07): new bar, grouped launcher, Stock tab v1, Me = Profile, Settings, Home cleanup. Phases 2–4 (Sync center, My tasks + Alerts, Stock polish) pending. Known oddity: Back from Team goes to Home even when Team was opened from another tab (Tabs back behaviour).
+Status: **Phases 1–2 built** (2026-10-07). Phases 3–4 (My tasks + Alerts, Stock polish) pending. Known oddity: Back from Team goes to Home even when Team was opened from another tab. Open follow-up: outbox owner column (see docs/offline-sync.md).
 
 ## Why
 

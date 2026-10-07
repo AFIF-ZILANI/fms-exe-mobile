@@ -32,7 +32,7 @@ type SessionState = {
 type SessionContextValue = SessionState & {
   login: (email: string, password: string) => Promise<void>;
   changePassword: (current: string, next: string) => Promise<void>;
-  /** Clears this phone's session. The offline queue is untouched -- callers refuse to log out while it is non-empty. */
+  /** Clears this phone's session. The offline queue is untouched. useLogout blocks a manual logout while records are waiting; a 401 sign-out does not, so queued records can outlive the session. */
   logout: () => Promise<void>;
   /** Re-fetch the employee snapshot (e.g. after a failed load). */
   refresh: () => Promise<void>;

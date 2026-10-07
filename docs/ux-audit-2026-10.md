@@ -149,3 +149,5 @@ Home, Houses, house detail and a form re-shot in the browser. Not yet verified o
 device.
 
 A1 and the coded-unit part of A2: built as scan flows (`docs/superpowers/plans/2026-10-07-scan-flows.md`). Verified: unit tests, typecheck, lint, API smoke as a worker (relocate, whole-unit consume, bind refused), and browser render of all three screens. **Not verified:** the camera, haptics and the confirm card on a real phone.
+
+C4 (dead letters as a native alert) and the "Needs attention" screen: built as the Sync center (`docs/superpowers/plans/2026-10-07-sync-center.md`). Open follow-up found in review: the outbox has no owner column, so after a forced sign-out the next person on the phone can send or retry the previous person's records (see docs/offline-sync.md, Sync center).

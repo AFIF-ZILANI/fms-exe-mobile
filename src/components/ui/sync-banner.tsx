@@ -1,4 +1,5 @@
-import { Alert, Pressable, View, StyleSheet } from 'react-native';
+import { Pressable, View, StyleSheet } from 'react-native';
+import { router, type Href } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { AppText } from '@/components/ui/text';
@@ -6,19 +7,13 @@ import { Icon } from '@/components/ui/icon';
 import { Radius, Size, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useOutboxSummary, triggerFlush } from '@/lib/use-outbox';
-import { listDeadLetters, retryDeadLetter } from '@/lib/outbox';
 import { formatTime } from '@/lib/format';
 
 /**
  * Only rendered when there's something to say — a persistent "0 queued" row
  * trains people to ignore the exact component they must not ignore
  * (docs/layout/00-app-shell.md). Tapping with pending writes retries now;
- * tapping with dead letters offers to retry them.
- *
- * ponytail: dead-letter resolution is a native Alert, not a dedicated screen —
- * the 20 screens don't include a dead-letter manager, and this is a rare-path
- * safety net, not a primary flow. Upgrade to a real list view if dead letters
- * turn out to be common enough to need one.
+ * a failed state opens the Sync center.
  */
 export function SyncBanner() {
   const theme = useTheme();
@@ -31,24 +26,7 @@ export function SyncBanner() {
 
   const handlePress = async () => {
     if (dead) {
-      const rows = await listDeadLetters();
-      Alert.alert(
-        `${rows.length} ${rows.length === 1 ? 'entry needs' : 'entries need'} attention`,
-        rows
-          .slice(0, 5)
-          .map((r) => `${r.endpoint}: ${r.last_error}`)
-          .join('\n'),
-        [
-          { text: 'Dismiss', style: 'cancel' },
-          {
-            text: 'Retry all',
-            onPress: async () => {
-              await Promise.all(rows.map((r) => retryDeadLetter(r.key)));
-              await triggerFlush(queryClient);
-            },
-          },
-        ],
-      );
+      router.push('/sync' as Href);
       return;
     }
     await triggerFlush(queryClient);
