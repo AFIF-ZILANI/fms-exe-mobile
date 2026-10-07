@@ -5,7 +5,7 @@
 > (identity card, at-a-glance tiles, contact / employment / personal / emergency contact, settings with the
 > light/dark choice, log out). The sections below are kept for history only.
 
-**Route:** `src/app/profile.tsx` · **Tier:** Both · **Tab bar:** hidden
+**Route:** `src/app/(tabs)/me/index.tsx` (the Me tab; was `src/app/profile.tsx`) · **Tier:** Both · **Tab bar:** hidden
 
 ---
 

@@ -4,6 +4,9 @@
 
 ---
 
+> **Updated 2026-10-07:** Home no longer has a settings gear, a Manager action grid, or a "My performance" button. Manager tools live in the Log launcher's Manage group (see docs/navigation-redesign-design.md). Rows below that mention them are historical.
+
+
 ## Purpose
 
 The screen a worker opens by reflex. Answers "what do I owe today, did my last
@@ -96,7 +99,7 @@ And below the houses card:
 | --- | --- |
 | Greeting | `caption` `muted`. "Good morning" < 12:00, "Good afternoon" < 17:00, else "Good evening". |
 | Name | `h1` `ink`, `employee.name`. Sits on the line below the greeting; the two together fit the 56dp with `↕0` between. |
-| Trailing | `44×44` `settings` icon → `/profile`. |
+| Trailing | None. (The settings gear moved to the Me tab on 2026-10-07; Profile is the Me tab and Settings opens from its gear. See docs/navigation-redesign-design.md.) |
 
 No back button — this is a tab root.
 
@@ -177,7 +180,7 @@ No back button — this is a tab root.
 
 | Target | Size | Action |
 | --- | --- | --- |
-| Settings | `44×44` | → `/profile` |
+| Settings | — | Removed from Home 2026-10-07; now the gear on the Me tab header → `/settings` |
 | Points stat card | full card | → `/me/performance` |
 | Task row (pending, routable type) | `64h` | → the mapped log form, with `house_id`, `batch_id`, `task_id` prefilled |
 | Task row (pending, no type) | `64h` | → `/tasks/[id]` |

@@ -1,5 +1,8 @@
 # 00 · App Shell
 
+> **Superseded in part 2026-10-07:** the tab set (`Home · Houses · [+] · Stock · Me`, identical for every role, Team no longer a tab) and the grouped launcher are now described in [`../navigation-redesign-design.md`](../navigation-redesign-design.md).
+
+
 The chrome every screen inherits: header, tab bar, log sheet, sync banner,
 toasts and dialogs. Specified once here so no blueprint restates it.
 
