@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, View, type ViewProps } from 'react-native';
+import { ScrollView, StyleSheet, View, type ScrollViewProps, type ViewProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Spacing } from '@/constants/theme';
@@ -14,6 +14,8 @@ type ScreenProps = ViewProps & {
   /** Screens that render their own <Header> opt out of the top safe-area
    *  inset, since the header takes it instead. */
   edges?: ('top' | 'bottom')[];
+  /** Pull-to-refresh for a scrolling screen (a <RefreshControl/>). Ignored when `scroll` is false. */
+  refreshControl?: ScrollViewProps['refreshControl'];
 };
 
 /** Ground fill, 20dp horizontal padding — the shell every screen is built on.
@@ -24,6 +26,7 @@ export function Screen({
   scroll = true,
   bottomInset = 0,
   edges = ['top'],
+  refreshControl,
   ...rest
 }: ScreenProps) {
   const theme = useTheme();
@@ -37,6 +40,7 @@ export function Screen({
           scroll ? [styles.bodyScroll, { paddingBottom: bottomInset + Spacing.xxl }, style] : undefined
         }
         showsVerticalScrollIndicator={false}
+        {...(scroll ? { refreshControl } : {})}
         {...rest}
       >
         {children}
