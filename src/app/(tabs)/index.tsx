@@ -1,18 +1,17 @@
 import { useMemo } from 'react';
-import { Pressable, View, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { router, type Href } from 'expo-router';
 
 import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
 import { Card, StatCard } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SyncBanner } from '@/components/ui/sync-banner';
 import { LedgerRow } from '@/components/ui/ledger-row';
 import { DayCycleBar } from '@/components/ui/day-cycle-bar';
 import { StatusPill } from '@/components/ui/status-pill';
 import { AppText } from '@/components/ui/text';
-import { Icon, IconTile, type IconName } from '@/components/ui/icon';
+import { IconTile } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useSession } from '@/lib/session';
@@ -24,14 +23,6 @@ import { dayOfCycle, expectedCycleDays, houseToken, initials, monthRange } from 
 import type { BatchHouseBalance, Employee, TaskAssignment } from '@/lib/types';
 
 type ScoreEntry = { id: string; points: number; employee_id: string };
-
-const MANAGER_ACTIONS: { label: string; path: string; icon: IconName }[] = [
-  { label: 'Move birds', path: '/transfer', icon: 'shuffle' },
-  { label: 'Feed plan', path: '/feeding-program', icon: 'calendar' },
-  { label: 'Link items', path: '/link', icon: 'maximize' },
-  { label: 'Report discrepancy', path: '/adjust', icon: 'clipboard' },
-  { label: 'Flag stock', path: '/flag-stock', icon: 'flag' },
-];
 
 function greeting(now = new Date()): string {
   const h = now.getHours();
@@ -118,11 +109,7 @@ export default function DashboardScreen() {
 
   return (
     <Screen>
-      <Header
-        eyebrow={greeting()}
-        title={employee.profile.name}
-        action={{ icon: 'settings', label: 'Profile', onPress: () => router.push('/profile') }}
-      />
+      <Header eyebrow={greeting()} title={employee.profile.name} />
 
       <SyncBanner />
 
@@ -246,40 +233,6 @@ export default function DashboardScreen() {
           ))
         )}
       </Card>
-
-      {isManager && (
-        <Card eyebrow="Manager" style={styles.card}>
-          <View style={styles.grid}>
-            {MANAGER_ACTIONS.map((action) => (
-              <Pressable
-                key={action.path}
-                onPress={() => router.push(action.path as Href)}
-                accessibilityRole="button"
-                accessibilityLabel={action.label}
-                style={({ pressed }) => [
-                  styles.gridItem,
-                  { backgroundColor: theme.surfaceAlt },
-                  pressed && { transform: [{ scale: 0.97 }] },
-                ]}
-              >
-                <Icon name={action.icon} size={20} color="primary" />
-                <AppText variant="label" style={styles.flex}>
-                  {action.label}
-                </AppText>
-              </Pressable>
-            ))}
-          </View>
-        </Card>
-      )}
-
-      <View style={styles.footerNote}>
-        <Button
-          variant="ghost"
-          label="My performance"
-          icon="bar-chart-2"
-          onPress={() => router.push('/me/performance')}
-        />
-      </View>
     </Screen>
   );
 }
@@ -296,16 +249,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
-  gridItem: {
-    // Two per row inside the card's 16dp padding, with a 12dp gap.
-    width: '47.5%',
-    minHeight: 64,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderRadius: Radius.control,
-  },
-  footerNote: { alignItems: 'center', marginTop: Spacing.sm },
 });
