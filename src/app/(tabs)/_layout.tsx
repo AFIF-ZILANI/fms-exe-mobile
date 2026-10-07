@@ -3,20 +3,13 @@ import { Tabs } from 'expo-router';
 
 import { LogSheet } from '@/components/log-sheet';
 import { TabBar } from '@/components/ui/tab-bar';
-import { useSession } from '@/lib/session';
-import { can } from '@/lib/permissions';
 
 /**
- * The bottom tab bar — docs/layout/00-app-shell.md. Four slots plus a raised
- * centre button that opens the log sheet rather than navigating.
- *
- * Team is removed for a Worker (`href: null`), never rendered disabled: a
- * Worker seeing a greyed "Team" learns the app is withholding something.
- * <TabBar> holds the column open so the centre button doesn't shift.
+ * The bottom tab bar — docs/navigation-redesign-design.md. Four tabs plus the raised centre
+ * button, identical for every role. Team is a route inside the tabs but never a tab: it is
+ * reached from Home's Team card and the launcher's Manage group (and guards itself).
  */
 export default function TabsLayout() {
-  const { employee } = useSession();
-  const isManager = can(employee?.role, 'assign_task');
   const [logOpen, setLogOpen] = useState(false);
 
   return (
@@ -27,8 +20,9 @@ export default function TabsLayout() {
       >
         <Tabs.Screen name="index" />
         <Tabs.Screen name="houses" />
-        <Tabs.Screen name="team" options={{ href: isManager ? undefined : null }} />
+        <Tabs.Screen name="stock" />
         <Tabs.Screen name="me" />
+        <Tabs.Screen name="team" options={{ href: null }} />
       </Tabs>
 
       <LogSheet open={logOpen} onClose={() => setLogOpen(false)} />
