@@ -7,29 +7,25 @@ import { Icon, type IconName } from '@/components/ui/icon';
 import { Radius, Size, Spacing, elevation } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
-import { useSession } from '@/lib/session';
-import { can, type Capability } from '@/lib/permissions';
 
 /**
- * The four slots, in fixed order. A slot the current role can't reach (Team,
- * for a Worker) renders as an empty column rather than collapsing — so the
- * centre button never shifts between roles and muscle memory survives a
- * promotion. docs/layout/00-app-shell.md.
- *
- * The capability is checked here rather than trusted from the navigator:
- * `href: null` hides a tab from expo-router's own bar but leaves the route in
- * navigation state, so a custom bar still sees it.
+ * The four slots, in fixed order, identical for every role — docs/navigation-redesign-design.md.
+ * The raised centre button opens the Log launcher rather than navigating. What differs by role
+ * is only what the launcher and Home offer, never the bar.
  */
-const SLOTS: { route: string; label: string; icon: IconName; capability?: Capability }[] = [
+const SLOTS: { route: string; label: string; icon: IconName }[] = [
   { route: 'index', label: 'Home', icon: 'home' },
   { route: 'houses', label: 'Houses', icon: 'grid' },
-  { route: 'team', label: 'Team', icon: 'users', capability: 'assign_task' },
+  { route: 'stock', label: 'Stock', icon: 'archive' },
   { route: 'me', label: 'Me', icon: 'user' },
 ];
 
+/** Routes that live under a tab but are not a tab themselves, and which tab should look active
+ *  while you are on them. Team is reached from Home's card and the launcher. */
+const ACTIVE_ALIAS: Record<string, string> = { team: 'index' };
+
 type TabBarProps = BottomTabBarProps & {
-  /** Opens the log sheet. The centre button is not a route — it has no screen
-   *  and no back state. docs/layout/00-app-shell.md. */
+  /** Opens the log launcher. The centre button is not a route. */
   onLogPress: () => void;
 };
 
@@ -37,26 +33,24 @@ export function TabBar({ state, navigation, onLogPress }: TabBarProps) {
   const theme = useTheme();
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const insets = useSafeAreaInsets();
-  const { employee } = useSession();
+
+  const current = state.routes[state.index]?.name;
+  const activeRoute = (current && ACTIVE_ALIAS[current]) ?? current;
 
   const left = SLOTS.slice(0, 2);
   const right = SLOTS.slice(2);
 
   const renderSlot = (slot: (typeof SLOTS)[number]) => {
-    const allowed = !slot.capability || can(employee?.role, slot.capability);
-    const index = allowed ? state.routes.findIndex((r) => r.name === slot.route) : -1;
-
-    // Out of reach for this role, or not registered — hold the column open.
+    const index = state.routes.findIndex((r) => r.name === slot.route);
     if (index === -1) return <View key={slot.route} style={styles.slot} />;
 
-    const focused = state.index === index;
+    const focused = activeRoute === slot.route;
     const route = state.routes[index];
 
     const onPress = () => {
       const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
       if (event.defaultPrevented) return;
-      // Navigating to an already-focused tab pops its stack to the root, which
-      // is the "second press goes home" behaviour the tab router gives us free.
+      // Pressing the focused tab pops its stack to the root; from a hidden tab (Team) it goes home.
       navigation.navigate(route.name as never);
     };
 
@@ -69,12 +63,7 @@ export function TabBar({ state, navigation, onLogPress }: TabBarProps) {
         accessibilityLabel={slot.label}
         style={({ pressed }) => [styles.slot, { transform: [{ scale: pressed ? 0.97 : 1 }] }]}
       >
-        <View
-          style={[
-            styles.pill,
-            focused && { backgroundColor: theme.primarySoft },
-          ]}
-        >
+        <View style={[styles.pill, focused && { backgroundColor: theme.primarySoft }]}>
           <Icon name={slot.icon} size={24} color={focused ? 'primary' : 'muted'} />
         </View>
         <AppText variant="label" color={focused ? 'primary' : 'muted'}>
@@ -102,7 +91,7 @@ export function TabBar({ state, navigation, onLogPress }: TabBarProps) {
         <Pressable
           onPress={onLogPress}
           accessibilityRole="button"
-          accessibilityLabel="Log an entry"
+          accessibilityLabel="Quick actions"
           style={({ pressed }) => [
             styles.centre,
             { backgroundColor: pressed ? theme.primaryPressed : theme.primary },

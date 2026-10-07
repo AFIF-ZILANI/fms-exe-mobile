@@ -1,6 +1,6 @@
 # Navigation redesign
 
-Status: **Approved** (user, 2026-10-07: chose the bar layout, the feature set and the Settings location, then said "go ahead"). Build in four phases; each phase has its own plan and branch.
+Status: **Phase 1 built** (2026-10-07): new bar, grouped launcher, Stock tab v1, Me = Profile, Settings, Home cleanup. Phases 2–4 (Sync center, My tasks + Alerts, Stock polish) pending. Known oddity: Back from Team goes to Home even when Team was opened from another tab (Tabs back behaviour).
 
 ## Why
 

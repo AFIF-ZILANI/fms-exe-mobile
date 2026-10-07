@@ -23,6 +23,7 @@ const STATUS_MAP: Record<string, StatusEntry> = {
   CONSUMED: { tone: 'neutral', label: 'Consumed' },
   DISPOSED: { tone: 'neutral', label: 'Disposed' },
   CURRENT: { tone: 'success', label: 'Current' },
+  LOW: { tone: 'warning', label: 'Low' },
 };
 
 /** A dot plus a word — never the dot alone. docs/design.md §10. */

@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
-import { router, type Href } from 'expo-router';
-import Constants from 'expo-constants';
+import { StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
 
 import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
@@ -9,13 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Card, StatCard } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Icon, IconTile } from '@/components/ui/icon';
-import { SegmentedToggle } from '@/components/ui/segmented-toggle';
 import { AppText } from '@/components/ui/text';
 import { InfoCard, InfoRow, NavRow, ProfileHeader, openLink } from '@/components/profile-parts';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useGetData, type Paginated } from '@/lib/api';
-import { useAppearance, type AppearancePref } from '@/lib/appearance';
 import { monthRange } from '@/lib/farm';
 import { formatSignedPoints } from '@/lib/format';
 import {
@@ -32,24 +29,15 @@ import {
   statusLabel,
 } from '@/lib/profile-format';
 import { useSession } from '@/lib/session';
-import { useOutboxSummary } from '@/lib/use-outbox';
+import { useLogout } from '@/lib/use-logout';
 import type { Employee } from '@/lib/types';
 
 type ScoreEntry = { id: string; points: number; employee_id: string };
 
-const APPEARANCE_OPTIONS = [
-  { value: 'system', label: 'Match phone' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-] as const satisfies readonly { value: AppearancePref; label: string }[];
-
-/** docs/profile-redesign-design.md — who you are at the farm, your details as the farm holds them,
- *  who to call in an emergency, and the app's settings. Read-only. */
+/** docs/profile-redesign-design.md — the Me tab: who you are at the farm. App settings live in Settings (gear). */
 export default function ProfileScreen() {
   const theme = useTheme();
-  const { employee: saved, logout, signedIn, refresh } = useSession();
-  const { data: outbox } = useOutboxSummary();
-  const [appearance, setAppearance] = useAppearance();
+  const { employee: saved, signedIn, refresh } = useSession();
   // Read once: calling new Date() during render is impure (the React Compiler rejects it).
   const [now] = useState(() => new Date());
   const { from, to } = useMemo(() => monthRange(now), [now]);
@@ -70,18 +58,7 @@ export default function ProfileScreen() {
   const points = (scores?.results ?? []).reduce((sum, s) => sum + s.points, 0);
   const pointsReady = !!scores;
 
-  const onLogout = () => {
-    const pending = (outbox?.pendingCount ?? 0) + (outbox?.deadLetterCount ?? 0);
-    // A queued write belongs to whoever is signed in when it uploads, so nothing may be left behind.
-    if (pending > 0) {
-      Alert.alert(
-        'Sync first',
-        `${pending} record${pending === 1 ? '' : 's'} on this phone haven't uploaded yet. Connect to the network and let them sync, then log out.`,
-      );
-      return;
-    }
-    void logout();
-  };
+  const onLogout = useLogout();
 
   // After logout the session clears before the route unmounts; render nothing rather than flash.
   if (!signedIn) return null;
@@ -89,7 +66,10 @@ export default function ProfileScreen() {
   if (!employee) {
     return (
       <Screen>
-        <Header title="Profile" leading="back" />
+        <Header
+          title="Me"
+          action={{ icon: 'settings', label: 'Settings', onPress: () => router.push('/settings') }}
+        />
         <EmptyState
           icon="user"
           tint="primarySoft"
@@ -114,7 +94,10 @@ export default function ProfileScreen() {
 
   return (
     <Screen>
-      <Header title="Profile" leading="back" />
+      <Header
+        title="Me"
+        action={{ icon: 'settings', label: 'Settings', onPress: () => router.push('/settings') }}
+      />
 
       <ProfileHeader employee={employee} />
 
@@ -205,27 +188,9 @@ export default function ProfileScreen() {
         Something wrong? Ask your manager. Only they can change these details.
       </AppText>
 
-      <Card rows eyebrow="Settings" style={styles.card}>
-        <View style={styles.appearance}>
-          <AppText variant="label" color="muted">
-            Appearance
-          </AppText>
-          <SegmentedToggle
-            height={48}
-            options={APPEARANCE_OPTIONS}
-            value={appearance}
-            onChange={setAppearance}
-          />
-        </View>
-        <View style={[styles.rule, { backgroundColor: theme.line }]} />
-        <NavRow label="My performance" onPress={() => router.push('/me/performance')} />
-        <NavRow label="Change password" onPress={() => router.push('/change-password' as Href)} />
-        <InfoRow label="App version" value={Constants.expoConfig?.version} last />
+      <Card rows style={styles.card}>
+        <NavRow label="My performance" onPress={() => router.push('/me/performance')} last />
       </Card>
-
-      <View style={styles.logout}>
-        <Button variant="destructive" label="Log out" onPress={onLogout} block />
-      </View>
     </Screen>
   );
 }
@@ -234,8 +199,6 @@ const styles = StyleSheet.create({
   stats: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.md },
   card: { marginTop: Spacing.md },
   note: { marginTop: Spacing.md, paddingHorizontal: Spacing.xs },
-  appearance: { gap: Spacing.sm, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md },
-  rule: { height: 1, marginLeft: Spacing.lg },
   warning: {
     flexDirection: 'row',
     alignItems: 'center',

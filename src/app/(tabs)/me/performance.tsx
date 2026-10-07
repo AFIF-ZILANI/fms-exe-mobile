@@ -61,7 +61,7 @@ export default function PerformanceScreen() {
 
   return (
     <Screen>
-      <Header title="My performance" />
+      <Header title="My performance" leading="back" />
 
       {/* Month stepper. Forward is disabled at the current month — there is no
           future payroll to look at. */}

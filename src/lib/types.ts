@@ -77,6 +77,8 @@ export type Item = {
   unit: string;
   is_unit_tracked: boolean;
   is_active: boolean;
+  /** Decimal as a string; null/absent = no reorder level set. */
+  reorder_level?: string | null;
 };
 
 export type TaskType = {
