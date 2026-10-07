@@ -453,7 +453,7 @@ lives in `docs/layout/`.
 | `<DayCycleBar>` | §6.3. |
 | `<ScoreChip>` | Signed points. `success` / `critical` only — never a third state. |
 | `<StatusPill>` | Task, batch and stock statuses → `neutral`/`success`/`warning`/`critical` + a word. Never colour alone. |
-| `<SyncBanner>` | Queue depth, last-synced time, dead-letter count. `tintAmber`. Tappable to retry. |
+| `<SyncBanner>` | Queue depth, last-synced time, dead-letter count. `tintAmber`. Waiting: tap to sync now. Failed: tap to open the Sync center. |
 | `<SubmitBar>` | Sticky bottom, `sheet` elevation. Carries the value it will write (§8). |
 | `<Button>` | The five variants in §4.4. |
 | `<NumberField>` | 64dp, `decimal-pad`, mono input, unit suffix, optional stepper. |

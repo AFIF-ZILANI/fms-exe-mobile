@@ -131,8 +131,9 @@ plausible-looking one.
 A 4xx that isn't the idempotency case is a bad request — a nonexistent
 `house_id`, a missing required `reason` — and retrying it a thousand times
 changes nothing. Store the server's RFC 7807 `detail`, stop retrying, and
-surface it: the `<SyncBanner>` shows "1 entry needs attention" in `warning`, and
-the row is viewable, editable-and-requeueable, or discardable.
+surface it: the `<SyncBanner>` shows "N didn't send" and opens the **Sync center** (`/sync`), where each
+failed record is shown in plain words with its reason and can be **retried** or **discarded**
+(editing a failed record is not offered). See "Sync center" below.
 
 A silent dead letter is worse than a failed write, because the worker believes
 the record exists.
@@ -142,7 +143,7 @@ the record exists.
 - After every enqueue (optimistic — usually online).
 - On app foreground.
 - On `expo-network` reporting a transition to connected.
-- Manual "Sync now" from the `<SyncBanner>`.
+- Manual "Sync now" from Settings or the Sync center (tapping the banner while records are waiting also flushes).
 
 No polling timer. Nothing to poll for — the queue only changes when the user
 writes or the network returns, and both are events.
@@ -234,3 +235,23 @@ outbox exists at all.
    syncs → it still lands attributed to the first.
 8. **Manager offline.** Assign a task with no signal → queues and syncs like any
    log write.
+
+
+## Sync center (2026-10-07)
+
+- **Screen:** `/sync`, reached from Settings → Sync center or by tapping the banner's failed state. It lists
+  *Couldn't send* (failed records: plain title and detail, the reason in plain words, **Retry** and
+  **Discard**) and *Waiting to send* (pending records), with the last-synced time and Sync now.
+- **Words, not endpoints:** `lib/outbox-describe.ts` turns a queued row into a title and detail and a server
+  error into a plain reason; nothing on screen shows an endpoint or an HTTP code.
+- **Privacy:** the queued bodies are read into component state (`useOutboxRows`), never into the persisted
+  query cache.
+- **Logout:** records still *waiting to send* block logout ("Sync first"): they would upload under whoever
+  signs in next. *Failed* records ask: **Review**, **Log out and discard** (deletes only failed rows, after
+  re-reading the queue so a stale count can't hide a pending record), or Cancel.
+- **Known gap (not fixed here):** the queue has no owner column. After a **forced** sign-out (expired or
+  deactivated session, or a password changed elsewhere) the next person to sign in on the same phone can
+  have the previous person's pending records sent under their own login, and can see and retry the failed
+  ones. Voluntary logout through Settings is covered; the 401 path and the Change password screen's
+  Log out are not. The fix is to store the actor's employee id on each row at enqueue time and have
+  `flush` and `useOutboxRows` ignore other people's rows.
