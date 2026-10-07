@@ -13,11 +13,13 @@ import { PickerField } from '@/components/ui/picker-field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AppText } from '@/components/ui/text';
 import { Icon, IconTile } from '@/components/ui/icon';
-import { QrScanner, type ScanRow } from '@/components/ui/qr-scanner';
+import { QrScanner } from '@/components/ui/qr-scanner';
 import { FontFamily, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { ApiError, apiFetch, useGetData, type Paginated } from '@/lib/api';
-import { bindErrorMessage, isRetryable, type BindResult } from '@/lib/scan';
+import { ScanModeField, ScanResults } from '@/components/scan-parts';
+import { apiFetch, useGetData, type Paginated } from '@/lib/api';
+import type { Mode } from '@/lib/scan-actions';
+import { useScanSession } from '@/lib/use-scan-session';
 import type { PurchaseItem, StockUnit } from '@/lib/types';
 
 const MIN_QUERY = 3;
@@ -49,7 +51,7 @@ export default function LinkItemsScreen() {
 
   const [lot, setLot] = useState<PurchaseItem | null>(null);
   const [scanning, setScanning] = useState(false);
-  const [rows, setRows] = useState<ScanRow[]>([]);
+  const [mode, setMode] = useState<Mode>('auto');
   const [manual, setManual] = useState(false);
   const [query, setQuery] = useState('');
 
@@ -72,42 +74,25 @@ export default function LinkItemsScreen() {
   );
 
   const offline = network.isConnected === false;
-  const linked = rows.filter((r) => r.state === 'ok').length;
 
-  const bind = async (id: string): Promise<BindResult> => {
-    if (!lot) return { ok: false, message: 'Pick a lot first.', retryable: false };
-    try {
-      await apiFetch(`/stock-units/${id}/bind`, {
+  const session = useScanSession({
+    plan: { action: 'bind', purchaseItemId: lot?.id },
+    mode,
+    confirmLabel: 'Link',
+    commit: async (unit) => {
+      await apiFetch(`/stock-units/${unit.id}/bind`, {
         method: 'POST',
-        body: JSON.stringify({
-          purchase_item_id: lot.id,
-        }),
+        body: JSON.stringify({ purchase_item_id: lot?.id }),
       });
       // Anything showing unit counts or unassigned units is now stale.
       void queryClient.invalidateQueries({ queryKey: ['stock-units'] });
-      return { ok: true };
-    } catch (err) {
-      if (err instanceof ApiError) {
-        return {
-          ok: false,
-          message: bindErrorMessage(err.status, err.message),
-          retryable: isRetryable(err.status),
-        };
-      }
-      return { ok: false, message: 'Something went wrong.', retryable: true };
-    }
-  };
+    },
+  });
+
+  const linked = session.rows.filter((r) => r.state === 'ok').length;
 
   const bindManually = async (id: string) => {
-    const result = await bind(id);
-    const label = `…${id.slice(-7)}`;
-    setRows((prev) => [
-      result.ok
-        ? { id, label, state: 'ok' as const }
-        : { id, label, state: 'error' as const, message: result.message },
-      ...prev,
-    ]);
-    if (result.ok) {
+    if (await session.runManual(id)) {
       setQuery('');
       setManual(false);
     }
@@ -128,7 +113,7 @@ export default function LinkItemsScreen() {
           setLot(next);
           // A new lot is a new session — carrying counts across would
           // misreport what went into which delivery.
-          setRows([]);
+          session.reset();
         }}
         loading={lotsLoading}
         emptyLabel="No QR-tracked purchase lots. Lots are recorded in the admin dashboard."
@@ -178,6 +163,7 @@ export default function LinkItemsScreen() {
             </View>
           ) : (
             <View style={styles.actions}>
+              <ScanModeField value={mode} onChange={setMode} />
               <Button label="Scan codes" icon="camera" onPress={() => setScanning(true)} />
               <Button
                 variant="ghost"
@@ -237,30 +223,7 @@ export default function LinkItemsScreen() {
             </Card>
           )}
 
-          {rows.length > 0 && (
-            <Card rows eyebrow="Scanned" note={`${linked} linked`} style={styles.card}>
-              {rows.map((row, i) => (
-                <LedgerRow
-                  key={`${row.id}-${i}`}
-                  gutterNode={
-                    <Icon
-                      name={row.state === 'ok' ? 'check-circle' : 'alert-circle'}
-                      size={20}
-                      color={row.state === 'ok' ? 'success' : 'critical'}
-                    />
-                  }
-                  last={i === rows.length - 1}
-                >
-                  <AppText variant="data">{row.label}</AppText>
-                  {row.message ? (
-                    <AppText variant="caption" color="critical">
-                      {row.message}
-                    </AppText>
-                  ) : null}
-                </LedgerRow>
-              ))}
-            </Card>
-          )}
+          <ScanResults rows={session.rows} done="linked" />
         </>
       ) : (
         <View style={styles.card}>
@@ -277,9 +240,10 @@ export default function LinkItemsScreen() {
         open={scanning}
         onClose={() => setScanning(false)}
         context={lot?.item.name ?? ''}
-        onScan={bind}
-        rows={rows}
-        onScanned={(row) => setRows((prev) => [row, ...prev])}
+        onScan={session.onScan}
+        rows={session.rows}
+        onScanned={session.onScanned}
+        pending={session.pending}
         offline={offline}
       />
     </Screen>
