@@ -103,3 +103,25 @@ export function bindErrorMessage(status: number, detail: string | undefined): st
   if (status === 0) return "Couldn't reach the server.";
   return detail?.trim() || `Failed with ${status}.`;
 }
+
+/**
+ * What a scan attempt resolved to, as the scanner needs to see it. `held` means
+ * "waiting for the operator's Confirm/Cancel": no row, no buzz, and the code is
+ * released so a cancelled one can be rescanned at once.
+ */
+export type ScanResult =
+  | { ok: true; label?: string }
+  | { ok: false; message: string; retryable: boolean; label?: string }
+  | { held: true };
+
+/** A scan that finished one way or the other (not held). */
+export type Settled = Exclude<ScanResult, { held: true }>;
+
+/** Wording for any scan action's failure. The server's own sentence is kept where
+ *  it is already plain (already at that house, not a valid unit for using this item). */
+export function scanErrorMessage(status: number, detail: string | undefined): string {
+  if (status === 403) return "You don't have permission to do this.";
+  if (status === 404) return 'Unknown code — not a ZeroD stock unit.';
+  if (status === 0) return "Couldn't reach the server.";
+  return detail?.trim() || `Failed with ${status}.`;
+}

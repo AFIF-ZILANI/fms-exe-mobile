@@ -9,7 +9,7 @@ import { Icon } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { classifyScan, markSent, newScanState, releaseScan } from '@/lib/scan';
-import type { BindResult } from '@/lib/scan';
+import type { ScanResult } from '@/lib/scan';
 import { buzz } from '@/lib/haptics';
 
 export type ScanRow = {
@@ -20,6 +20,38 @@ export type ScanRow = {
   message?: string;
 };
 
+/** Everything the scanner says that depends on what the scan is *for*. Defaults are Bind's wording. */
+export type ScanLabels = {
+  /** "3 linked" */
+  done: string;
+  /** Flash after a success: "Linked …a3f9" */
+  flashOk: string;
+  offlineTitle: string;
+  offlineBody: string;
+  /** Shown while the list is empty. */
+  hint: string;
+};
+
+export const DEFAULT_LABELS: ScanLabels = {
+  done: 'linked',
+  flashOk: 'Linked',
+  offlineTitle: 'Linking needs a connection.',
+  offlineBody:
+    "Each code is checked against the server as you scan, so this screen can't work offline. Everything else in the app can.",
+  hint: 'Point the camera at a code. The camera stays open — scan the whole pallet without stopping.',
+};
+
+/** A scanned unit waiting for the operator's Confirm or Cancel (manual mode). */
+export type PendingCard = {
+  title: string;
+  subtitle?: string;
+  details: { label: string; value: string }[];
+  confirmLabel: string;
+  busy?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+};
+
 type QrScannerProps = {
   open: boolean;
   onClose: () => void;
@@ -27,7 +59,11 @@ type QrScannerProps = {
   context: string;
   /** Performs the bind. Resolves to ok, or a message plus whether rescanning
    *  the same label could still work. */
-  onScan: (id: string) => Promise<BindResult>;
+  onScan: (id: string) => Promise<ScanResult>;
+  /** Wording for this action. Defaults to Bind's. */
+  labels?: ScanLabels;
+  /** While set, scanning is paused and the card replaces the result list. */
+  pending?: PendingCard | null;
   /** Rows for this session, newest first. Owned by the parent. */
   rows: ScanRow[];
   /** Emits one row per completed attempt; the parent prepends it. Passing a
@@ -51,6 +87,8 @@ export function QrScanner({
   rows,
   onScanned,
   offline,
+  labels = DEFAULT_LABELS,
+  pending = null,
 }: QrScannerProps) {
   const theme = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
@@ -69,7 +107,7 @@ export function QrScanner({
 
   const handle = useCallback(
     async (payload: string) => {
-      if (offline || inFlight.current) return;
+      if (offline || pending || inFlight.current) return;
 
       const outcome = classifyScan(session.current, payload, Date.now());
 
@@ -83,7 +121,7 @@ export function QrScanner({
       // No new row — the code is already in the list from when it worked.
       if (outcome.kind === 'duplicate') {
         buzz('warning');
-        show('warn', 'Already linked in this session');
+        show('warn', `Already ${labels.done} in this session`);
         return;
       }
 
@@ -98,7 +136,14 @@ export function QrScanner({
 
       try {
         const result = await onScan(outcome.id);
-        const label = `…${outcome.id.slice(-7)}`;
+
+        if ('held' in result) {
+          // Waiting on Confirm/Cancel. Release the code so a cancelled one can be rescanned.
+          releaseScan(session.current, outcome.id);
+          return;
+        }
+
+        const label = result.label ?? `…${outcome.id.slice(-7)}`;
 
         if (!result.ok) {
           // Released only when another attempt could plausibly work — a lost
@@ -113,13 +158,13 @@ export function QrScanner({
         }
 
         buzz('success');
-        show('ok', `Linked ${label}`);
+        show('ok', `${labels.flashOk} ${label}`);
         onScanned({ id: outcome.id, label, state: 'ok' });
       } finally {
         inFlight.current = false;
       }
     },
-    [offline, onScan, onScanned],
+    [offline, pending, labels, onScan, onScanned],
   );
 
   const linked = rows.filter((r) => r.state === 'ok').length;
@@ -142,7 +187,7 @@ export function QrScanner({
                 {context}
               </AppText>
               <AppText variant="caption" style={styles.onDarkMuted}>
-                {linked} linked
+                {linked} {labels.done}
               </AppText>
             </View>
           </View>
@@ -151,8 +196,8 @@ export function QrScanner({
             {offline ? (
               <Blocked
                 icon="wifi-off"
-                title="Linking needs a connection."
-                body="Each code is checked against the server as you scan, so this screen can't work offline. Everything else in the app can."
+                title={labels.offlineTitle}
+                body={labels.offlineBody}
               />
             ) : !permission ? (
               <Blocked icon="camera" title="Starting the camera…" />
@@ -206,36 +251,60 @@ export function QrScanner({
               </AppText>
             </View>
 
-            {rows.length === 0 ? (
-              <AppText variant="caption" color="muted">
-                Point the camera at a code. The camera stays open — scan the whole
-                pallet without stopping.
-              </AppText>
-            ) : (
-              <ScrollView style={styles.rows} keyboardShouldPersistTaps="handled">
-                {rows.map((row, i) => (
-                  <View key={`${row.id}-${i}`} style={styles.row}>
-                    <Icon
-                      name={row.state === 'ok' ? 'check-circle' : 'alert-circle'}
-                      size={16}
-                      color={row.state === 'ok' ? 'success' : 'critical'}
-                    />
-                    <AppText variant="data" color={row.state === 'ok' ? 'ink' : 'muted'}>
-                      {row.label}
+            {pending ? (
+              <View style={styles.pending}>
+                <AppText variant="h2">{pending.title}</AppText>
+                {pending.subtitle ? (
+                  <AppText variant="data" color="muted">
+                    {pending.subtitle}
+                  </AppText>
+                ) : null}
+                {pending.details.map((d) => (
+                  <View key={d.label} style={styles.detail}>
+                    <AppText variant="label" color="muted" style={styles.detailLabel}>
+                      {d.label}
                     </AppText>
-                    {row.message ? (
-                      <AppText variant="caption" color="critical" style={styles.flex} numberOfLines={1}>
-                        {row.message}
-                      </AppText>
-                    ) : null}
+                    <AppText variant="body" style={styles.flex}>
+                      {d.value}
+                    </AppText>
                   </View>
                 ))}
-              </ScrollView>
-            )}
+                <Button label={pending.confirmLabel} onPress={pending.onConfirm} loading={pending.busy} />
+                <Button variant="ghost" label="Cancel" onPress={pending.onCancel} disabled={pending.busy} block />
+              </View>
+            ) : (
+              <>
+                {rows.length === 0 ? (
+                  <AppText variant="caption" color="muted">
+                    {labels.hint}
+                  </AppText>
+                ) : (
+                  <ScrollView style={styles.rows} keyboardShouldPersistTaps="handled">
+                    {rows.map((row, i) => (
+                      <View key={`${row.id}-${i}`} style={styles.row}>
+                        <Icon
+                          name={row.state === 'ok' ? 'check-circle' : 'alert-circle'}
+                          size={16}
+                          color={row.state === 'ok' ? 'success' : 'critical'}
+                        />
+                        <AppText variant="data" color={row.state === 'ok' ? 'ink' : 'muted'}>
+                          {row.label}
+                        </AppText>
+                        {row.message ? (
+                          <AppText variant="caption" color="critical" style={styles.flex} numberOfLines={1}>
+                            {row.message}
+                          </AppText>
+                        ) : null}
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
 
-            <View style={styles.done}>
-              <Button label="Done" onPress={onClose} />
-            </View>
+                <View style={styles.done}>
+                  <Button label="Done" onPress={onClose} />
+                </View>
+              </>
+            )}
           </View>
         </SafeAreaView>
       </View>
@@ -335,10 +404,13 @@ const styles = StyleSheet.create({
     borderTopRightRadius: Radius.sheet,
     padding: Spacing.xl,
     gap: Spacing.md,
-    maxHeight: '42%',
+    maxHeight: '60%',
   },
   panelHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   rows: { maxHeight: 132 },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.xs },
   done: { marginTop: Spacing.xs },
+  pending: { gap: Spacing.sm },
+  detail: { flexDirection: 'row', gap: Spacing.sm },
+  detailLabel: { width: 72 },
 });

@@ -14,6 +14,7 @@ import {
   markSent,
   newScanState,
   releaseScan,
+  scanErrorMessage,
 } from './scan';
 
 const A = '4f8e11ef-1234-4abc-8def-0123456789ab';
@@ -130,5 +131,20 @@ assert.equal(
   '"Feed" isn\'t tracked by QR code -- use Move Stock instead',
   'a clear server message is passed through unchanged',
 );
+
+// --- scanErrorMessage: wording for any scan action ----------------------------
+assert.equal(scanErrorMessage(403, 'forbidden'), "You don't have permission to do this.");
+assert.equal(scanErrorMessage(404, 'not found'), 'Unknown code — not a ZeroD stock unit.');
+assert.equal(scanErrorMessage(0, undefined), "Couldn't reach the server.");
+assert.equal(
+  scanErrorMessage(409, 'Unit is already at that house'),
+  'Unit is already at that house',
+  "the server's own plain wording is kept",
+);
+assert.equal(
+  scanErrorMessage(400, '"BOTTLE" is not a valid unit for using this item'),
+  '"BOTTLE" is not a valid unit for using this item',
+);
+assert.equal(scanErrorMessage(500, undefined), 'Failed with 500.');
 
 console.log('scan.ts checks passed');
