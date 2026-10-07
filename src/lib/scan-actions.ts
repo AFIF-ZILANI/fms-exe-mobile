@@ -103,8 +103,9 @@ export function consumptionBody(
 
 /**
  * One idempotency key per unit until its write is confirmed, so a rescan after a lost
- * response replays the same key (the server then recognises the write) instead of
- * minting a second one and double-recording.
+ * response replays the same key instead of minting a second one. The server refuses a
+ * repeat with 409 (it does not report the replay as success), so the guarantee is
+ * "no double write", not "replay reported as success".
  */
 export function newKeyStore(gen: () => string) {
   const keys = new Map<string, string>();

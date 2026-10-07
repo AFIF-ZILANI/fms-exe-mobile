@@ -42,9 +42,10 @@ export default function AllocateScreen() {
     mode,
     confirmLabel: house ? `Move to ${house.name}` : 'Move',
     commit: async (unit, key) => {
+      if (!house) throw new Error('No house chosen');
       await apiFetch(`/stock-units/${unit.id}/relocate`, {
         method: 'POST',
-        body: JSON.stringify({ house_id: house?.id, idempotency_key: key }),
+        body: JSON.stringify({ house_id: house.id, idempotency_key: key }),
       });
       void queryClient.invalidateQueries({ queryKey: ['stock-units'] });
     },
@@ -96,8 +97,12 @@ export default function AllocateScreen() {
       <ScanResults rows={session.rows} done="moved" />
 
       <QrScanner
+        key={session.generation}
         open={scanning}
-        onClose={() => setScanning(false)}
+        onClose={() => {
+          session.close();
+          setScanning(false);
+        }}
         context={house ? `Into ${house.name}` : ''}
         onScan={session.onScan}
         rows={session.rows}

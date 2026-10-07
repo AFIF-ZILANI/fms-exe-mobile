@@ -9,7 +9,7 @@ import { Icon } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { classifyScan, markSent, newScanState, releaseScan } from '@/lib/scan';
-import type { ScanResult } from '@/lib/scan';
+import type { ScanResult, Settled } from '@/lib/scan';
 import { buzz } from '@/lib/haptics';
 
 export type ScanRow = {
@@ -48,7 +48,8 @@ export type PendingCard = {
   details: { label: string; value: string }[];
   confirmLabel: string;
   busy?: boolean;
-  onConfirm: () => void;
+  /** Resolves like an auto scan; the scanner records the outcome (row, buzz, flash). */
+  onConfirm: () => Promise<Settled>;
   onCancel: () => void;
 };
 
@@ -99,10 +100,65 @@ export function QrScanner({
   // over from the last render.
   const session = useRef(newScanState());
   const inFlight = useRef(false);
+  // The code behind the card, and a guard so a fast double-tap on Confirm sends one write.
+  const heldId = useRef<string | null>(null);
+  const confirming = useRef(false);
 
-  const show = (state: 'ok' | 'warn' | 'error', text: string) => {
+  const show = useCallback((state: 'ok' | 'warn' | 'error', text: string) => {
     setFlash({ state, text });
     setTimeout(() => setFlash(null), 1400);
+  }, []);
+
+  // One place for what an attempt looked like, whether it was auto or confirmed by hand.
+  const settle = useCallback(
+    (id: string, result: Settled) => {
+      const label = result.label ?? `…${id.slice(-7)}`;
+
+      if (!result.ok) {
+        // The hook's "already done" answer is a nudge, not a failure: no row.
+        if (result.duplicate) {
+          buzz('warning');
+          show('warn', `Already ${labels.done} in this session`);
+          return;
+        }
+        // Released only when another attempt could plausibly work — a lost
+        // connection, say. A settled rejection (already bound, unknown code)
+        // stays marked, so the label can sit in frame without re-POSTing and
+        // re-buzzing every cooldown.
+        if (result.retryable) releaseScan(session.current, id);
+        buzz('error');
+        show('error', result.message);
+        onScanned({ id, label, state: 'error', message: result.message });
+        return;
+      }
+
+      // Still in frame after Confirm: keep it quiet until the normal cooldown.
+      markSent(session.current, id);
+      session.current.lastSeenAt.set(id, Date.now());
+      buzz('success');
+      show('ok', `${labels.flashOk} ${label}`);
+      onScanned({ id, label, state: 'ok' });
+    },
+    [labels, onScanned, show],
+  );
+
+  const confirm = async (card: PendingCard) => {
+    const id = heldId.current;
+    if (confirming.current || !id) return;
+    confirming.current = true;
+    try {
+      settle(id, await card.onConfirm());
+    } finally {
+      confirming.current = false;
+      heldId.current = null;
+    }
+  };
+
+  const cancel = (card: PendingCard) => {
+    // Cooling down, not seen: rescannable later, but not instantly with the bottle still in frame.
+    if (heldId.current) session.current.lastSeenAt.set(heldId.current, Date.now());
+    heldId.current = null;
+    card.onCancel();
   };
 
   const handle = useCallback(
@@ -139,32 +195,17 @@ export function QrScanner({
 
         if ('held' in result) {
           // Waiting on Confirm/Cancel. Release the code so a cancelled one can be rescanned.
+          heldId.current = outcome.id;
           releaseScan(session.current, outcome.id);
           return;
         }
 
-        const label = result.label ?? `…${outcome.id.slice(-7)}`;
-
-        if (!result.ok) {
-          // Released only when another attempt could plausibly work — a lost
-          // connection, say. A settled rejection (already bound, unknown code)
-          // stays marked, so the label can sit in frame without re-POSTing and
-          // re-buzzing every cooldown.
-          if (result.retryable) releaseScan(session.current, outcome.id);
-          buzz('error');
-          show('error', result.message);
-          onScanned({ id: outcome.id, label, state: 'error', message: result.message });
-          return;
-        }
-
-        buzz('success');
-        show('ok', `${labels.flashOk} ${label}`);
-        onScanned({ id: outcome.id, label, state: 'ok' });
+        settle(outcome.id, result);
       } finally {
         inFlight.current = false;
       }
     },
-    [offline, pending, labels, onScan, onScanned],
+    [offline, pending, labels, onScan, settle, show],
   );
 
   const linked = rows.filter((r) => r.state === 'ok').length;
@@ -269,8 +310,8 @@ export function QrScanner({
                     </AppText>
                   </View>
                 ))}
-                <Button label={pending.confirmLabel} onPress={pending.onConfirm} loading={pending.busy} />
-                <Button variant="ghost" label="Cancel" onPress={pending.onCancel} disabled={pending.busy} block />
+                <Button label={pending.confirmLabel} onPress={() => void confirm(pending)} loading={pending.busy} />
+                <Button variant="ghost" label="Cancel" onPress={() => cancel(pending)} disabled={pending.busy} block />
               </View>
             ) : (
               <>

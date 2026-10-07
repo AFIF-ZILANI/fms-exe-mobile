@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
 import { Button } from '@/components/ui/button';
+import { AppText } from '@/components/ui/text';
 import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
 import { BatchResolver, useResolvedBatch } from '@/components/ui/batch-resolver';
 import { ItemPicker } from '@/components/ui/item-picker';
@@ -38,14 +39,15 @@ export default function ConsumeScreen() {
   const [mode, setMode] = useState<Mode>('manual');
   const [scanning, setScanning] = useState(false);
 
-  const { balance } = useResolvedBatch(house?.id);
+  const { balance, isLoading: batchLoading } = useResolvedBatch(house?.id);
 
   const session = useScanSession({
     plan: { action: 'consume', houseId: house?.id, itemId: item?.id, itemName: item?.name },
     mode,
     confirmLabel: 'Record as used',
+    treatReplayAsDone: true,
     commit: async (unit, key) => {
-      if (!house) return;
+      if (!house) throw new Error('No house chosen');
       await apiFetch('/consumptions', {
         method: 'POST',
         body: JSON.stringify(
@@ -76,6 +78,11 @@ export default function ConsumeScreen() {
           }}
         />
         <BatchResolver houseId={house?.id} />
+        {house && !batchLoading && !balance ? (
+          <AppText variant="caption" color="muted">
+            Will be saved without a batch.
+          </AppText>
+        ) : null}
         <ItemPicker
           unitTracked
           value={item}
@@ -102,15 +109,19 @@ export default function ConsumeScreen() {
         <OfflineNote what="Recording use" />
       ) : (
         <View style={styles.actions}>
-          <Button label="Scan codes" icon="camera" disabled={!house} onPress={() => setScanning(true)} />
+          <Button label="Scan codes" icon="camera" disabled={!house || batchLoading} onPress={() => setScanning(true)} />
         </View>
       )}
 
       <ScanResults rows={session.rows} done="used" />
 
       <QrScanner
+        key={session.generation}
         open={scanning}
-        onClose={() => setScanning(false)}
+        onClose={() => {
+          session.close();
+          setScanning(false);
+        }}
         context={house ? `Used in ${house.name}` : ''}
         onScan={session.onScan}
         rows={session.rows}

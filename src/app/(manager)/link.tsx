@@ -163,7 +163,9 @@ export default function LinkItemsScreen() {
             </View>
           ) : (
             <View style={styles.actions}>
-              <ScanModeField value={mode} onChange={setMode} />
+              <View style={styles.modeField}>
+                <ScanModeField value={mode} onChange={setMode} />
+              </View>
               <Button label="Scan codes" icon="camera" onPress={() => setScanning(true)} />
               <Button
                 variant="ghost"
@@ -237,8 +239,12 @@ export default function LinkItemsScreen() {
       )}
 
       <QrScanner
+        key={session.generation}
         open={scanning}
-        onClose={() => setScanning(false)}
+        onClose={() => {
+          session.close();
+          setScanning(false);
+        }}
         context={lot?.item.name ?? ''}
         onScan={session.onScan}
         rows={session.rows}
@@ -271,6 +277,7 @@ const styles = StyleSheet.create({
   detail: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, minHeight: 28 },
   detailLabel: { width: 88 },
   countRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  modeField: { marginBottom: Spacing.md },
   actions: { gap: Spacing.xs, marginTop: Spacing.md },
   offline: {
     flexDirection: 'row',

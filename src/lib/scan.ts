@@ -111,17 +111,19 @@ export function bindErrorMessage(status: number, detail: string | undefined): st
  */
 export type ScanResult =
   | { ok: true; label?: string }
-  | { ok: false; message: string; retryable: boolean; label?: string }
+  | { ok: false; message: string; retryable: boolean; label?: string; duplicate?: true }
   | { held: true };
 
 /** A scan that finished one way or the other (not held). */
 export type Settled = Exclude<ScanResult, { held: true }>;
 
 /** Wording for any scan action's failure. The server's own sentence is kept where
- *  it is already plain (already at that house, not a valid unit for using this item). */
+ *  it is already plain (already at that house); the conversion-setup sentence is rewritten. */
 export function scanErrorMessage(status: number, detail: string | undefined): string {
   if (status === 403) return "You don't have permission to do this.";
   if (status === 404) return 'Unknown code — not a ZeroD stock unit.';
   if (status === 0) return "Couldn't reach the server.";
+  const unit = detail?.match(/"([^"]+)" is not a valid unit for using this item/)?.[1];
+  if (unit) return `This item can't be used by the ${unit.toLowerCase()} yet. Ask a manager to set it up.`;
   return detail?.trim() || `Failed with ${status}.`;
 }

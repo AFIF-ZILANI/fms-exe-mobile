@@ -142,8 +142,12 @@ assert.equal(
   "the server's own plain wording is kept",
 );
 assert.equal(
-  scanErrorMessage(400, '"BOTTLE" is not a valid unit for using this item'),
-  '"BOTTLE" is not a valid unit for using this item',
+  scanErrorMessage(
+    400,
+    '"BOTTLE" is not a valid unit for using this item -- add or update the conversion via POST /item-units first',
+  ),
+  "This item can't be used by the bottle yet. Ask a manager to set it up.",
+  'server jargon about item-units becomes plain words',
 );
 assert.equal(scanErrorMessage(500, undefined), 'Failed with 500.');
 

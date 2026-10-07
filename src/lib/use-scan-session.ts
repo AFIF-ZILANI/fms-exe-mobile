@@ -3,7 +3,6 @@ import * as Crypto from 'expo-crypto';
 
 import type { PendingCard, ScanRow } from '@/components/ui/qr-scanner';
 import { ApiError, apiFetch } from '@/lib/api';
-import { buzz } from '@/lib/haptics';
 import { isRetryable, scanErrorMessage, type ScanResult, type Settled } from '@/lib/scan';
 import {
   checkUnit,
@@ -23,6 +22,8 @@ type Options = {
   commit: (unit: StockUnit, key: string) => Promise<void>;
   /** Text on the Confirm button in manual mode, e.g. "Move to House 3". */
   confirmLabel: string;
+  /** Consume: a replay conflict (409 idempotency_key) means the write already landed, so it counts as done. */
+  treatReplayAsDone?: boolean;
 };
 
 const tail = (id: string) => `…${id.slice(-7)}`;
@@ -47,33 +48,39 @@ function toRow(id: string, result: Settled): ScanRow {
   };
 }
 
+type KeyStore = ReturnType<typeof newKeyStore>;
+
 /**
  * One scan session: look the unit up, decide (pure, see scan-actions.ts), then either
  * write straight away (auto), hold for Confirm/Cancel (manual), or explain why not.
  * docs/scan-flows-design.md §3.
  */
-export function useScanSession({ plan, mode, commit, confirmLabel }: Options) {
+export function useScanSession({ plan, mode, commit, confirmLabel, treatReplayAsDone }: Options) {
   const [rows, setRows] = useState<ScanRow[]>([]);
   const [held, setHeld] = useState<StockUnit | null>(null);
   const [busy, setBusy] = useState(false);
   // Mutated only inside callbacks, never read during render.
   const done = useRef(new Set<string>());
-  const keys = useRef(newKeyStore(() => Crypto.randomUUID()));
+  const keyStore = useRef<KeyStore | null>(null);
+  // Bumped by reset(); screens use it as the QrScanner key so its seen-codes list restarts too.
+  const [generation, setGeneration] = useState(0);
+
+  const keys = () => (keyStore.current ??= newKeyStore(() => Crypto.randomUUID()));
 
   const labelOf = (unit: StockUnit) => `${unit.purchase_item?.item.name ?? 'Unit'} ${tail(unit.id)}`;
 
   const finish = async (unit: StockUnit): Promise<Settled> => {
     try {
-      await commit(unit, keys.current.keyFor(unit.id));
-      done.current.add(unit.id);
-      keys.current.drop(unit.id);
-      return { ok: true, label: labelOf(unit) };
+      await commit(unit, keys().keyFor(unit.id));
     } catch (err) {
-      return failure(err);
+      if (!(treatReplayAsDone && err instanceof ApiError && err.isReplayConflict())) return failure(err);
     }
+    done.current.add(unit.id);
+    keys().drop(unit.id);
+    return { ok: true, label: labelOf(unit) };
   };
 
-  const onScan = async (id: string): Promise<ScanResult> => {
+  const scan = async (id: string, as: Mode): Promise<ScanResult> => {
     let unit: StockUnit;
     try {
       unit = await apiFetch<StockUnit>(`/stock-units/${id}`);
@@ -81,10 +88,10 @@ export function useScanSession({ plan, mode, commit, confirmLabel }: Options) {
       return failure(err);
     }
 
-    const decision = decideScan(mode, checkUnit(plan, unit), done.current.has(unit.id));
+    const decision = decideScan(as, checkUnit(plan, unit), done.current.has(unit.id));
     switch (decision.kind) {
       case 'duplicate':
-        return { ok: false, message: 'Already done in this session.', retryable: false };
+        return { ok: false, message: 'Already done in this session.', retryable: false, duplicate: true };
       case 'reject':
         return { ok: false, message: decision.reason, retryable: false, label: labelOf(unit) };
       case 'hold':
@@ -95,14 +102,16 @@ export function useScanSession({ plan, mode, commit, confirmLabel }: Options) {
     }
   };
 
-  const confirm = async () => {
-    if (!held) return;
+  /** The scanner turns this into a row, buzz and flash exactly like an auto result. */
+  const confirm = async (): Promise<Settled> => {
+    if (!held) return { ok: false, message: 'Nothing to confirm.', retryable: false };
     setBusy(true);
-    const result = await finish(held);
-    setRows((prev) => [toRow(held.id, result), ...prev]);
-    buzz(result.ok ? 'success' : 'error');
-    setHeld(null);
-    setBusy(false);
+    try {
+      return await finish(held);
+    } finally {
+      setHeld(null);
+      setBusy(false);
+    }
   };
 
   const pending: PendingCard | null = held
@@ -115,19 +124,21 @@ export function useScanSession({ plan, mode, commit, confirmLabel }: Options) {
         ],
         confirmLabel,
         busy,
-        onConfirm: () => void confirm(),
+        onConfirm: confirm,
         onCancel: () => setHeld(null),
       }
     : null;
 
   return {
     rows,
-    onScan,
+    onScan: (id: string) => scan(id, mode),
+    generation,
     onScanned: (row: ScanRow) => setRows((prev) => [row, ...prev]),
     pending,
     /** A typed code (no camera): same pipeline, result goes straight into the list. */
     runManual: async (id: string): Promise<boolean> => {
-      const result = await onScan(id);
+      // Tapping a specific unit is already deliberate, so never hold for a card nobody can see.
+      const result = await scan(id, 'auto');
       if ('held' in result) return false;
       setRows((prev) => [toRow(id, result), ...prev]);
       return result.ok;
@@ -137,6 +148,11 @@ export function useScanSession({ plan, mode, commit, confirmLabel }: Options) {
       setRows([]);
       setHeld(null);
       done.current.clear();
+      // A retried unit must not replay its old key against a different house.
+      keyStore.current = null;
+      setGeneration((g) => g + 1);
     },
+    /** Closing the scanner abandons any unit still waiting on Confirm. */
+    close: () => setHeld(null),
   };
 }
