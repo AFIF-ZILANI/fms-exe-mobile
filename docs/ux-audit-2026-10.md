@@ -136,3 +136,14 @@ Camera and the Link items scanner with a real QR, haptics, touch-target sizes,
 Dynamic Type at 130%, the date control on Assign a task (V12), task detail with a
 real task, filled-in and error states, and the offline / queued / dead-letter
 states. Add the results here.
+
+## H. Fixed in Phase 0 (branch `fix/phase0-consistency`)
+
+B1 task cancel now checks the save; B3 environment button says how many readings
+are still needed; V3 titles align with cards (Header no longer double-pads inside
+Screen); V4 row text no longer touches the card edge; V7 one name per concept
+(Move birds, Mortality, Report discrepancy); D1 shadows moved to `boxShadow` (also
+gives the two-layer card shadow `design.md` specifies); D2 unused variable; D3 stale
+comment. Verified: `tsc` and `expo lint` clean, `scan` and `format` checks pass, and
+Home, Houses, house detail and a form re-shot in the browser. Not yet verified on a
+device.

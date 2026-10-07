@@ -143,7 +143,7 @@ export default function AdjustScreen() {
 
   return (
     <FormScreen
-      title="Report a discrepancy"
+      title="Report discrepancy"
       dirty={!!item || !!counted || !!note}
       submit={{
         label:
