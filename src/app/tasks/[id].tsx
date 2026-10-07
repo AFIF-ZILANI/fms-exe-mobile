@@ -114,8 +114,8 @@ export default function TaskDetailScreen() {
         onPress: async () => {
           setSubmitting(true);
           try {
-            await submit({ endpoint: `/task-assignments/${task.id}/cancel`, body: {} });
-            router.back();
+            const queued = await submit({ endpoint: `/task-assignments/${task.id}/cancel`, body: {} });
+            if (queued) router.back();
           } finally {
             setSubmitting(false);
           }

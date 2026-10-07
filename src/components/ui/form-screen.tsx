@@ -47,7 +47,9 @@ export function FormScreen({ title, children, submit, dirty }: FormScreenProps) 
     <SafeAreaView style={[styles.flex, { backgroundColor: theme.ground }]} edges={['top']}>
       {/* A form is a modal task: ✕ says the work is discarded, where a back
           chevron would say it's saved. */}
-      <Header title={title} leading="close" onLeadingPress={close} />
+      <View style={styles.header}>
+        <Header title={title} leading="close" onLeadingPress={close} />
+      </View>
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -65,5 +67,6 @@ export function FormScreen({ title, children, submit, dirty }: FormScreenProps) 
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  header: { paddingHorizontal: Spacing.xl },
   body: { gap: Spacing.lg, paddingTop: Spacing.xs },
 });

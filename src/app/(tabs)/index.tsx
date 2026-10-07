@@ -26,10 +26,10 @@ import type { BatchHouseBalance, Employee, TaskAssignment } from '@/lib/types';
 type ScoreEntry = { id: string; points: number; employee_id: string };
 
 const MANAGER_ACTIONS: { label: string; path: string; icon: IconName }[] = [
-  { label: 'Transfer', path: '/transfer', icon: 'shuffle' },
+  { label: 'Move birds', path: '/transfer', icon: 'shuffle' },
   { label: 'Feed plan', path: '/feeding-program', icon: 'calendar' },
   { label: 'Link items', path: '/link', icon: 'maximize' },
-  { label: 'Discrepancy', path: '/adjust', icon: 'clipboard' },
+  { label: 'Report discrepancy', path: '/adjust', icon: 'clipboard' },
   { label: 'Flag stock', path: '/flag-stock', icon: 'flag' },
 ];
 

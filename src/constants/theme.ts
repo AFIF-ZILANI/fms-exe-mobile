@@ -222,43 +222,26 @@ export const Radius = {
  * Consume via `elevation(scheme, 'card')`, never by hand.
  */
 export function elevation(scheme: 'light' | 'dark', level: 'card' | 'raised' | 'sheet') {
+  // `boxShadow` (RN 0.76+, new architecture) replaces the deprecated shadow* props and
+  // `elevation`, and takes the two-layer card shadow design.md §2.6 actually specifies.
   if (scheme === 'dark') {
     return level === 'card'
       ? { borderWidth: 1, borderColor: Colors.dark.line }
       : {
-          shadowColor: '#000',
-          shadowOpacity: level === 'sheet' ? 0.5 : 0.4,
-          shadowRadius: level === 'sheet' ? 24 : 12,
-          shadowOffset: { width: 0, height: level === 'sheet' ? -4 : 4 },
-          elevation: 8,
+          boxShadow:
+            level === 'sheet' ? '0px -4px 24px rgba(0,0,0,0.5)' : '0px 4px 12px rgba(0,0,0,0.4)',
         };
   }
 
   switch (level) {
     case 'card':
       return {
-        shadowColor: '#0F1613',
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 2 },
-        elevation: 2,
+        boxShadow: '0px 2px 8px rgba(15,22,19,0.05), 0px 1px 2px rgba(15,22,19,0.03)',
       };
     case 'raised':
-      return {
-        shadowColor: '#1B8A5A',
-        shadowOpacity: 0.24,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: 8,
-      };
+      return { boxShadow: '0px 4px 12px rgba(27,138,90,0.24)' };
     case 'sheet':
-      return {
-        shadowColor: '#0F1613',
-        shadowOpacity: 0.12,
-        shadowRadius: 24,
-        shadowOffset: { width: 0, height: -4 },
-        elevation: 16,
-      };
+      return { boxShadow: '0px -4px 24px rgba(15,22,19,0.12)' };
   }
 }
 

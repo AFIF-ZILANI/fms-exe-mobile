@@ -69,7 +69,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    paddingHorizontal: Spacing.xl,
+    // No horizontal padding: every Header sits inside <Screen>, which already
+    // supplies the 20dp gutter. FormScreen, which renders it outside, adds its own.
     paddingVertical: Spacing.sm,
   },
   titleBlock: { flex: 1 },

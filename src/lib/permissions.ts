@@ -1,7 +1,7 @@
 /**
  * Mirrors server/docs/FEATURES.md §3.5, restricted to the two roles this
- * version ships (docs/PRD.md §4). Client-side only -- shapes the UI, secures
- * nothing (no auth yet, see session.tsx). INTERN is the next role to fill in.
+ * version ships (docs/PRD.md §4). Client-side only -- shapes the UI; the server
+ * is what enforces access. INTERN is the next role to fill in.
  */
 
 const WORKER_CAPABILITIES = [

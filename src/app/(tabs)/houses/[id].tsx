@@ -32,7 +32,7 @@ const QUICK_LOGS: {
   icon: IconName;
   tint: Extract<ThemeColor, 'tintRed' | 'tintAmber' | 'tintBlue'>;
 }[] = [
-  { label: 'Deaths', path: '/log/mortality', icon: 'alert-circle', tint: 'tintRed' },
+  { label: 'Mortality', path: '/log/mortality', icon: 'alert-circle', tint: 'tintRed' },
   { label: 'Feed', path: '/log/consumption', icon: 'package', tint: 'tintAmber' },
   { label: 'Weight', path: '/log/weight', icon: 'bar-chart-2', tint: 'tintBlue' },
 ];

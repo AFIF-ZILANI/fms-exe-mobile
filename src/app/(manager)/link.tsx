@@ -16,7 +16,6 @@ import { Icon, IconTile } from '@/components/ui/icon';
 import { QrScanner, type ScanRow } from '@/components/ui/qr-scanner';
 import { FontFamily, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useSession } from '@/lib/session';
 import { ApiError, apiFetch, useGetData, type Paginated } from '@/lib/api';
 import { bindErrorMessage, isRetryable, type BindResult } from '@/lib/scan';
 import type { PurchaseItem, StockUnit } from '@/lib/types';
@@ -45,7 +44,6 @@ const formatDate = (iso: string) =>
  */
 export default function LinkItemsScreen() {
   const theme = useTheme();
-  const { employee } = useSession();
   const queryClient = useQueryClient();
   const network = useNetworkState();
 

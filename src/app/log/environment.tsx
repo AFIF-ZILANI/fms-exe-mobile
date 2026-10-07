@@ -113,7 +113,7 @@ export default function EnvironmentScreen() {
       title="Log environment"
       dirty={filled > 0}
       submit={{
-        label: filled > 0 ? `Record ${filled} of 5 readings` : 'Record readings',
+        label: filled === 5 ? 'Record 5 readings' : filled > 0 ? `${5 - filled} more reading${5 - filled === 1 ? '' : 's'} needed` : 'Record readings',
         onPress: handleSubmit,
         disabled: !isValid,
         loading: submitting,

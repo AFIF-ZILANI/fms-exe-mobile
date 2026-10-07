@@ -55,7 +55,7 @@ export function LedgerRow({
         )}
       </View>
 
-      <View style={styles.content}>{children}</View>
+      <View style={[styles.content, !onPress && styles.contentEnd]}>{children}</View>
 
       {onPress ? (
         <View style={styles.chevron}>
@@ -100,6 +100,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xs,
   },
   content: { flex: 1, paddingLeft: Spacing.md, paddingVertical: Spacing.md, gap: 2 },
+  contentEnd: { paddingRight: Spacing.lg },
   chevron: { paddingRight: Spacing.lg },
   rule: { height: 1 },
 });
