@@ -127,6 +127,8 @@ export type PurchaseItem = {
   id: string;
   purchase_id: string;
   item_id: string;
+  /** The unit this line was bought in (e.g. BOTTLE). A coded StockUnit is one of these. */
+  unit: string;
   base_quantity: string;
   item: Item;
   purchase: Purchase;
@@ -140,6 +142,10 @@ export type StockUnit = {
   status: StockUnitStatus;
   bound_at: string | null;
   bound_by_id: string | null;
+  /** Present on GET /stock-units/:id and the list (server withRelations). */
+  purchase_item?: { id: string; item_id: string; unit: string; item: Item } | null;
+  /** Newest first, at most one: the latest allocation is the unit's current location. */
+  houseAllocations?: { house_id: string | null; house?: { id: string; name: string } | null }[];
 };
 
 export type Doctor = {

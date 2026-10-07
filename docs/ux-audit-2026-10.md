@@ -147,3 +147,5 @@ gives the two-layer card shadow `design.md` specifies); D2 unused variable; D3 s
 comment. Verified: `tsc` and `expo lint` clean, `scan` and `format` checks pass, and
 Home, Houses, house detail and a form re-shot in the browser. Not yet verified on a
 device.
+
+A1 and the coded-unit part of A2: built as scan flows (`docs/superpowers/plans/2026-10-07-scan-flows.md`). Verified: unit tests, typecheck, lint, API smoke as a worker (relocate, whole-unit consume, bind refused), and browser render of all three screens. **Not verified:** the camera, haptics and the confirm card on a real phone.
