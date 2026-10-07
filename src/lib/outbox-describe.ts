@@ -29,7 +29,7 @@ const RULES: Rule[] = [
   { match: /^\/task-assignments\/[^/]+\/complete$/, title: 'Task marked done' },
   { match: /^\/task-assignments\/[^/]+\/cancel$/, title: 'Task cancelled' },
   { match: /^\/task-assignments$/, title: 'Task assigned', detail: (b) => text(b.title) },
-  { match: /^\/batch-house-allocations$/, title: 'Birds moved', detail: (b) => (count(b.quantity) !== null ? `${b.quantity} birds` : null) },
+  { match: /^\/batch-house-allocations$/, title: 'Birds moved', detail: (b) => (count(b.quantity) !== null ? `${b.quantity} ${b.quantity === 1 ? 'bird' : 'birds'}` : null) },
   { match: /^\/performance-score-entries$/, title: 'Points given' },
   { match: /^\/inventory-adjustments$/, title: 'Stock discrepancy' },
   { match: /^\/alerts$/, title: 'Low-stock flag' },
@@ -60,7 +60,9 @@ export function plainReason(lastError: string | null | undefined): string {
   if (/not a valid unit for using this item/i.test(e)) {
     return "This item can't be used by that unit yet. Ask a manager to set it up.";
   }
-  if (/idempotency/i.test(e)) return 'Already recorded.';
-  const clean = e.replace(/^error:\s*/i, '');
+  const clean = e
+    .replace(/^error:\s*/i, '')
+    .replace(/\s*(?:via\s+)?(?:GET|POST|PATCH|PUT|DELETE)\s+\/\S+/g, '')
+    .replace(/[\s\-,;:]+$/, '');
   return clean.length > 160 ? `${clean.slice(0, 159)}…` : clean;
 }

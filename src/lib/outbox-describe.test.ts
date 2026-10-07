@@ -18,6 +18,10 @@ assert.deepEqual(d('/consumptions', { quantity: 1, unit: 'BOTTLE', stock_unit_id
 assert.deepEqual(d('/medications', { medicine_name: 'Amoxy' }), { title: 'Medication', detail: 'Amoxy' });
 assert.deepEqual(d('/vaccinations', { vaccine_name: 'Newcastle' }), { title: 'Vaccination', detail: 'Newcastle' });
 assert.deepEqual(d('/batch-house-allocations', { quantity: 500 }), { title: 'Birds moved', detail: '500 birds' });
+assert.deepEqual(d('/batch-house-allocations', { quantity: 1 }), { title: 'Birds moved', detail: '1 bird' });
+for (const ep of ['/task-assignments/x', '/mortality-logs/extra', '/consumptions/1']) {
+  assert.deepEqual(d(ep, {}), { title: 'A record', detail: null });
+}
 assert.equal(d('/weight-records', {}).title, 'Weight sample');
 assert.equal(d('/environment-records', {}).title, 'Environment readings');
 assert.equal(d('/task-assignments/abc-123/complete', {}).title, 'Task marked done');
@@ -64,7 +68,11 @@ assert.equal(
 );
 assert.equal(plainReason('Only 4 of this item is on hand at this house'), 'Only 4 of this item is on hand at this house');
 assert.equal(plainReason('Error: Count must be positive'), 'Count must be positive');
-assert.equal(plainReason('idempotency_key already in use'), 'Already recorded.');
+assert.equal(plainReason('idempotency_key already in use'), 'idempotency_key already in use');
+{
+  const out = plainReason('Something failed -- try via POST /item-units first');
+  assert.ok(!out.includes('POST') && !out.includes('/item-units'));
+}
 {
   const long = 'x'.repeat(400);
   const out = plainReason(long);

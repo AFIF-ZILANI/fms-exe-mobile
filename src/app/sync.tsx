@@ -15,7 +15,7 @@ import { formatRelative } from '@/lib/format';
 import { discardDeadLetter, retryDeadLetter, type OutboxRow } from '@/lib/outbox';
 import { describeOutboxRow, plainReason } from '@/lib/outbox-describe';
 import { useSession } from '@/lib/session';
-import { triggerFlush, useOutboxRows, useOutboxSummary } from '@/lib/use-outbox';
+import { SUMMARY_KEY, triggerFlush, useOutboxRows, useOutboxSummary } from '@/lib/use-outbox';
 
 /** docs/navigation-redesign-design.md Phase 2 — what is waiting to send, what failed and why. */
 export default function SyncCenterScreen() {
@@ -48,6 +48,8 @@ export default function SyncCenterScreen() {
     try {
       await retryDeadLetter(row.key);
       await triggerFlush(queryClient);
+    } catch (e) {
+      Alert.alert('Not done', e instanceof Error ? e.message : 'Something went wrong. Try again.');
     } finally {
       setBusyKey(null);
     }
@@ -61,8 +63,12 @@ export default function SyncCenterScreen() {
         style: 'destructive',
         onPress: () => {
           void (async () => {
-            await discardDeadLetter(row.key);
-            await queryClient.invalidateQueries();
+            try {
+              await discardDeadLetter(row.key);
+              await queryClient.invalidateQueries({ queryKey: SUMMARY_KEY });
+            } catch (e) {
+              Alert.alert('Not done', e instanceof Error ? e.message : 'Something went wrong. Try again.');
+            }
           })();
         },
       },
@@ -72,6 +78,9 @@ export default function SyncCenterScreen() {
   return (
     <Screen>
       <Header title="Sync center" leading="back" />
+      <AppText variant="caption" color="muted">
+        Last synced: {lastSynced}
+      </AppText>
 
       {rows && failed.length === 0 && pending.length === 0 ? (
         <View style={styles.empty}>
@@ -79,7 +88,7 @@ export default function SyncCenterScreen() {
             icon="check-circle"
             tint="tintGreen"
             title="Everything is sent."
-            body={`Nothing is waiting on this phone. Last synced: ${lastSynced}.`}
+            body="Nothing is waiting on this phone."
           />
         </View>
       ) : null}
@@ -119,7 +128,7 @@ export default function SyncCenterScreen() {
                     />
                   </View>
                   <View style={styles.flex}>
-                    <Button variant="ghost" label="Discard" onPress={() => discard(row)} disabled={busyKey === row.key} block />
+                    <Button variant="secondary" label="Discard" onPress={() => discard(row)} disabled={busyKey === row.key} block />
                   </View>
                 </View>
               </View>

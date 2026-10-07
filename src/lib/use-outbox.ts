@@ -10,9 +10,9 @@ export type OutboxSummary = {
   lastSyncedAt: number | null;
 };
 
-const SUMMARY_KEY = ['outbox-summary'];
+export const SUMMARY_KEY = ['outbox-summary'];
 
-/** Read by <SyncBanner/> (C1, C4, C5). Not stale-driven -- refetched
+/** Read by Settings, the Sync center and useLogout. Not stale-driven -- refetched
  *  explicitly by triggerFlush() below, since the queue only changes on a
  *  write or a flush, never on a timer. */
 export function useOutboxSummary() {
@@ -48,7 +48,7 @@ export async function triggerFlush(queryClient: QueryClient): Promise<void> {
  * triggers from docs/offline-sync.md §4.4 -- app foreground and network
  * reconnect. The third (after every enqueue) lives in use-queued-submit.ts,
  * next to the write itself; the fourth (manual "Sync now") is a plain
- * triggerFlush() call from <SyncBanner/>.
+ * triggerFlush() call from Settings and the Sync center.
  */
 export function useOutboxTriggers(): void {
   const queryClient = useQueryClient();
@@ -72,7 +72,7 @@ export type OutboxRows = { pending: OutboxRow[]; failed: OutboxRow[] };
  * The queued records themselves (not just the counts), for the Sync center. Held in component
  * state on purpose, not in the query cache: that cache is persisted to storage and a queued
  * body is personal data. Reloads whenever the summary refetches (after a flush, retry or
- * discard). `null` until the first read finishes.
+ * discard): the summary changes after any flush/retry/discard. `null` until the first read finishes.
  */
 export function useOutboxRows(): OutboxRows | null {
   const { data: summary } = useOutboxSummary();
