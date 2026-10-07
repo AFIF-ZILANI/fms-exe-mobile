@@ -70,7 +70,7 @@ export function maskNid(nid: string | null | undefined): string | null {
   return `•••• ${v.slice(-4)}`;
 }
 
-function humanise(value: string): string {
+export function humanise(value: string): string {
   const t = value.replace(/_/g, ' ').toLowerCase();
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
