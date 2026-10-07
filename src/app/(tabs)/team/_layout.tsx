@@ -3,10 +3,14 @@ import { Redirect, Stack } from 'expo-router';
 import { useSession } from '@/lib/session';
 import { can } from '@/lib/permissions';
 
+// Without this, a deep push into an unvisited tab (e.g. from Home) would make
+// that screen the stack's only entry, with no way back to the tab root.
+export const unstable_settings = { initialRouteName: 'index' };
+
 /**
- * The Team tab's stack. The tab itself is hidden for a Worker in
- * `(tabs)/_layout.tsx`; this guard covers the other door — a Worker who
- * reaches `/team` by deep link or a restored route still goes home.
+ * The Team stack, a hidden route (no tab) reached from Home and the
+ * launcher. This guard keeps a Worker who reaches `/team` by deep link or a
+ * restored route going home.
  */
 export default function TeamLayout() {
   const { employee, isLoading } = useSession();

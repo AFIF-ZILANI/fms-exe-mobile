@@ -118,7 +118,7 @@ function RootStack() {
 }
 
 /** Sends people to login without a session, to the forced password change on a temp password,
- *  and away from login once signed in. change-password stays reachable when signed in (Profile). */
+ *  and away from login once signed in. change-password stays reachable when signed in (Settings). */
 function AuthGate() {
   const { signedIn, mustChangePassword, isLoading } = useSession();
   const segments = useSegments();

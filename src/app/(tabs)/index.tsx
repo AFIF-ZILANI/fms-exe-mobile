@@ -126,7 +126,7 @@ export default function DashboardScreen() {
           tint="tintAmber"
           valueColor={points > 0 ? 'success' : points < 0 ? 'critical' : 'ink'}
           icon={<IconTile name="award" tint="tintAmber" color="warning" />}
-          onPress={() => router.push('/me/performance')}
+          onPress={() => router.push('/me/performance', { withAnchor: true })}
         />
       </View>
 
@@ -189,7 +189,7 @@ export default function DashboardScreen() {
                 </View>
               }
               last={i === Math.min(mates.length, 3) - 1}
-              onPress={() => router.push(`/team/${member.id}` as Href)}
+              onPress={() => router.push(`/team/${member.id}` as Href, { withAnchor: true })}
             >
               <AppText variant="bodyStrong">{member.profile.name}</AppText>
               <AppText variant="caption" color="muted">
@@ -215,7 +215,7 @@ export default function DashboardScreen() {
               key={balance.id}
               gutter={houseToken(balance.house?.number)}
               last={i === Math.min(activeBalances.length, 4) - 1}
-              onPress={() => router.push(`/houses/${balance.house_id}` as Href)}
+              onPress={() => router.push(`/houses/${balance.house_id}` as Href, { withAnchor: true })}
             >
               <View style={styles.rowTop}>
                 <AppText variant="figure">{balance.quantity.toLocaleString()}</AppText>

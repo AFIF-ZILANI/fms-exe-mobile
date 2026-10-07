@@ -79,6 +79,7 @@ export default function TeamScreen() {
     <Screen>
       <Header
         title="Team"
+        leading="back"
         action={{ icon: 'user-plus', label: 'Assign a task', onPress: () => router.push('/assign') }}
       />
 

@@ -67,9 +67,9 @@ export default function ProfileScreen() {
     return (
       <Screen>
         <Header
-        title="Me"
-        action={{ icon: 'settings', label: 'Settings', onPress: () => router.push('/settings') }}
-      />
+          title="Me"
+          action={{ icon: 'settings', label: 'Settings', onPress: () => router.push('/settings') }}
+        />
         <EmptyState
           icon="user"
           tint="primarySoft"

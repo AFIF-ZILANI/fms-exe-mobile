@@ -14,7 +14,7 @@ import { useSession } from '@/lib/session';
 
 const MIN_LENGTH = 8;
 
-/** Forced after a temporary password (the gate in _layout.tsx), voluntary from Profile. */
+/** Forced after a temporary password (the gate in _layout.tsx), voluntary from Settings. */
 export default function ChangePasswordScreen() {
   const { changePassword, mustChangePassword, logout } = useSession();
   const [current, setCurrent] = useState('');

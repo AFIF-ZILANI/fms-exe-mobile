@@ -35,6 +35,7 @@ export default function StockScreen() {
   const isManager = can(employee?.role, 'assign_task');
   const [filter, setFilter] = useState<Filter>('ALL');
 
+  // ponytail: limit=100 is the server max; items past 100 silently drop. Phase 4: page, or use /items/low-stock.
   const items = useGetData<Paginated<Item>>('/items?is_active=true&limit=100', ['items', 'active']);
   const rows = useGetData<StockRow[]>('/items/stock-by-location', ['items', 'stock-by-location']);
 
@@ -85,6 +86,7 @@ export default function StockScreen() {
             <Pressable
               key={f}
               onPress={() => setFilter(f)}
+              hitSlop={6}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
               style={[

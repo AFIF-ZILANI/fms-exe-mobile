@@ -91,7 +91,7 @@ export function TabBar({ state, navigation, onLogPress }: TabBarProps) {
         <Pressable
           onPress={onLogPress}
           accessibilityRole="button"
-          accessibilityLabel="Log or do something"
+          accessibilityLabel="Quick actions"
           style={({ pressed }) => [
             styles.centre,
             { backgroundColor: pressed ? theme.primaryPressed : theme.primary },
