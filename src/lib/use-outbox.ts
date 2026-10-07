@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useNetworkState } from 'expo-network';
-import { flush, listPending, listDeadLetters, getLastSyncedAt } from '@/lib/outbox';
+import { flush, listPending, listDeadLetters, getLastSyncedAt, type OutboxRow } from '@/lib/outbox';
 
 export type OutboxSummary = {
   pendingCount: number;
@@ -64,4 +64,29 @@ export function useOutboxTriggers(): void {
   useEffect(() => {
     if (network.isConnected) void triggerFlush(queryClient);
   }, [network.isConnected, queryClient]);
+}
+
+export type OutboxRows = { pending: OutboxRow[]; failed: OutboxRow[] };
+
+/**
+ * The queued records themselves (not just the counts), for the Sync center. Held in component
+ * state on purpose, not in the query cache: that cache is persisted to storage and a queued
+ * body is personal data. Reloads whenever the summary refetches (after a flush, retry or
+ * discard). `null` until the first read finishes.
+ */
+export function useOutboxRows(): OutboxRows | null {
+  const { data: summary } = useOutboxSummary();
+  const [rows, setRows] = useState<OutboxRows | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void Promise.all([listPending(), listDeadLetters()]).then(([pending, failed]) => {
+      if (alive) setRows({ pending, failed });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [summary]);
+
+  return rows;
 }
