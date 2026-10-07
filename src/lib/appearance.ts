@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Appearance } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { parseAppearance, schemeFor, type AppearancePref } from '@/lib/appearance-pref';
+import { parseAppearance, nativeScheme, type AppearancePref } from '@/lib/appearance-pref';
 
 export type { AppearancePref };
 
@@ -19,8 +19,7 @@ export async function loadAppearance(): Promise<AppearancePref> {
 
 /** Every screen reads the scheme through one hook, so overriding it here re-themes the app. */
 export function applyAppearance(pref: AppearancePref): void {
-  // ponytail: type assertion for React Native 0.86 type definitions that don't properly type null
-  Appearance.setColorScheme(schemeFor(pref) as any);
+  Appearance.setColorScheme(nativeScheme(pref));
 }
 
 async function saveAppearance(pref: AppearancePref): Promise<void> {

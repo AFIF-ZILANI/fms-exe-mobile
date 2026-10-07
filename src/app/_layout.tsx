@@ -63,7 +63,11 @@ export default function RootLayout() {
   const [appearanceReady, setAppearanceReady] = useState(false);
   useEffect(() => {
     void loadAppearance().then((pref) => {
-      applyAppearance(pref);
+      try {
+        applyAppearance(pref);
+      } catch {
+        // If appearance application fails, we still mark ready so the splash doesn't hang.
+      }
       setAppearanceReady(true);
     });
   }, []);
