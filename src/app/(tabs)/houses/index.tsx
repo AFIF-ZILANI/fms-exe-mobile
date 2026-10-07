@@ -53,6 +53,10 @@ export default function HousesScreen() {
     EMPTY: summary.empty,
   };
 
+  // Wait for BOTH queries: houses without their bird counts would all read "Empty" and the tiles 0.
+  const ready = !houses.isLoading && !balances.isLoading;
+  const failed = (houses.isError && !houses.data) || (balances.isError && !balances.data);
+
   const refresh = async () => {
     setRefreshing(true);
     try {
@@ -71,7 +75,7 @@ export default function HousesScreen() {
       <Header title="Houses" />
       <SyncBanner />
 
-      {lines.length > 0 ? (
+      {ready && !failed && lines.length > 0 ? (
         <>
           <View style={styles.tiles}>
             <StatCard
@@ -116,20 +120,20 @@ export default function HousesScreen() {
         </>
       ) : null}
 
-      {houses.isLoading ? (
+      {!ready ? (
         <View style={styles.list}>
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} height={112} />
           ))}
         </View>
-      ) : houses.isError ? (
+      ) : failed ? (
         <Card style={styles.state}>
           <EmptyState
             compact
             icon="alert-circle"
             tint="tintRed"
             title="Couldn't load houses."
-            action={{ label: 'Retry', onPress: () => void houses.refetch() }}
+            action={{ label: 'Retry', onPress: () => void refresh() }}
           />
         </Card>
       ) : lines.length === 0 ? (
