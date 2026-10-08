@@ -1,11 +1,18 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from 'expo-router/tabs';
 
 import { AppText } from '@/components/ui/text';
 import { Icon, type IconName } from '@/components/ui/icon';
-import { Radius, Size, Spacing, elevation } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Radius, Size, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 /**
@@ -13,6 +20,9 @@ import { useTheme } from '@/hooks/use-theme';
  * The raised centre button opens the Log launcher rather than navigating. What differs by role
  * is only what the launcher and Home offer, never the bar.
  */
+// Five equal cells; the centre action takes the middle one so the indicator maths stays trivial.
+const CELL_OF_SLOT = [0, 1, 3, 4];
+
 const SLOTS: { route: string; label: string; icon: IconName }[] = [
   { route: 'index', label: 'Home', icon: 'home' },
   { route: 'houses', label: 'Houses', icon: 'grid' },
@@ -24,6 +34,52 @@ const SLOTS: { route: string; label: string; icon: IconName }[] = [
  *  while you are on them. Team is reached from Home's card and the launcher. */
 const ACTIVE_ALIAS: Record<string, string> = { team: 'index' };
 
+const SPRING = { damping: 18, stiffness: 260, mass: 0.6 };
+
+// ponytail: haptics fail silently (Low Power Mode, no hardware) — never block navigation on them.
+const tick = () => void Haptics.selectionAsync().catch(() => {});
+
+/** Scales down while held, springs back on release. */
+function usePressScale(to = 0.9) {
+  const scale = useSharedValue(1);
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  return {
+    style,
+    onPressIn: () => scale.set(withSpring(to, SPRING)),
+    onPressOut: () => scale.set(withSpring(1, SPRING)),
+  };
+}
+
+function TabButton({
+  slot,
+  focused,
+  onPress,
+}: {
+  slot: (typeof SLOTS)[number];
+  focused: boolean;
+  onPress: () => void;
+}) {
+  const press = usePressScale(0.88);
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: focused }}
+      accessibilityLabel={slot.label}
+      style={styles.cell}
+    >
+      <Animated.View style={[styles.tab, press.style]}>
+        <Icon name={slot.icon} size={22} color={focused ? 'primary' : 'muted'} />
+        <AppText variant="caption" color={focused ? 'primary' : 'muted'} style={styles.label}>
+          {slot.label}
+        </AppText>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
 type TabBarProps = BottomTabBarProps & {
   /** Opens the log launcher. The centre button is not a route. */
   onLogPress: () => void;
@@ -31,50 +87,41 @@ type TabBarProps = BottomTabBarProps & {
 
 export function TabBar({ state, navigation, onLogPress }: TabBarProps) {
   const theme = useTheme();
-  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const insets = useSafeAreaInsets();
+  const [width, setWidth] = useState(0);
+  const centre = usePressScale(0.92);
 
   const current = state.routes[state.index]?.name;
   const activeRoute = (current && ACTIVE_ALIAS[current]) ?? current;
+  const activeSlot = SLOTS.findIndex((s) => s.route === activeRoute);
 
-  const left = SLOTS.slice(0, 2);
-  const right = SLOTS.slice(2);
+  // Indicator sits at the top edge of the active cell; hidden when no tab is active.
+  const cellWidth = width / 5;
+  const indicator = useAnimatedStyle(() => ({
+    opacity: withTiming(activeSlot === -1 ? 0 : 1, { duration: 150 }),
+    transform: [
+      { translateX: withSpring(cellWidth * (CELL_OF_SLOT[Math.max(activeSlot, 0)] + 0.5) - 12, SPRING) },
+    ],
+  }));
 
   const renderSlot = (slot: (typeof SLOTS)[number]) => {
-    const index = state.routes.findIndex((r) => r.name === slot.route);
-    if (index === -1) return <View key={slot.route} style={styles.slot} />;
-
-    const focused = activeRoute === slot.route;
-    const route = state.routes[index];
+    const route = state.routes.find((r) => r.name === slot.route);
+    if (!route) return <View key={slot.route} style={styles.cell} />;
 
     const onPress = () => {
       const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
       if (event.defaultPrevented) return;
+      if (activeRoute !== slot.route) tick();
       // Pressing the focused tab pops its stack to the root; from a hidden tab (Team) it goes home.
       navigation.navigate(route.name as never);
     };
 
-    return (
-      <Pressable
-        key={slot.route}
-        onPress={onPress}
-        accessibilityRole="tab"
-        accessibilityState={{ selected: focused }}
-        accessibilityLabel={slot.label}
-        style={({ pressed }) => [styles.slot, { transform: [{ scale: pressed ? 0.97 : 1 }] }]}
-      >
-        <View style={[styles.pill, focused && { backgroundColor: theme.primarySoft }]}>
-          <Icon name={slot.icon} size={24} color={focused ? 'primary' : 'muted'} />
-        </View>
-        <AppText variant="label" color={focused ? 'primary' : 'muted'}>
-          {slot.label}
-        </AppText>
-      </Pressable>
-    );
+    return <TabButton key={slot.route} slot={slot} focused={activeRoute === slot.route} onPress={onPress} />;
   };
 
   return (
     <View
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
       style={[
         styles.bar,
         {
@@ -85,25 +132,29 @@ export function TabBar({ state, navigation, onLogPress }: TabBarProps) {
         },
       ]}
     >
-      {left.map(renderSlot)}
+      <Animated.View style={[styles.indicator, { backgroundColor: theme.primary }, indicator]} />
 
-      <View style={styles.centreSlot}>
+      {SLOTS.slice(0, 2).map(renderSlot)}
+
+      <View style={styles.cell}>
         <Pressable
-          onPress={onLogPress}
+          onPress={() => {
+            tick();
+            onLogPress();
+          }}
+          onPressIn={centre.onPressIn}
+          onPressOut={centre.onPressOut}
           accessibilityRole="button"
           accessibilityLabel="Quick actions"
-          style={({ pressed }) => [
-            styles.centre,
-            { backgroundColor: pressed ? theme.primaryPressed : theme.primary },
-            elevation(scheme, 'raised'),
-            { transform: [{ scale: pressed ? 0.97 : 1 }] },
-          ]}
+          hitSlop={8}
         >
-          <Icon name="plus" size={24} color="onPrimary" />
+          <Animated.View style={[styles.centre, { backgroundColor: theme.primary }, centre.style]}>
+            <Icon name="plus" size={24} color="onPrimary" />
+          </Animated.View>
         </Pressable>
       </View>
 
-      {right.map(renderSlot)}
+      {SLOTS.slice(2).map(renderSlot)}
     </View>
   );
 }
@@ -111,26 +162,25 @@ export function TabBar({ state, navigation, onLogPress }: TabBarProps) {
 const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    borderTopWidth: 1,
-    paddingTop: Spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  slot: { flex: 1, alignItems: 'center', gap: 2 },
-  pill: {
-    width: 56,
-    height: 32,
-    borderRadius: Radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
+  cell: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  tab: { alignItems: 'center', gap: 3, paddingVertical: Spacing.xs },
+  label: { fontSize: 11, lineHeight: 14 },
+  indicator: {
+    position: 'absolute',
+    top: -StyleSheet.hairlineWidth,
+    left: 0,
+    width: 24,
+    height: 3,
+    borderBottomLeftRadius: Radius.pill,
+    borderBottomRightRadius: Radius.pill,
   },
-  centreSlot: { width: Size.tabCentre + Spacing.lg, alignItems: 'center' },
   centre: {
     width: Size.tabCentre,
     height: Size.tabCentre,
     borderRadius: Radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    // Sits proud of the bar's top edge. docs/design.md §6.1.
-    marginTop: -14,
   },
 });

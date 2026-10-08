@@ -357,13 +357,13 @@ worker three screens deep had no idea where they were or how to get home.
 
 - **64dp tall** plus the bottom safe-area inset, `surface` fill, 1px `line` top
   border. No shadow — the border is enough and reads cleanly in sunlight.
-- **Four tabs plus a raised centre button.** Each tab is an equal-width column,
-  minimum 48dp wide: 24dp icon, 2dp gap, `label`-size text.
-- **Active tab:** icon and label switch to `primary`, and a `primarySoft` pill
-  (32dp tall, `pill` radius) sits behind the icon. Inactive: `muted`.
-- **The centre button is Log** — the app's most frequent action. 58dp `primary`
-  circle with a white 24dp `plus`, `raised` elevation, sitting 14dp above the
-  bar's top edge. It opens the log-type sheet (§6.4), it is not a route.
+- **Four tabs plus a centre button**, five equal cells. Each tab: 22dp icon, 11pt
+  caption, press-scale spring and a selection haptic.
+- **Active tab:** icon and label switch to `primary`, and a 24×3dp `primary` tab
+  slides along the bar's top edge to it. Inactive: `muted`. No pill behind the icon.
+- **The centre button is Log** — the app's most frequent action. 46dp `primary`
+  circle with a white 24dp `plus`, flush inside the bar (no elevation). It opens
+  the log-type sheet (§6.4), it is not a route.
 - **Team is Manager-only.** For a Worker the bar renders four items — Home,
   Houses, centre, Me — with the centre button still centred. The tab is removed,
   never shown disabled.

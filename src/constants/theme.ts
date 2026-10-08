@@ -260,7 +260,7 @@ export const Size = {
   rowSingle: 56,
   header: 56,
   tabBar: 64,
-  tabCentre: 58,
+  tabCentre: 46,
   fab: 56,
   gutter: 44,
 } as const;
