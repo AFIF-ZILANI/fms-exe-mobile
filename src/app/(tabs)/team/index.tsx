@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { router, type Href } from 'expo-router';
 
@@ -16,16 +16,19 @@ import { useTheme } from '@/hooks/use-theme';
 import { useGetData, type Paginated } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { initials, monthRange } from '@/lib/farm';
+import { summarizeTeam } from '@/lib/team-view';
 import type { Employee, ScoreEntry, TaskAssignment } from '@/lib/types';
 
 /** docs/layout/12-team.md — who's working, and how they're doing. Sorted by
- *  pending tasks descending: a manager scanning this list is looking for the
+ *  overdue then pending tasks, most first: a manager scanning this list is looking for the
  *  person who hasn't done anything today, and alphabetical order hides them
  *  in the middle. */
 export default function TeamScreen() {
   const theme = useTheme();
   const { employee: actor } = useSession();
-  const { from, to } = monthRange(new Date());
+  // Held in state: new Date() during render is impure, and the overdue test needs one stable "now".
+  const [now] = useState(() => new Date());
+  const { from, to } = monthRange(now);
 
   const { data: employees, isLoading, isError, refetch } = useGetData<Paginated<Employee>>(
     '/employees?limit=100',
@@ -50,30 +53,14 @@ export default function TeamScreen() {
     ['performance-score-entries', 'team-mtd', from],
   );
 
-  const team = (employees?.results ?? []).filter((e) => e.id !== actor?.id);
-
-  const statsFor = (employeeId: string) => {
-    const theirs = (tasks?.results ?? []).filter((t) => t.employee_id === employeeId);
-    const done = theirs.filter((t) => t.status === 'DONE').length;
-    const points = (scores?.results ?? [])
-      .filter((s) => s.employee_id === employeeId)
-      .reduce((sum, s) => sum + s.points, 0);
-    return { done, total: theirs.length, pending: theirs.length - done, points };
-  };
-
-  const ordered = [...team].sort((a, b) => {
-    const diff = statsFor(b.id).pending - statsFor(a.id).pending;
-    return diff !== 0 ? diff : a.profile.name.localeCompare(b.profile.name);
-  });
-
-  const onShift = team.filter((m) => statsFor(m.id).total > 0).length;
-  const totals = team.reduce(
-    (acc, m) => {
-      const s = statsFor(m.id);
-      return { done: acc.done + s.done, total: acc.total + s.total };
-    },
-    { done: 0, total: 0 },
+  const { members: ordered, onShift, done, total } = summarizeTeam(
+    employees?.results ?? [],
+    tasks?.results ?? [],
+    scores?.results ?? [],
+    now,
+    actor?.id,
   );
+  const totals = { done, total };
 
   return (
     <Screen>
@@ -122,8 +109,8 @@ export default function TeamScreen() {
             body="People are added in the admin dashboard."
           />
         ) : (
-          ordered.map((member, i) => {
-            const stats = statsFor(member.id);
+          ordered.map((stats, i) => {
+            const member = stats.member;
             return (
               <LedgerRow
                 key={member.id}

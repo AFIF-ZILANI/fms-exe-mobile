@@ -11,6 +11,8 @@ import { LedgerRow } from '@/components/ui/ledger-row';
 import { CycleBar } from '@/components/cycle-bar';
 import { FeatureGrid } from '@/components/feature-grid';
 import { StatusPill } from '@/components/ui/status-pill';
+import { Avatar } from '@/components/ui/avatar';
+import { ScoreChip } from '@/components/ui/score-chip';
 import { AppText } from '@/components/ui/text';
 import { Icon, IconTile } from '@/components/ui/icon';
 import { Radius, Size, Spacing } from '@/constants/theme';
@@ -24,7 +26,9 @@ import { useUnreadNotifications } from '@/lib/use-unread-notifications';
 import { dueLabel, groupTasks, taskHref } from '@/lib/tasks-view';
 import { formatSignedPoints, formatTime } from '@/lib/format';
 import { cycleProgress } from '@/lib/houses-summary';
-import { dayOfCycle, expectedCycleDays, houseToken, initials, monthRange } from '@/lib/farm';
+import { humanise } from '@/lib/profile-format';
+import { summarizeTeam, taskStatusLine, type MemberStat } from '@/lib/team-view';
+import { dayOfCycle, expectedCycleDays, houseToken, monthRange } from '@/lib/farm';
 import type { BatchHouseBalance, Employee, FarmAlert, TaskAssignment } from '@/lib/types';
 
 type ScoreEntry = { id: string; points: number; employee_id: string };
@@ -39,6 +43,48 @@ function greeting(now = new Date()): string {
 /** 9,812 stays whole; 12,400 becomes 12.4k so three stat cards fit one row. */
 const compactCount = (n: number) =>
   n >= 10_000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : n.toLocaleString();
+
+/** One person on the team: who they are, what is left of their day, and how their month is going. */
+function TeamRow({ stat, last }: { stat: MemberStat; last: boolean }) {
+  const theme = useTheme();
+  const { member } = stat;
+  const status = taskStatusLine(stat);
+
+  return (
+    <Pressable
+      onPress={() => router.push(`/team/${member.id}` as Href, { withAnchor: true })}
+      accessibilityRole="button"
+      accessibilityLabel={`${member.profile.name}, ${humanise(member.role)}, ${status.text}, ${stat.points} points this month`}
+      style={({ pressed }) => [
+        styles.houseRow,
+        !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.line },
+        pressed && { backgroundColor: theme.surfaceAlt },
+      ]}
+    >
+      <Avatar name={member.profile.name} uri={member.profile.avatar?.image_url} />
+      <View style={styles.flex}>
+        <AppText variant="bodyStrong" numberOfLines={1}>
+          {member.profile.name}
+        </AppText>
+        <View style={styles.teamMeta}>
+          <AppText variant="caption" color="muted">
+            {humanise(member.role)} ·
+          </AppText>
+          <AppText variant="caption" color={status.tone}>
+            {status.text}
+          </AppText>
+        </View>
+      </View>
+      <View style={styles.houseCount}>
+        <ScoreChip points={stat.points} variant="figure" />
+        <AppText variant="caption" color="muted">
+          points
+        </AppText>
+      </View>
+      <Icon name="chevron-right" size={20} color="muted" />
+    </Pressable>
+  );
+}
 
 /** One running house: name and where its cycle stands on the left, live birds on the right. */
 function HouseRow({ balance, last }: { balance: BatchHouseBalance; last: boolean }) {
@@ -115,9 +161,21 @@ export default function DashboardScreen() {
     { enabled: !!employee },
   );
 
+  // A manager's team card: everyone's tasks due by tonight and everyone's points this month. Same URLs and
+  // keys as the Team screen, so the two share one cache.
   const { data: team } = useGetData<Paginated<Employee>>('/employees?limit=100', ['employees', 'all'], {
     enabled: isManager,
   });
+  const { data: teamTasks } = useGetData<Paginated<TaskAssignment>>(
+    `/task-assignments?due_to=${endOfToday}&limit=100`,
+    ['task-assignments', 'team-today'],
+    { enabled: isManager },
+  );
+  const { data: teamScores } = useGetData<Paginated<ScoreEntry>>(
+    `/performance-score-entries?date_from=${from}&date_to=${to}&limit=100`,
+    ['performance-score-entries', 'team-mtd', from],
+    { enabled: isManager },
+  );
 
   // Same URL and key as the Alerts screen, so the bell badge and the list agree.
   const { data: activeAlerts } = useGetData<Paginated<FarmAlert>>('/alerts?status=ACTIVE&limit=50', ['alerts', 'active']);
@@ -157,7 +215,13 @@ export default function DashboardScreen() {
   const points = (scores?.results ?? []).reduce((sum, s) => sum + s.points, 0);
   const activeBalances = (balances?.results ?? []).filter((b) => b.quantity > 0);
   const birds = activeBalances.reduce((sum, b) => sum + b.quantity, 0);
-  const mates = (team?.results ?? []).filter((e) => e.id !== employee.id);
+  const teamSummary = summarizeTeam(
+    team?.results ?? [],
+    teamTasks?.results ?? [],
+    teamScores?.results ?? [],
+    now,
+    employee.id,
+  );
 
   const openTask = (task: TaskAssignment) => {
     router.push(taskHref(task) as Href);
@@ -301,33 +365,24 @@ export default function DashboardScreen() {
 
       <FeatureGrid isManager={isManager} />
 
-      {isManager && mates.length > 0 && (
+      {isManager && teamSummary.members.length > 0 && (
         <Card
           rows
-          eyebrow="Team"
+          eyebrow={`Team · ${teamSummary.onShift} on shift`}
           action="All"
           onActionPress={() => router.push('/team')}
           style={styles.card}
         >
-          {mates.slice(0, 3).map((member, i) => (
-            <LedgerRow
-              key={member.id}
-              gutterNode={
-                <View style={[styles.avatar, { backgroundColor: theme.primarySoft }]}>
-                  <AppText variant="data" color="primary">
-                    {initials(member.profile.name)}
-                  </AppText>
-                </View>
-              }
-              last={i === Math.min(mates.length, 3) - 1}
-              onPress={() => router.push(`/team/${member.id}` as Href, { withAnchor: true })}
-            >
-              <AppText variant="bodyStrong">{member.profile.name}</AppText>
-              <AppText variant="caption" color="muted">
-                {member.role.toLowerCase()}
-              </AppText>
-            </LedgerRow>
+          {teamSummary.members.slice(0, 4).map((stat, i) => (
+            <TeamRow key={stat.member.id} stat={stat} last={i === Math.min(teamSummary.members.length, 4) - 1} />
           ))}
+          {teamSummary.members.length > 4 && (
+            <Pressable onPress={() => router.push('/team')} accessibilityRole="button" style={styles.more}>
+              <AppText variant="label" color="primary">
+                See all {teamSummary.members.length} people
+              </AppText>
+            </Pressable>
+          )}
         </Card>
       )}
 
@@ -379,6 +434,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
   },
+  teamMeta: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
   houseProgress: { marginTop: Spacing.xs, gap: 4 },
   // Fixed width so every row's cycle bar is the same length, whatever the bird count.
   houseCount: { alignItems: 'flex-end', width: 84 },
