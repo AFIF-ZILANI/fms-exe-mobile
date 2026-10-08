@@ -20,6 +20,7 @@ import { can } from '@/lib/permissions';
 import { useGetData, type Paginated } from '@/lib/api';
 import { summarizeAlerts, unseenAlerts } from '@/lib/alerts-view';
 import { useSeenAlerts } from '@/lib/use-seen-alerts';
+import { useUnreadNotifications } from '@/lib/use-unread-notifications';
 import { dueLabel, groupTasks, taskHref } from '@/lib/tasks-view';
 import { formatSignedPoints, formatTime } from '@/lib/format';
 import { cycleProgress } from '@/lib/houses-summary';
@@ -124,6 +125,7 @@ export default function DashboardScreen() {
   // The bell counts only what this person hasn't opened the Alerts screen on yet; the strip below keeps the full total.
   const { seen } = useSeenAlerts();
   const newAlerts = seen ? unseenAlerts(activeAlerts?.results ?? [], seen).length : 0;
+  const unreadNotifications = useUnreadNotifications();
 
   if (isLoading) return <Screen />;
 
@@ -168,10 +170,11 @@ export default function DashboardScreen() {
         title={employee.profile.name}
         action={{
           icon: 'bell',
-          label: 'Alerts',
-          badge: newAlerts,
-          badgeTone: alertSummary.critical ? 'critical' : 'warning',
-          onPress: () => router.push('/alerts' as Href),
+          label: 'Inbox',
+          // One bell for the whole inbox: what happened to me, plus alerts I haven't looked at.
+          badge: newAlerts + unreadNotifications,
+          badgeTone: alertSummary.critical && newAlerts > 0 ? 'critical' : 'warning',
+          onPress: () => router.push('/notifications' as Href),
         }}
       />
 

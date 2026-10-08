@@ -212,3 +212,27 @@ export type FarmAlert = {
   /** "FAMILY:id" naming the condition. Null for an alert a person raised by hand. */
   dedupe_key: string | null;
 };
+
+export type NotificationKind =
+  | 'TASK_ASSIGNED'
+  | 'POINTS_GIVEN'
+  | 'POINTS_VOIDED'
+  | 'PAYSLIP_READY'
+  | 'PAYOUT_CONFIRMED'
+  | 'PAYOUT_FAILED'
+  | 'BONUS_GRANTED'
+  | 'PASSWORD_CHANGED'
+  | 'PASSWORD_RESET';
+
+/** GET /notifications rows: something that happened to the signed-in person. Named so it never collides with
+ *  the browser's `Notification`. */
+export type AppNotification = {
+  id: string;
+  kind: NotificationKind;
+  title: string;
+  body: string | null;
+  /** The task, score entry, payroll record, payout or bonus it is about. */
+  related_id: string | null;
+  read_at: string | null;
+  created_at: string;
+};

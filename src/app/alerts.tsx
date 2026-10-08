@@ -4,6 +4,7 @@ import { router, useFocusEffect, type Href } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
+import { InboxTabs } from '@/components/inbox-tabs';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -241,6 +242,9 @@ export default function AlertsScreen() {
     >
       <Header title="Alerts" leading="back" />
       <SyncBanner />
+      <View style={styles.tabs}>
+        <InboxTabs current="alerts" />
+      </View>
 
       {loading ? (
         <View style={styles.list}>
@@ -349,7 +353,8 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   card: { marginTop: Spacing.md },
   list: { gap: Spacing.sm, marginTop: Spacing.md },
-  chips: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.xs },
+  tabs: { marginTop: Spacing.xs },
+  chips: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
