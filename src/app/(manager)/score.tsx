@@ -86,7 +86,8 @@ export default function ScoreScreen() {
           employee_id: employee.id,
           criterion,
           reason: reason.trim(),
-          date: new Date().toISOString(),
+          // The day it happened: the server needs it to know which month's pay the points land in.
+          incident_date: new Date().toISOString(),
           ...(criterion === 'OTHER' && { points: Number(otherPoints) }),
         },
       });
