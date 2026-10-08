@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useGetData, type Paginated } from '@/lib/api';
+import { pickLiveBalance } from '@/lib/batch-balance';
 import { formatBatchCode } from '@/lib/format';
 import { dayOfCycle } from '@/lib/farm';
 import type { BatchHouseBalance } from '@/lib/types';
@@ -14,14 +15,18 @@ import type { BatchHouseBalance } from '@/lib/types';
  * GET /batch-house-balances?house_id=X is the batch lookup for every form
  * needing a batch_id — it doubles as the live count display. One request
  * serves both. docs/layout/07-log-mortality.md.
+ *
+ * Reads a few rows, not one: the server lists a house's balances newest-updated
+ * first with no quantity filter, so a zero row can sort ahead of the live batch;
+ * `pickLiveBalance` takes the first row with birds in it.
  */
 export function useResolvedBatch(houseId: string | undefined) {
   const { data, isLoading } = useGetData<Paginated<BatchHouseBalance>>(
-    `/batch-house-balances?house_id=${houseId ?? ''}&limit=1`,
+    `/batch-house-balances?house_id=${houseId ?? ''}&limit=20`,
     ['batch-house-balances', houseId ?? 'none'],
     { enabled: !!houseId },
   );
-  return { balance: data?.results?.[0] ?? null, isLoading: !!houseId && isLoading };
+  return { balance: pickLiveBalance(data?.results), isLoading: !!houseId && isLoading };
 }
 
 /**
