@@ -12,15 +12,16 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Card } from '@/components/ui/card';
-import { Icon, IconTile, type IconName } from '@/components/ui/icon';
+import Ionicons from '@expo/vector-icons/Ionicons';
+
 import { AppText } from '@/components/ui/text';
-import { Spacing, type ThemeColor } from '@/constants/theme';
+import { Radius, Spacing, type ThemeColor } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 type Feature = {
   label: string;
-  icon: IconName;
-  tint: 'tintGreen' | 'tintAmber' | 'tintRed' | 'tintBlue' | 'primarySoft';
+  icon: keyof typeof Ionicons.glyphMap;
+  tint: Extract<ThemeColor, 'tintGreen' | 'tintAmber' | 'tintBlue' | 'primarySoft' | 'surfaceAlt'>;
   color: ThemeColor;
   href: string;
 };
@@ -28,21 +29,24 @@ type Feature = {
 const COLUMNS = 4;
 const SPRING = { damping: 18, stiffness: 260, mass: 0.6 };
 
-/** Where a worker can go from Home. The first row always shows; the rest sit behind "See more". Add a
- *  feature here and it joins the grid. Team is a manager's tool, so it is offered to managers only. */
+/** Where a worker can go from Home. The first row always shows; the rest sit behind "See all". Add a
+ *  feature here and it joins the grid. Team is a manager's tool, so it is offered to managers only.
+ *  Alerts is not here: the bell and the alert strip already cover it. */
 function featuresFor(isManager: boolean): Feature[] {
   const list: Feature[] = [
     { label: 'Houses', icon: 'home', tint: 'tintGreen', color: 'success', href: '/houses' },
-    { label: 'Stock', icon: 'archive', tint: 'tintBlue', color: 'info', href: '/stock' },
-    { label: 'Alerts', icon: 'bell', tint: 'tintAmber', color: 'warning', href: '/alerts' },
-    { label: 'Sync', icon: 'refresh-cw', tint: 'primarySoft', color: 'primary', href: '/sync' },
+    { label: 'Stock', icon: 'cube', tint: 'tintBlue', color: 'info', href: '/stock' },
   ];
-  if (isManager) list.push({ label: 'Team', icon: 'users', tint: 'tintGreen', color: 'success', href: '/team' });
-  list.push({ label: 'Settings', icon: 'settings', tint: 'primarySoft', color: 'primary', href: '/settings' });
+  if (isManager) list.push({ label: 'Team', icon: 'people', tint: 'tintAmber', color: 'warning', href: '/team' });
+  list.push(
+    { label: 'Sync', icon: 'cloud-done', tint: 'primarySoft', color: 'primary', href: '/sync' },
+    { label: 'Settings', icon: 'settings', tint: 'surfaceAlt', color: 'inkSoft', href: '/settings' },
+  );
   return list;
 }
 
 function Tile({ feature }: { feature: Feature }) {
+  const theme = useTheme();
   const scale = useSharedValue(1);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
@@ -59,8 +63,10 @@ function Tile({ feature }: { feature: Feature }) {
       style={styles.cell}
     >
       <Animated.View style={[styles.tile, style]}>
-        <IconTile name={feature.icon} tint={feature.tint} color={feature.color} size={56} />
-        <AppText variant="caption" color="inkSoft" numberOfLines={1}>
+        <View style={[styles.icon, { backgroundColor: theme[feature.tint] }]}>
+          <Ionicons name={feature.icon} size={28} color={theme[feature.color]} />
+        </View>
+        <AppText variant="label" numberOfLines={1}>
           {feature.label}
         </AppText>
       </Animated.View>
@@ -82,8 +88,9 @@ function Row({ items }: { items: Feature[] }) {
   );
 }
 
-/** docs/layout/01-dashboard.md — a grid of shortcuts, four to a row, the rest behind "See more". */
+/** docs/layout/01-dashboard.md — shortcuts on the page itself, four to a row; "See all" reveals the rest. */
 export function FeatureGrid({ isManager }: { isManager: boolean }) {
+  const theme = useTheme();
   const [open, setOpen] = useState(false);
   const turn = useSharedValue(0);
   const chevron = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.value * 180}deg` }] }));
@@ -99,54 +106,65 @@ export function FeatureGrid({ isManager }: { isManager: boolean }) {
   };
 
   return (
-    // The card grows and shrinks smoothly as rows appear, instead of jumping.
-    <Animated.View layout={LinearTransition.duration(240)} style={styles.card}>
-      <Card eyebrow="Features">
-        <Row items={first} />
-
-        {open &&
-          rest.map((items, i) => (
-            <Animated.View
-              key={i}
-              entering={FadeIn.duration(220).delay(i * 40)}
-              exiting={FadeOut.duration(120)}
-            >
-              <Row items={items} />
-            </Animated.View>
-          ))}
-
+    // The section grows and shrinks smoothly as rows appear, instead of jumping.
+    <Animated.View layout={LinearTransition.duration(240)} style={styles.section}>
+      <View style={styles.head}>
+        <AppText variant="eyebrow" color="muted">
+          Features
+        </AppText>
         {rest.length > 0 && (
           <Pressable
             onPress={toggle}
             accessibilityRole="button"
             accessibilityState={{ expanded: open }}
-            accessibilityLabel={open ? 'Show fewer features' : 'See more features'}
-            style={styles.more}
+            accessibilityLabel={open ? 'Show fewer features' : 'See all features'}
+            hitSlop={Spacing.md}
+            style={styles.toggle}
           >
             <AppText variant="label" color="primary">
-              {open ? 'Show less' : 'See more'}
+              {open ? 'Less' : 'See all'}
             </AppText>
             <Animated.View style={chevron}>
-              <Icon name="chevron-down" size={18} color="primary" />
+              <Ionicons name="chevron-down" size={16} color={theme.primary} />
             </Animated.View>
           </Pressable>
         )}
-      </Card>
+      </View>
+
+      <Row items={first} />
+
+      {open &&
+        rest.map((items, i) => (
+          <Animated.View
+            key={i}
+            entering={FadeIn.duration(220).delay(i * 40)}
+            exiting={FadeOut.duration(120)}
+          >
+            <Row items={items} />
+          </Animated.View>
+        ))}
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { marginTop: Spacing.md },
-  row: { flexDirection: 'row' },
-  cell: { flex: 1, alignItems: 'center' },
-  tile: { alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.sm },
-  more: {
+  section: { marginTop: Spacing.xl },
+  head: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 28,
+    marginBottom: Spacing.xs,
+  },
+  toggle: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
+  row: { flexDirection: 'row', gap: Spacing.sm },
+  cell: { flex: 1, alignItems: 'center' },
+  tile: { alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.sm },
+  icon: {
+    width: 64,
+    height: 64,
+    borderRadius: Radius.card,
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.xs,
-    minHeight: 44,
-    marginTop: Spacing.xs,
   },
 });
