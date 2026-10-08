@@ -1,5 +1,8 @@
 # 12 · Team
 
+> **Updated 2026-10-08 (Team redesign):** three stat cards (On shift, Tasks done, Overdue) · filter chips with counts (All, Overdue, Open, Done) · one card per person: photo or initials, role, what is left today ("1 overdue" in red, "2 left today", "All done"), a progress bar of today's tasks (amber once anything is overdue) and this month's points · pull to refresh. Most overdue first. The same per-person sums feed Home's Team card (`lib/team-view.ts`).
+
+
 **Route:** `src/app/(tabs)/(manager)/team/index.tsx` · **Tab:** Team
 **Tier:** Manager `[C assign_task]`
 

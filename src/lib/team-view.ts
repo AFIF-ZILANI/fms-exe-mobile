@@ -17,6 +17,8 @@ export type TeamSummary = {
   onShift: number;
   done: number;
   total: number;
+  /** Overdue tasks across the whole team. */
+  overdue: number;
 };
 
 /**
@@ -57,6 +59,7 @@ export function summarizeTeam(
     onShift: members.filter((m) => m.total > 0).length,
     done: members.reduce((sum, m) => sum + m.done, 0),
     total: members.reduce((sum, m) => sum + m.total, 0),
+    overdue: members.reduce((sum, m) => sum + m.overdue, 0),
   };
 }
 
@@ -70,3 +73,24 @@ export function taskStatusLine(s: Pick<MemberStat, 'pending' | 'overdue' | 'tota
   if (s.total > 0) return { text: 'All done', tone: 'success' };
   return { text: 'No tasks today', tone: 'muted' };
 }
+
+export type TeamFilter = 'ALL' | 'OVERDUE' | 'OPEN' | 'DONE';
+
+const MATCH: Record<TeamFilter, (m: MemberStat) => boolean> = {
+  ALL: () => true,
+  OVERDUE: (m) => m.overdue > 0,
+  OPEN: (m) => m.pending > 0,
+  // Had tasks today and finished every one; someone with no tasks is neither open nor done.
+  DONE: (m) => m.total > 0 && m.pending === 0,
+};
+
+export const filterTeam = (members: MemberStat[], filter: TeamFilter): MemberStat[] =>
+  members.filter(MATCH[filter]);
+
+/** How many people each filter chip would show. */
+export const countByFilter = (members: MemberStat[]): Record<TeamFilter, number> => ({
+  ALL: members.length,
+  OVERDUE: filterTeam(members, 'OVERDUE').length,
+  OPEN: filterTeam(members, 'OPEN').length,
+  DONE: filterTeam(members, 'DONE').length,
+});

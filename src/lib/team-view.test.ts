@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 
-import { summarizeTeam, taskStatusLine } from './team-view';
+import { countByFilter, filterTeam, summarizeTeam, taskStatusLine } from './team-view';
 import type { Employee, TaskAssignment } from './types';
 
 const person = (id: string, name: string) => ({ id, profile: { name } }) as unknown as Employee;
@@ -34,16 +34,27 @@ assert.equal(c!.points, 5);
 assert.equal(s.onShift, 2);
 assert.equal(s.done, 1);
 assert.equal(s.total, 4);
+assert.equal(s.overdue, 2);
 
 // ties fall back to name
 const tie = summarizeTeam([person('x', 'Zed'), person('y', 'Amir')], [], [], now);
 assert.deepEqual(tie.members.map((m) => m.member.id), ['y', 'x']);
-assert.deepEqual(summarizeTeam([], [], [], now), { members: [], onShift: 0, done: 0, total: 0 });
+assert.deepEqual(summarizeTeam([], [], [], now), { members: [], onShift: 0, done: 0, total: 0, overdue: 0 });
 
 // the line under the name
 assert.deepEqual(taskStatusLine({ pending: 2, overdue: 1, total: 3 }), { text: '1 overdue', tone: 'critical' });
 assert.deepEqual(taskStatusLine({ pending: 2, overdue: 0, total: 3 }), { text: '2 left today', tone: 'ink' });
 assert.deepEqual(taskStatusLine({ pending: 0, overdue: 0, total: 3 }), { text: 'All done', tone: 'success' });
 assert.deepEqual(taskStatusLine({ pending: 0, overdue: 0, total: 0 }), { text: 'No tasks today', tone: 'muted' });
+
+// filters: b has 2 overdue, a has one open task and one done, c has nothing today
+const ids = (f: Parameters<typeof filterTeam>[1]) => filterTeam(s.members, f).map((m) => m.member.id);
+assert.deepEqual(ids('ALL'), ['b', 'a', 'c']);
+assert.deepEqual(ids('OVERDUE'), ['b']);
+assert.deepEqual(ids('OPEN'), ['b', 'a'], 'overdue tasks are open too');
+assert.deepEqual(ids('DONE'), [], 'a still has an open task; c has no tasks at all');
+assert.deepEqual(countByFilter(s.members), { ALL: 3, OVERDUE: 1, OPEN: 2, DONE: 0 });
+const finished = summarizeTeam([person('d', 'Dev')], [task('9', 'd', 'DONE', '2026-10-08T05:00:00Z')], [], now);
+assert.deepEqual(filterTeam(finished.members, 'DONE').map((m) => m.member.id), ['d']);
 
 console.log('team-view checks passed');
