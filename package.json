@@ -51,7 +51,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "test": "bun src/lib/format.test.ts && bun src/lib/scan.test.ts && bun src/lib/scan-actions.test.ts && bun src/lib/profile-format.test.ts && bun src/lib/appearance-pref.test.ts && bun src/lib/launcher.test.ts && bun src/lib/stock-summary.test.ts && bun src/lib/outbox-describe.test.ts && bun src/lib/logout-decision.test.ts && bun src/lib/houses-summary.test.ts && bun src/lib/house-detail.test.ts && bun src/lib/batch-balance.test.ts && bun src/lib/tasks-view.test.ts && bun src/lib/alerts-view.test.ts"
+    "test": "bun src/lib/format.test.ts && bun src/lib/scan.test.ts && bun src/lib/scan-actions.test.ts && bun src/lib/profile-format.test.ts && bun src/lib/appearance-pref.test.ts && bun src/lib/launcher.test.ts && bun src/lib/stock-summary.test.ts && bun src/lib/outbox-describe.test.ts && bun src/lib/logout-decision.test.ts && bun src/lib/houses-summary.test.ts && bun src/lib/house-detail.test.ts && bun src/lib/batch-balance.test.ts && bun src/lib/tasks-view.test.ts && bun src/lib/alerts-view.test.ts && bun src/lib/outbox-owner.test.ts"
   },
   "private": true
 }

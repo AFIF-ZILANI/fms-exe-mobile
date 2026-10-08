@@ -249,9 +249,10 @@ outbox exists at all.
 - **Logout:** records still *waiting to send* block logout ("Sync first"): they would upload under whoever
   signs in next. *Failed* records ask: **Review**, **Log out and discard** (deletes only failed rows, after
   re-reading the queue so a stale count can't hide a pending record), or Cancel.
-- **Known gap (not fixed here):** the queue has no owner column. After a **forced** sign-out (expired or
-  deactivated session, or a password changed elsewhere) the next person to sign in on the same phone can
-  have the previous person's pending records sent under their own login, and can see and retry the failed
-  ones. Voluntary logout through Settings is covered; the 401 path and the Change password screen's
-  Log out are not. The fix is to store the actor's employee id on each row at enqueue time and have
-  `flush` and `useOutboxRows` ignore other people's rows.
+- **Owner column (fixed 2026-10-08):** every queued row stores the signed-in employee's id (`owner`,
+  set by `setOutboxOwner` from the session). `listPending`, `listDeadLetters` (so `flush`, the Sync
+  center and logout) only see the current person's rows (`lib/outbox-owner.ts`), so after a forced
+  sign-out the next person on the phone can neither send nor see the previous person's records; they
+  come back when that person signs in again. Rows queued before the column existed have no owner and
+  stay visible to anyone. With nobody signed in (or the profile not loaded) nothing is listed or sent.
+  Cost: a previous person's leftover rows stay on the phone, invisible, until they sign in again.
