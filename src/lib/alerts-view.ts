@@ -22,6 +22,18 @@ export function summarizeAlerts(results: FarmAlert[], total?: number): { count: 
   return { count, critical: results.some((a) => a.level === 'CRITICAL') };
 }
 
+export type LevelFilter = 'ALL' | AlertLevel;
+
+/** How many alerts sit at each level, for the filter chips. */
+export function countByLevel(alerts: FarmAlert[]): Record<LevelFilter, number> {
+  const counts: Record<LevelFilter, number> = { ALL: alerts.length, CRITICAL: 0, WARNING: 0, INFO: 0 };
+  for (const a of alerts) counts[a.level] += 1;
+  return counts;
+}
+
+export const filterAlerts = (alerts: FarmAlert[], filter: LevelFilter): FarmAlert[] =>
+  filter === 'ALL' ? alerts : alerts.filter((a) => a.level === filter);
+
 const LEVEL: Record<AlertLevel, string> = { CRITICAL: 'Critical', WARNING: 'Warning', INFO: 'Info' };
 export const levelWord = (level: AlertLevel): string => LEVEL[level];
 

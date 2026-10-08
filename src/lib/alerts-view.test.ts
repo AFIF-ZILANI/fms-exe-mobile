@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 
-import { alertTypeLabel, levelWord, sortAlerts, summarizeAlerts } from './alerts-view';
+import { alertTypeLabel, countByLevel, filterAlerts, levelWord, sortAlerts, summarizeAlerts } from './alerts-view';
 import type { FarmAlert } from './types';
 
 const alert = (id: string, level: FarmAlert['level'], issued_at: string, over: Partial<FarmAlert> = {}): FarmAlert => ({
@@ -68,5 +68,13 @@ assert.equal(alertTypeLabel('BATCH'), 'Batch');
 assert.equal(alertTypeLabel('SYSTEM'), 'System');
 assert.equal(alertTypeLabel('EMPLOYEE'), 'Employee');
 assert.equal(alertTypeLabel('FEED'), 'Feed');
+
+// --- filter chips ----------------------------------------------------------------
+const mix = [alert('a', 'INFO', '2026-10-01'), alert('b', 'CRITICAL', '2026-10-02'), alert('c', 'CRITICAL', '2026-10-03')];
+assert.deepEqual(countByLevel(mix), { ALL: 3, CRITICAL: 2, WARNING: 0, INFO: 1 });
+assert.deepEqual(countByLevel([]), { ALL: 0, CRITICAL: 0, WARNING: 0, INFO: 0 });
+assert.deepEqual(filterAlerts(mix, 'CRITICAL').map((a) => a.id), ['b', 'c']);
+assert.equal(filterAlerts(mix, 'ALL').length, 3);
+assert.equal(filterAlerts(mix, 'WARNING').length, 0);
 
 console.log('alerts-view checks passed');
