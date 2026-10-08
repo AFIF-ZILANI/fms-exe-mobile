@@ -1,32 +1,30 @@
 import { useMemo, useState } from 'react';
-import { RefreshControl, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 
+import { TaskItem, ScoreItem } from '@/components/member-sections';
 import { InfoCard, InfoRow, ProfileHeader, openLink } from '@/components/profile-parts';
 import { Button } from '@/components/ui/button';
 import { Card, StatCard } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Header } from '@/components/ui/header';
 import { IconTile } from '@/components/ui/icon';
-import { LedgerRow } from '@/components/ui/ledger-row';
 import { Screen } from '@/components/ui/screen';
 import { Skeleton } from '@/components/ui/skeleton';
-import { StatusPill } from '@/components/ui/status-pill';
 import { AppText } from '@/components/ui/text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useGetData, type Paginated } from '@/lib/api';
 import { useSession } from '@/lib/session';
-import { houseToken, monthRange } from '@/lib/farm';
-import { formatTime, formatSignedPoints } from '@/lib/format';
-import { formatDate as formatProfileDate, humanise } from '@/lib/profile-format';
-import { dueLabel, groupTasks } from '@/lib/tasks-view';
+import { monthRange } from '@/lib/farm';
+import { formatSignedPoints } from '@/lib/format';
+import { formatDate as formatProfileDate } from '@/lib/profile-format';
+import { groupTasks } from '@/lib/tasks-view';
 import type { Employee, ScoreEntry, TaskAssignment } from '@/lib/types';
 
 const REFRESH_TIMEOUT_MS = 6000;
 
-const shortDate = (iso: string) =>
-  new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase();
+const SHOWN = 4;
 
 /**
  * docs/layout/13-employee-detail.md — one person: who they are, what is on their plate, and their record.
@@ -44,6 +42,8 @@ export default function EmployeeDetailScreen() {
   const [now] = useState(() => new Date());
   const { from, to } = monthRange(now);
   const [refreshing, setRefreshing] = useState(false);
+  const [allTasks, setAllTasks] = useState(false);
+  const [allScores, setAllScores] = useState(false);
 
   const { startOfToday, endOfToday } = useMemo(() => {
     const start = new Date(now);
@@ -72,8 +72,16 @@ export default function EmployeeDetailScreen() {
   const employee = person.data;
   const groups = groupTasks(pending.data?.results ?? [], now);
   const finished = doneToday.data?.results ?? [];
-  const todayRows = [...groups.today, ...finished];
-  const todayTotal = todayRows.length;
+  // Everything assigned, in the order a manager cares about: late, due today, coming up, then finished today.
+  const assigned = [
+    ...groups.overdue.map((task) => ({ task, tone: 'overdue' as const })),
+    ...groups.today.map((task) => ({ task, tone: 'open' as const })),
+    ...groups.later.map((task) => ({ task, tone: 'open' as const })),
+    ...finished.map((task) => ({ task, tone: 'done' as const })),
+  ];
+  const todayTotal = groups.today.length + finished.length;
+  const openCount = groups.overdue.length + groups.today.length + groups.later.length;
+  const shownTasks = allTasks ? assigned : assigned.slice(0, SHOWN);
 
   const entries = scores.data?.results ?? [];
   const points = entries.reduce((sum, e) => sum + e.points, 0);
@@ -94,31 +102,6 @@ export default function EmployeeDetailScreen() {
     } finally {
       setRefreshing(false);
     }
-  };
-
-  const taskRow = (task: TaskAssignment, last: boolean, overdue: boolean) => {
-    const done = task.status === 'DONE';
-    return (
-      <LedgerRow
-        key={task.id}
-        gutter={houseToken(task.house?.number)}
-        last={last}
-        onPress={done ? undefined : () => router.push(`/tasks/${task.id}` as Href)}
-      >
-        <View style={styles.taskHead}>
-          <AppText variant="bodyStrong" color={done ? 'inkSoft' : 'ink'} style={styles.flex} numberOfLines={2}>
-            {task.title}
-          </AppText>
-          {done ? <StatusPill status="DONE" /> : null}
-          {overdue ? <StatusPill status="OVERDUE" /> : null}
-        </View>
-        <AppText variant="caption" color={overdue ? 'critical' : 'muted'}>
-          {overdue ? `${dueLabel(task.due_at, now)} · ` : ''}
-          {formatTime(task.due_at)}
-          {task.location_note ? ` · ${task.location_note}` : ''}
-        </AppText>
-      </LedgerRow>
-    );
   };
 
   return (
@@ -192,33 +175,53 @@ export default function EmployeeDetailScreen() {
             />
           </View>
 
-          {hasOverdue ? (
-            <Card rows eyebrow="Overdue" note={String(groups.overdue.length)} style={styles.card}>
-              {groups.overdue.map((t, i) => taskRow(t, i === groups.overdue.length - 1, true))}
-            </Card>
-          ) : null}
-
-          <Card
-            rows
-            eyebrow="Today"
-            note={groups.later.length > 0 ? `+${groups.later.length} later` : `${finished.length}/${todayTotal} done`}
-            style={styles.card}
-          >
-            {todayRows.length === 0 ? (
+          <View style={styles.sectionHead}>
+            <AppText variant="eyebrow" color="muted">
+              Assigned tasks{assigned.length > 0 ? ` · ${openCount} open` : ''}
+            </AppText>
+            <Pressable onPress={assign} accessibilityRole="button" hitSlop={Spacing.md}>
+              <AppText variant="label" color="primary">
+                Assign
+              </AppText>
+            </Pressable>
+          </View>
+          {assigned.length === 0 ? (
+            <Card style={styles.card}>
               <EmptyState
                 compact
                 icon="check-circle"
                 tint="tintGreen"
-                title="Nothing due today."
+                title="Nothing assigned."
                 action={{ label: 'Assign a task', onPress: assign }}
               />
-            ) : (
-              todayRows.map((t, i) => taskRow(t, i === todayRows.length - 1, false))
-            )}
-          </Card>
+            </Card>
+          ) : (
+            <View style={styles.list}>
+              {shownTasks.map(({ task, tone }) => (
+                <TaskItem key={task.id} task={task} tone={tone} now={now} />
+              ))}
+              {assigned.length > SHOWN ? (
+                <Pressable onPress={() => setAllTasks((v) => !v)} accessibilityRole="button" style={styles.more}>
+                  <AppText variant="label" color="primary">
+                    {allTasks ? 'Show less' : `Show all ${assigned.length}`}
+                  </AppText>
+                </Pressable>
+              ) : null}
+            </View>
+          )}
 
-          <Card rows eyebrow={`Points · ${now.toLocaleDateString(undefined, { month: 'long' })}`} style={styles.card}>
-            {entries.length === 0 ? (
+          <View style={styles.sectionHead}>
+            <AppText variant="eyebrow" color="muted">
+              Points · {now.toLocaleDateString(undefined, { month: 'long' })}
+            </AppText>
+            {entries.length > 0 ? (
+              <AppText variant="figure" color={pointsColor}>
+                {formatSignedPoints(points)}
+              </AppText>
+            ) : null}
+          </View>
+          {entries.length === 0 ? (
+            <Card style={styles.card}>
               <EmptyState
                 compact
                 icon="award"
@@ -226,36 +229,26 @@ export default function EmployeeDetailScreen() {
                 title="No entries this month."
                 body="Tap Rate to add one."
               />
-            ) : (
-              entries.slice(0, 6).map((entry, i) => (
-                <LedgerRow
+            </Card>
+          ) : (
+            <View style={styles.list}>
+              {(allScores ? entries : entries.slice(0, SHOWN)).map((entry) => (
+                // "You" rather than the manager's own name: it's the difference between reading a record and auditing one.
+                <ScoreItem
                   key={entry.id}
-                  gutter={formatSignedPoints(entry.points)}
-                  gutterColor={entry.points > 0 ? 'success' : 'critical'}
-                  last={i === Math.min(entries.length, 6) - 1}
-                >
-                  <View style={styles.taskHead}>
-                    <AppText variant="bodyStrong" style={styles.flex}>
-                      {humanise(entry.criterion)}
-                    </AppText>
-                    <AppText variant="data" color="muted">
-                      {shortDate(entry.incident_date)}
-                    </AppText>
-                  </View>
-                  {entry.reason ? (
-                    <AppText variant="body" color="inkSoft" numberOfLines={2}>
-                      &ldquo;{entry.reason}&rdquo;
-                    </AppText>
-                  ) : null}
-                  {/* "You" rather than the manager's own name: it's the difference
-                      between reading a record and auditing one. */}
-                  <AppText variant="caption" color="muted">
-                    {entry.given_by_id === actor?.profile.id ? 'You' : (entry.given_by?.name ?? '')}
+                  entry={entry}
+                  givenBy={entry.given_by_id === actor?.profile.id ? 'You' : (entry.given_by?.name ?? '')}
+                />
+              ))}
+              {entries.length > SHOWN ? (
+                <Pressable onPress={() => setAllScores((v) => !v)} accessibilityRole="button" style={styles.more}>
+                  <AppText variant="label" color="primary">
+                    {allScores ? 'Show less' : `Show all ${entries.length}`}
                   </AppText>
-                </LedgerRow>
-              ))
-            )}
-          </Card>
+                </Pressable>
+              ) : null}
+            </View>
+          )}
 
           <InfoCard title="Contact">
             <InfoRow
@@ -293,5 +286,13 @@ const styles = StyleSheet.create({
   skeletons: { gap: Spacing.md, marginTop: Spacing.md },
   actions: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.md },
   statRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md },
-  taskHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  list: { gap: Spacing.sm, marginTop: Spacing.sm },
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 28,
+    marginTop: Spacing.xl,
+  },
+  more: { alignItems: 'center', justifyContent: 'center', minHeight: 44 },
 });

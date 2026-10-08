@@ -1,6 +1,6 @@
 # 13 · Employee Detail
 
-> **Updated 2026-10-08 (member page redesign):** photo header (shared with Profile) · Rate / Assign · three stat cards (Points this month, Done today, Overdue) · Overdue card (open tasks from any earlier day, with the day) · Today card (open and finished) · this month's points (settled entries only, real dates, who gave them) · Contact (tap to call or write) · probation end when on probation. Pull to refresh. Fixed: overdue tasks from earlier days were invisible; history dates read "Invalid date" (the server field is `incident_date`); totals now count settled (ACTIVE) entries only, like payroll does.
+> **Updated 2026-10-08 (member page redesign):** photo header (shared with Profile) · Rate / Assign · three stat cards (Points this month, Done today, Overdue) · Assigned tasks as one card each (late first, then today, coming up, finished today; icon by state, due day and time, house name, Overdue/Done pill; four shown, "Show all") · Points as one card each (coloured badge, criterion, reason, who gave it and when; month total in the heading; four shown, "Show all") · Contact (tap to call or write) · probation end when on probation. Pull to refresh. Fixed: overdue tasks from earlier days were invisible; history dates read "Invalid date" (the server field is `incident_date`); totals now count settled (ACTIVE) entries only, like payroll does.
 
 
 **Route:** `src/app/(tabs)/(manager)/team/[employeeId].tsx`
