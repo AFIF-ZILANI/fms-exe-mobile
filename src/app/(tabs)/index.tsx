@@ -8,18 +8,19 @@ import { Card, StatCard } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SyncBanner } from '@/components/ui/sync-banner';
 import { LedgerRow } from '@/components/ui/ledger-row';
-import { DayCycleBar } from '@/components/ui/day-cycle-bar';
+import { CycleBar } from '@/components/cycle-bar';
 import { StatusPill } from '@/components/ui/status-pill';
 import { AppText } from '@/components/ui/text';
 import { Icon, IconTile } from '@/components/ui/icon';
-import { Radius, Spacing } from '@/constants/theme';
+import { Radius, Size, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useSession } from '@/lib/session';
 import { can } from '@/lib/permissions';
 import { useGetData, type Paginated } from '@/lib/api';
 import { summarizeAlerts } from '@/lib/alerts-view';
 import { dueLabel, groupTasks, taskHref } from '@/lib/tasks-view';
-import { formatBatchCode, formatSignedPoints, formatTime } from '@/lib/format';
+import { formatSignedPoints, formatTime } from '@/lib/format';
+import { cycleProgress } from '@/lib/houses-summary';
 import { dayOfCycle, expectedCycleDays, houseToken, initials, monthRange } from '@/lib/farm';
 import type { BatchHouseBalance, Employee, FarmAlert, TaskAssignment } from '@/lib/types';
 
@@ -35,6 +36,49 @@ function greeting(now = new Date()): string {
 /** 9,812 stays whole; 12,400 becomes 12.4k so three stat cards fit one row. */
 const compactCount = (n: number) =>
   n >= 10_000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : n.toLocaleString();
+
+/** One running house: name and where its cycle stands on the left, live birds on the right. */
+function HouseRow({ balance, last }: { balance: BatchHouseBalance; last: boolean }) {
+  const theme = useTheme();
+  const { batch, house } = balance;
+  const progress = batch ? cycleProgress(dayOfCycle(batch.starting_date), expectedCycleDays(batch)) : null;
+
+  return (
+    <Pressable
+      onPress={() => router.push(`/houses/${balance.house_id}` as Href, { withAnchor: true })}
+      accessibilityRole="button"
+      accessibilityLabel={`${house?.name ?? 'House'}, ${balance.quantity.toLocaleString()} birds${
+        progress ? `, ${progress.label}` : ''
+      }`}
+      style={({ pressed }) => [
+        styles.houseRow,
+        !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.line },
+        pressed && { backgroundColor: theme.surfaceAlt },
+      ]}
+    >
+      <View style={styles.flex}>
+        <AppText variant="bodyStrong" numberOfLines={1}>
+          {house?.name ?? 'House'}
+        </AppText>
+        {progress && (
+          <View style={styles.houseProgress}>
+            <AppText variant="caption" color={progress.over ? 'warning' : 'muted'}>
+              {progress.over ? `${progress.label} · past plan` : progress.label}
+            </AppText>
+            <CycleBar progress={progress} />
+          </View>
+        )}
+      </View>
+      <View style={styles.houseCount}>
+        <AppText variant="figure">{balance.quantity.toLocaleString()}</AppText>
+        <AppText variant="caption" color="muted">
+          birds
+        </AppText>
+      </View>
+      <Icon name="chevron-right" size={20} color="muted" />
+    </Pressable>
+  );
+}
 
 /** docs/layout/01-dashboard.md — the screen a worker opens by reflex. */
 export default function DashboardScreen() {
@@ -288,25 +332,7 @@ export default function DashboardScreen() {
           <EmptyState compact icon="home" tint="surfaceAlt" title="No running batches." />
         ) : (
           activeBalances.slice(0, 6).map((balance, i) => (
-            <LedgerRow
-              key={balance.id}
-              gutter={houseToken(balance.house?.number)}
-              last={i === Math.min(activeBalances.length, 6) - 1}
-              onPress={() => router.push(`/houses/${balance.house_id}` as Href, { withAnchor: true })}
-            >
-              <View style={styles.rowTop}>
-                <AppText variant="figure">{balance.quantity.toLocaleString()}</AppText>
-                <AppText variant="data" color="muted">
-                  {formatBatchCode(balance.batch?.batch_code, balance.batch_id)}
-                </AppText>
-              </View>
-              {balance.batch && (
-                <DayCycleBar
-                  day={dayOfCycle(balance.batch.starting_date)}
-                  expectedDays={expectedCycleDays(balance.batch)}
-                />
-              )}
-            </LedgerRow>
+            <HouseRow key={balance.id} balance={balance} last={i === Math.min(activeBalances.length, 6) - 1} />
           ))
         )}
       </Card>
@@ -335,6 +361,17 @@ const styles = StyleSheet.create({
   fill: { height: '100%', borderRadius: Radius.pill },
   more: { alignItems: 'center', paddingTop: Spacing.md, paddingBottom: Spacing.xs, minHeight: 44 },
   card: { marginTop: Spacing.md },
+  houseRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    minHeight: Size.row,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
+  houseProgress: { marginTop: Spacing.xs, gap: 4 },
+  // Fixed width so every row's cycle bar is the same length, whatever the bird count.
+  houseCount: { alignItems: 'flex-end', width: 84 },
   rowTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   avatar: {
     width: 32,
