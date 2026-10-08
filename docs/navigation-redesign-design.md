@@ -8,8 +8,8 @@ Audit findings this fixes (docs/ux-audit-2026-10.md): two launchers with differe
 
 ## Decisions (user)
 
-1. **Bottom bar, identical for everyone:** `Home · Houses · [+ Log] · Stock · Me`.
-2. **Me is the Profile.** **Settings is a separate screen with app settings only**, opened by a gear on the Me header.
+1. **Bottom bar, identical for everyone:** `Home · Tasks · [+] · Performance · Profile` (updated 2026-10-08; Houses is reached from Home, Stock levels from the launcher's Stock group, both hidden tab routes).
+2. **Profile is the Profile** (the route was `/me`; `/performance` and `/tasks` are now tabs). **Settings is a separate screen with app settings only**, opened by a gear on the Me header.
 3. **New features:** My tasks list, Sync center, Alerts inbox. The **Stock tab** comes with the chosen bar (read as wanted; first version is modest).
 
 ## Information architecture

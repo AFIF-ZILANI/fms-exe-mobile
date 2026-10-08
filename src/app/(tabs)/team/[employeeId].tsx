@@ -24,7 +24,7 @@ const shortDate = (iso: string) =>
 /**
  * docs/layout/13-employee-detail.md — one person: what they're on, and their
  * record. Managers see others' scores here; a Worker sees only their own on
- * /me/performance. The split is capability-driven, not two components.
+ * /performance. The split is capability-driven, not two components.
  *
  * No payroll section: a manager sees points, not pay. Putting a colleague's
  * salary here is a privacy problem the app doesn't need.

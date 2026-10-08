@@ -5,11 +5,11 @@ import { router } from 'expo-router';
 import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
 import { Button } from '@/components/ui/button';
-import { Card, StatCard } from '@/components/ui/card';
+import { StatCard } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Icon, IconTile } from '@/components/ui/icon';
 import { AppText } from '@/components/ui/text';
-import { InfoCard, InfoRow, NavRow, ProfileHeader, openLink } from '@/components/profile-parts';
+import { InfoCard, InfoRow, ProfileHeader, openLink } from '@/components/profile-parts';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useGetData, type Paginated } from '@/lib/api';
@@ -108,7 +108,7 @@ export default function ProfileScreen() {
           tint="tintAmber"
           valueColor={!pointsReady ? 'muted' : points > 0 ? 'success' : points < 0 ? 'critical' : 'ink'}
           icon={<IconTile name="award" tint="tintAmber" color="warning" />}
-          onPress={() => router.push('/me/performance')}
+          onPress={() => router.push('/performance')}
         />
         <StatCard
           value={formatTenureShort(employee.joining_date, now)}
@@ -187,17 +187,12 @@ export default function ProfileScreen() {
       <AppText variant="caption" color="muted" style={styles.note}>
         Something wrong? Ask your manager. Only they can change these details.
       </AppText>
-
-      <Card rows style={styles.card}>
-        <NavRow label="My performance" onPress={() => router.push('/me/performance')} last />
-      </Card>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   stats: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.md },
-  card: { marginTop: Spacing.md },
   note: { marginTop: Spacing.md, paddingHorizontal: Spacing.xs },
   warning: {
     flexDirection: 'row',

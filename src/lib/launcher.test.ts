@@ -29,10 +29,10 @@ assert.deepEqual(
   worker[0].items.map((i) => i.label),
   ['Mortality', 'Feed', 'Weight', 'Environment', 'Treatment'],
 );
-assert.deepEqual(worker[1].items.map((i) => i.label), ['Move to house', 'Use an item']);
+assert.deepEqual(worker[1].items.map((i) => i.label), ['Stock levels', 'Move to house', 'Use an item']);
 assert.deepEqual(
   manager[1].items.map((i) => i.label),
-  ['Move to house', 'Use an item', 'Link items', 'Report discrepancy', 'Flag low stock'],
+  ['Stock levels', 'Move to house', 'Use an item', 'Link items', 'Report discrepancy', 'Flag low stock'],
 );
 assert.deepEqual(
   manager[2].items.map((i) => i.label),

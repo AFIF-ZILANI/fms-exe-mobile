@@ -357,7 +357,7 @@ worker three screens deep had no idea where they were or how to get home.
 
 - **64dp tall** plus the bottom safe-area inset, `surface` fill, 1px `line` top
   border. No shadow — the border is enough and reads cleanly in sunlight.
-- **Four tabs plus a centre button**, five equal cells. Each tab: 22dp icon, 11pt
+- **Four tabs plus a centre button** (Home · Tasks · [+] · Performance · Profile), five equal cells. Ionicons, outline when inactive and filled when active. Each tab: 24dp icon, 11pt
   caption, press-scale spring and a selection haptic.
 - **Active tab:** icon and label switch to `primary`, and a 24×3dp `primary` tab
   slides along the bar's top edge to it. Inactive: `muted`. No pill behind the icon.

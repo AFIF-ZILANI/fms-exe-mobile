@@ -101,7 +101,7 @@ export default function MyTasksScreen() {
         <RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={theme.primary} />
       }
     >
-      <Header title="My tasks" leading="back" />
+      <Header title="My tasks" />
       <SyncBanner />
 
       {q.isPending && !q.data ? (

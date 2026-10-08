@@ -5,9 +5,9 @@ import { LogSheet } from '@/components/log-sheet';
 import { TabBar } from '@/components/ui/tab-bar';
 
 /**
- * The bottom tab bar — docs/navigation-redesign-design.md. Four tabs plus the raised centre
- * button, identical for every role. Team is a route inside the tabs but never a tab: it is
- * reached from Home's Team card and the launcher's Manage group (and guards itself).
+ * The bottom tab bar: Home · Tasks · [+] · Performance · Profile, identical for every role.
+ * Houses, Stock and Team are routes inside the tabs but never tabs: Houses from Home's card,
+ * Stock from the launcher, Team from Home's Team card and the launcher's Manage group.
  */
 export default function TabsLayout() {
   const [logOpen, setLogOpen] = useState(false);
@@ -19,9 +19,11 @@ export default function TabsLayout() {
         tabBar={(props) => <TabBar {...props} onLogPress={() => setLogOpen(true)} />}
       >
         <Tabs.Screen name="index" />
-        <Tabs.Screen name="houses" />
-        <Tabs.Screen name="stock" />
-        <Tabs.Screen name="me" />
+        <Tabs.Screen name="tasks" />
+        <Tabs.Screen name="performance" />
+        <Tabs.Screen name="profile" />
+        <Tabs.Screen name="houses" options={{ href: null }} />
+        <Tabs.Screen name="stock" options={{ href: null }} />
         <Tabs.Screen name="team" options={{ href: null }} />
       </Tabs>
 

@@ -132,7 +132,7 @@ export default function DashboardScreen() {
           tint="tintAmber"
           valueColor={points > 0 ? 'success' : points < 0 ? 'critical' : 'ink'}
           icon={<IconTile name="award" tint="tintAmber" color="warning" />}
-          onPress={() => router.push('/me/performance', { withAnchor: true })}
+          onPress={() => router.push('/performance', { withAnchor: true })}
         />
       </View>
 

@@ -27,6 +27,7 @@ export function buildLauncher(isManager: boolean, houseId: string | null): Launc
   ];
 
   const stock: LauncherItem[] = [
+    { label: 'Stock levels', description: 'What is on hand, what is low', path: '/stock', icon: 'archive', tint: 'tintBlue' },
     { label: 'Move to house', description: 'Scan units into a house', path: withHouse('/scan/allocate'), icon: 'arrow-right', tint: 'tintGreen' },
     { label: 'Use an item', description: 'Scan a bottle or tool you used', path: withHouse('/scan/consume'), icon: 'box', tint: 'tintAmber' },
   ];

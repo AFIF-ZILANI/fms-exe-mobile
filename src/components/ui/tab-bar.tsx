@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
 import Animated, {
   useAnimatedStyle,
@@ -11,28 +12,29 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from 'expo-router/tabs';
 
 import { AppText } from '@/components/ui/text';
-import { Icon, type IconName } from '@/components/ui/icon';
 import { Radius, Size, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 /**
  * The four slots, in fixed order, identical for every role — docs/navigation-redesign-design.md.
- * The raised centre button opens the Log launcher rather than navigating. What differs by role
+ * The centre button opens the Log launcher rather than navigating. What differs by role
  * is only what the launcher and Home offer, never the bar.
  */
 // Five equal cells; the centre action takes the middle one so the indicator maths stays trivial.
 const CELL_OF_SLOT = [0, 1, 3, 4];
 
-const SLOTS: { route: string; label: string; icon: IconName }[] = [
-  { route: 'index', label: 'Home', icon: 'home' },
-  { route: 'houses', label: 'Houses', icon: 'grid' },
-  { route: 'stock', label: 'Stock', icon: 'archive' },
-  { route: 'me', label: 'Me', icon: 'user' },
+type Glyph = keyof typeof Ionicons.glyphMap;
+
+const SLOTS: { route: string; label: string; icon: Glyph; iconActive: Glyph }[] = [
+  { route: 'index', label: 'Home', icon: 'home-outline', iconActive: 'home' },
+  { route: 'tasks', label: 'Tasks', icon: 'checkmark-circle-outline', iconActive: 'checkmark-circle' },
+  { route: 'performance', label: 'Performance', icon: 'stats-chart-outline', iconActive: 'stats-chart' },
+  { route: 'profile', label: 'Profile', icon: 'person-outline', iconActive: 'person' },
 ];
 
 /** Routes that live under a tab but are not a tab themselves, and which tab should look active
  *  while you are on them. Team is reached from Home's card and the launcher. */
-const ACTIVE_ALIAS: Record<string, string> = { team: 'index' };
+const ACTIVE_ALIAS: Record<string, string> = { team: 'index', houses: 'index' };
 
 const SPRING = { damping: 18, stiffness: 260, mass: 0.6 };
 
@@ -59,6 +61,7 @@ function TabButton({
   focused: boolean;
   onPress: () => void;
 }) {
+  const theme = useTheme();
   const press = usePressScale(0.88);
   return (
     <Pressable
@@ -71,7 +74,11 @@ function TabButton({
       style={styles.cell}
     >
       <Animated.View style={[styles.tab, press.style]}>
-        <Icon name={slot.icon} size={22} color={focused ? 'primary' : 'muted'} />
+        <Ionicons
+          name={focused ? slot.iconActive : slot.icon}
+          size={24}
+          color={focused ? theme.primary : theme.muted}
+        />
         <AppText variant="caption" color={focused ? 'primary' : 'muted'} style={styles.label}>
           {slot.label}
         </AppText>
@@ -149,7 +156,7 @@ export function TabBar({ state, navigation, onLogPress }: TabBarProps) {
           hitSlop={8}
         >
           <Animated.View style={[styles.centre, { backgroundColor: theme.primary }, centre.style]}>
-            <Icon name="plus" size={24} color="onPrimary" />
+            <Ionicons name="add" size={30} color={theme.onPrimary} />
           </Animated.View>
         </Pressable>
       </View>
