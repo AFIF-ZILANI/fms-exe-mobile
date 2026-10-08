@@ -8,6 +8,7 @@ import * as SQLite from 'expo-sqlite';
 import * as Crypto from 'expo-crypto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiFetch, ApiError } from '@/lib/api';
+import { isVisibleTo } from '@/lib/outbox-owner';
 
 const LAST_SYNCED_KEY = 'fms:last-synced-at';
 
@@ -24,7 +25,16 @@ export type OutboxRow = {
   created_at: number;
   attempts: number;
   last_error: string | null;
+  /** Employee id of whoever queued it; null on rows from before this column existed. */
+  owner: string | null;
 };
+
+let currentOwner: string | null = null;
+
+/** Set by the session whenever the signed-in employee changes (null when nobody is). */
+export function setOutboxOwner(id: string | null): void {
+  currentOwner = id;
+}
 
 let db: SQLite.SQLiteDatabase | null = null;
 let ready: Promise<void> | null = null;
@@ -56,6 +66,11 @@ export function initOutbox(): Promise<void> {
             last_error  TEXT
           );
         `);
+        // Added later: existing installs get the column, old rows keep a null owner.
+        const cols = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(outbox)`);
+        if (!cols.some((c) => c.name === 'owner')) {
+          await db.execAsync(`ALTER TABLE outbox ADD COLUMN owner TEXT`);
+        }
       } catch (err) {
         db = null;
         initError = err instanceof Error ? err : new Error(String(err));
@@ -99,13 +114,14 @@ export async function enqueue({ endpoint, body, method = 'POST' }: EnqueueInput)
   const key = Crypto.randomUUID();
   const fullBody = { ...body, idempotency_key: key };
   await database.runAsync(
-    `INSERT INTO outbox (key, endpoint, method, body, created_at, attempts, last_error)
-     VALUES (?, ?, ?, ?, ?, 0, NULL)`,
+    `INSERT INTO outbox (key, endpoint, method, body, created_at, attempts, last_error, owner)
+     VALUES (?, ?, ?, ?, ?, 0, NULL, ?)`,
     key,
     endpoint,
     method,
     JSON.stringify(fullBody),
     Date.now(),
+    currentOwner,
   );
   return key;
 }
@@ -113,17 +129,19 @@ export async function enqueue({ endpoint, body, method = 'POST' }: EnqueueInput)
 export async function listPending(): Promise<OutboxRow[]> {
   await initOutbox();
   if (!db) return [];
-  return db.getAllAsync<OutboxRow>(
+  const rows = await db.getAllAsync<OutboxRow>(
     `SELECT * FROM outbox WHERE last_error IS NULL ORDER BY created_at ASC`,
   );
+  return rows.filter((r) => isVisibleTo(r.owner, currentOwner));
 }
 
 export async function listDeadLetters(): Promise<OutboxRow[]> {
   await initOutbox();
   if (!db) return [];
-  return db.getAllAsync<OutboxRow>(
+  const rows = await db.getAllAsync<OutboxRow>(
     `SELECT * FROM outbox WHERE last_error IS NOT NULL ORDER BY created_at ASC`,
   );
+  return rows.filter((r) => isVisibleTo(r.owner, currentOwner));
 }
 
 /** An explicit user action from the dead-letter view -- clears the error so

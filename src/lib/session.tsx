@@ -8,6 +8,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQueryClient } from '@tanstack/react-query';
 import { ApiError, apiFetch } from '@/lib/api';
 import { loadToken, onUnauthorized, setToken } from '@/lib/auth-token';
+import { setOutboxOwner } from '@/lib/outbox';
+import { SUMMARY_KEY, triggerFlush } from '@/lib/use-outbox';
 import type { Employee } from '@/lib/types';
 
 const EMPLOYEE_KEY = 'fms:session';
@@ -69,6 +71,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.setItem(EMPLOYEE_KEY, JSON.stringify(employee));
     return employee;
   }, []);
+
+  // The offline queue belongs to whoever is signed in: tell it who, then refresh what it shows and
+  // send that person's waiting records (a cold start can't flush before the profile is known).
+  const ownerId = state.employee?.id ?? null;
+  useEffect(() => {
+    setOutboxOwner(ownerId);
+    void queryClient.invalidateQueries({ queryKey: SUMMARY_KEY });
+    if (ownerId) void triggerFlush(queryClient);
+  }, [ownerId, queryClient]);
 
   // A 401 anywhere (expired, deactivated, password changed elsewhere) ends the session.
   useEffect(() => {
