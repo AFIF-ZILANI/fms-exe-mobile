@@ -60,7 +60,7 @@ export default function AlertsScreen() {
       <View
         key={alert.id}
         accessible
-        accessibilityLabel={`${levelWord(alert.level)}. ${alert.title}. ${alert.description ?? ''}`}
+        accessibilityLabel={[isResolved ? 'Resolved' : levelWord(alert.level), alert.title, alert.description].filter(Boolean).join('. ')}
         style={[styles.item, !last && { borderBottomWidth: 1, borderBottomColor: theme.line }]}
       >
         <Icon name={icon} size={20} color={color} />
@@ -82,8 +82,9 @@ export default function AlertsScreen() {
     );
   };
 
-  const loading = (active.isPending && !active.data) || (resolved.isPending && !resolved.data);
-  const failed = (active.isError && !active.data) || (resolved.isError && !resolved.data);
+  // Resolved is optional: only the Active list gates loading and failure.
+  const loading = active.isPending && !active.data;
+  const failed = active.isError && !active.data;
 
   return (
     <Screen

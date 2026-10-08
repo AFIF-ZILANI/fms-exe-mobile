@@ -31,16 +31,25 @@ export default function MyTasksScreen() {
   const [now, setNow] = useState(() => new Date());
   const [refreshing, setRefreshing] = useState(false);
 
-  const q = useGetData<Paginated<TaskAssignment>>(
-    `/task-assignments?employee_id=${employee?.id ?? ''}&limit=100`,
-    ['task-assignments', 'mine', employee?.id ?? 'none'],
+  // Two queries: the server lists oldest-due first, so one mixed page of old Done rows could push
+  // upcoming pending tasks off it. Done is a best-effort recent list (ceiling: the first 100 by due date).
+  const mine = `employee_id=${employee?.id ?? ''}&limit=100`;
+  const pendingQ = useGetData<Paginated<TaskAssignment>>(
+    `/task-assignments?${mine}&status=PENDING`,
+    ['task-assignments', 'mine', 'pending', employee?.id ?? 'none'],
     { enabled: !!employee },
   );
+  const doneQ = useGetData<Paginated<TaskAssignment>>(
+    `/task-assignments?${mine}&status=DONE`,
+    ['task-assignments', 'mine', 'done', employee?.id ?? 'none'],
+    { enabled: !!employee },
+  );
+  const q = pendingQ;
 
   // After logout the session clears before the route unmounts; render nothing rather than flash.
   if (!signedIn) return null;
 
-  const groups = groupTasks(q.data?.results ?? [], now);
+  const groups = groupTasks([...(pendingQ.data?.results ?? []), ...(doneQ.data?.results ?? [])], now);
   const total = groups.overdue.length + groups.today.length + groups.later.length + groups.done.length;
 
   const refresh = async () => {
@@ -48,7 +57,7 @@ export default function MyTasksScreen() {
     try {
       setNow(new Date());
       // Offline, refetches are paused and never settle: don't wait for them forever.
-      await Promise.race([q.refetch(), new Promise((resolve) => setTimeout(resolve, REFRESH_TIMEOUT_MS))]);
+      await Promise.race([Promise.allSettled([pendingQ.refetch(), doneQ.refetch()]), new Promise((resolve) => setTimeout(resolve, REFRESH_TIMEOUT_MS))]);
     } finally {
       setRefreshing(false);
     }
@@ -77,7 +86,7 @@ export default function MyTasksScreen() {
             </View>
             <AppText variant="caption" color={kind === 'overdue' ? 'critical' : 'muted'}>
               {kind === 'done'
-                ? `Done ${dueLabel(task.completed_at ?? task.due_at, now).toLowerCase()}`
+                ? `Done · ${dueLabel(task.completed_at ?? task.due_at, now)}`
                 : `${dueLabel(task.due_at, now)} · ${formatTime(task.due_at)}`}
               {task.location_note ? ` · ${task.location_note}` : ''}
             </AppText>
@@ -108,7 +117,7 @@ export default function MyTasksScreen() {
             icon="alert-circle"
             tint="tintRed"
             title="Couldn't load your tasks."
-            action={{ label: 'Retry', onPress: () => void q.refetch() }}
+            action={{ label: 'Retry', onPress: () => void Promise.all([pendingQ.refetch(), doneQ.refetch()]) }}
           />
         </Card>
       ) : total === 0 ? (

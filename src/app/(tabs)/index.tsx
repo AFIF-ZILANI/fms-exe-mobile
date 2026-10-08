@@ -141,7 +141,7 @@ export default function DashboardScreen() {
         eyebrow={`Today · ${new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}${
           all.length ? ` · ${all.length - pending.length} of ${all.length} done` : ''
         }`}
-        action="All"
+        action="All tasks"
         onActionPress={() => router.push('/tasks' as Href)}
         style={styles.card}
       >
