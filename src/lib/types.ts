@@ -193,3 +193,18 @@ export type TaskAssignment = {
   employee: Employee;
   house: House | null;
 };
+
+export type AlertLevel = 'INFO' | 'WARNING' | 'CRITICAL';
+
+/** GET /alerts rows. Named FarmAlert so it never collides with React Native's `Alert`. */
+export type FarmAlert = {
+  id: string;
+  title: string;
+  description: string | null;
+  type: 'EMPLOYEE' | 'BATCH' | 'FEED' | 'MEDICINE' | 'SYSTEM';
+  level: AlertLevel;
+  status: 'ACTIVE' | 'RESOLVED';
+  issued_at: string;
+  resolved_at: string | null;
+  created_at: string;
+};
