@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { AppText } from '@/components/ui/text';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { Size, Spacing } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 
 type HeaderProps = {
@@ -15,7 +16,15 @@ type HeaderProps = {
   leading?: 'back' | 'close';
   onLeadingPress?: () => void;
   /** At most one. A second action belongs in the screen body. */
-  action?: { icon: IconName; label: string; onPress: () => void };
+  action?: {
+    icon: IconName;
+    label: string;
+    onPress: () => void;
+    /** A count shown on the icon (e.g. active alerts). Hidden at 0; capped as "9+". */
+    badge?: number;
+    /** Red only when something is critical; amber otherwise. */
+    badgeTone?: 'warning' | 'critical';
+  };
 };
 
 /** 56dp, leading-aligned title. Never centred — several house names are
@@ -23,6 +32,7 @@ type HeaderProps = {
  *  docs/layout/00-app-shell.md. */
 export function Header({ title, eyebrow, leading, onLeadingPress, action }: HeaderProps) {
   const theme = useTheme();
+  const scheme = useColorScheme();
   const back = () => (onLeadingPress ? onLeadingPress() : router.back());
 
   return (
@@ -53,10 +63,31 @@ export function Header({ title, eyebrow, leading, onLeadingPress, action }: Head
         <Pressable
           onPress={action.onPress}
           accessibilityRole="button"
-          accessibilityLabel={action.label}
+          accessibilityLabel={
+            action.badge && action.badge > 0 ? `${action.label}, ${action.badge} active` : action.label
+          }
           style={styles.iconButton}
         >
           <Icon name={action.icon} size={24} />
+          {action.badge && action.badge > 0 ? (
+            <View
+              style={[
+                styles.badge,
+                { backgroundColor: action.badgeTone === 'critical' ? theme.critical : theme.warning },
+              ]}
+            >
+              <AppText
+                variant="caption"
+                style={[
+                  styles.badgeText,
+                  // Dark text on the bright dark-theme colours and on amber; white on light-theme red.
+                  { color: scheme === 'dark' || action.badgeTone !== 'critical' ? '#0F1419' : '#FFFFFF' },
+                ]}
+              >
+                {action.badge > 9 ? '9+' : String(action.badge)}
+              </AppText>
+            </View>
+          ) : null}
         </Pressable>
       ) : null}
     </View>
@@ -74,6 +105,18 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
   },
   titleBlock: { flex: 1 },
+  badge: {
+    position: 'absolute',
+    top: 4,
+    right: 2,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { fontSize: 11, lineHeight: 14, fontWeight: '700' },
   iconButton: {
     width: Size.iconButton,
     height: Size.iconButton,

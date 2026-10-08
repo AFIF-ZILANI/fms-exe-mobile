@@ -17,10 +17,11 @@ import { useTheme } from '@/hooks/use-theme';
 import { useSession } from '@/lib/session';
 import { can } from '@/lib/permissions';
 import { useGetData, type Paginated } from '@/lib/api';
-import { routeForTaskType } from '@/lib/task-forms';
+import { summarizeAlerts } from '@/lib/alerts-view';
+import { taskHref } from '@/lib/tasks-view';
 import { formatBatchCode, formatSignedPoints, formatTime } from '@/lib/format';
 import { dayOfCycle, expectedCycleDays, houseToken, initials, monthRange } from '@/lib/farm';
-import type { BatchHouseBalance, Employee, TaskAssignment } from '@/lib/types';
+import type { BatchHouseBalance, Employee, FarmAlert, TaskAssignment } from '@/lib/types';
 
 type ScoreEntry = { id: string; points: number; employee_id: string };
 
@@ -65,6 +66,10 @@ export default function DashboardScreen() {
     enabled: isManager,
   });
 
+  // Same URL and key as the Alerts screen, so the bell badge and the list agree.
+  const { data: activeAlerts } = useGetData<Paginated<FarmAlert>>('/alerts?status=ACTIVE&limit=50', ['alerts', 'active']);
+  const alertSummary = summarizeAlerts(activeAlerts?.results ?? [], activeAlerts?.total);
+
   if (isLoading) return <Screen />;
 
   // Signed in but the profile didn't load (first launch offline, or a failed fetch).
@@ -95,21 +100,22 @@ export default function DashboardScreen() {
   const mates = (team?.results ?? []).filter((e) => e.id !== employee.id);
 
   const openTask = (task: TaskAssignment) => {
-    const route = routeForTaskType(task.task.task_type?.code);
-    if (!route) {
-      router.push(`/tasks/${task.id}` as Href);
-      return;
-    }
-    const sep = route.includes('?') ? '&' : '?';
-    const params = [task.house_id ? `house_id=${task.house_id}` : '', `task_id=${task.id}`]
-      .filter(Boolean)
-      .join('&');
-    router.push(`${route}${sep}${params}` as Href);
+    router.push(taskHref(task) as Href);
   };
 
   return (
     <Screen>
-      <Header eyebrow={greeting()} title={employee.profile.name} />
+      <Header
+        eyebrow={greeting()}
+        title={employee.profile.name}
+        action={{
+          icon: 'bell',
+          label: 'Alerts',
+          badge: alertSummary.count,
+          badgeTone: alertSummary.critical ? 'critical' : 'warning',
+          onPress: () => router.push('/alerts' as Href),
+        }}
+      />
 
       <SyncBanner />
 
@@ -132,8 +138,11 @@ export default function DashboardScreen() {
 
       <Card
         rows
-        eyebrow={`Today · ${new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`}
-        note={all.length ? `${all.length - pending.length} of ${all.length}` : undefined}
+        eyebrow={`Today · ${new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}${
+          all.length ? ` · ${all.length - pending.length} of ${all.length} done` : ''
+        }`}
+        action="All"
+        onActionPress={() => router.push('/tasks' as Href)}
         style={styles.card}
       >
         {ordered.length === 0 ? (
