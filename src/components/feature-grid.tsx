@@ -110,14 +110,14 @@ export function FeatureGrid({ isManager }: { isManager: boolean }) {
     <Animated.View layout={LinearTransition.duration(240)} style={styles.section}>
       <View style={styles.head}>
         <AppText variant="eyebrow" color="muted">
-          Features
+          Shortcuts
         </AppText>
         {rest.length > 0 && (
           <Pressable
             onPress={toggle}
             accessibilityRole="button"
             accessibilityState={{ expanded: open }}
-            accessibilityLabel={open ? 'Show fewer features' : 'See all features'}
+            accessibilityLabel={open ? 'Show fewer shortcuts' : 'See all shortcuts'}
             hitSlop={Spacing.md}
             style={styles.toggle}
           >
