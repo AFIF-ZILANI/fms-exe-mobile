@@ -118,7 +118,7 @@ export default function TeamScreen() {
   );
 
   const scores = useGetData<Paginated<ScoreEntry>>(
-    `/performance-score-entries?date_from=${from}&date_to=${to}&limit=100`,
+    `/performance-score-entries?date_from=${from}&date_to=${to}&status=ACTIVE&limit=100`,
     ['performance-score-entries', 'team-mtd', from],
   );
 

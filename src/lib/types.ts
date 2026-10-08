@@ -104,7 +104,9 @@ export type ScoreEntry = {
   criterion: string;
   points: number;
   reason: string;
-  date: string;
+  /** The day it happened (the server's `incident_date`). */
+  incident_date: string;
+  status?: 'ACTIVE' | 'DISPUTED' | 'VOIDED';
   /** Included by the server so the history can name who gave the entry --
    *  given_by_id is any Profile, so this can be an Admin, not just an
    *  Employee. */

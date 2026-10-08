@@ -156,7 +156,7 @@ export default function DashboardScreen() {
   );
 
   const { data: scores } = useGetData<Paginated<ScoreEntry>>(
-    `/performance-score-entries?employee_id=${employee?.id ?? ''}&date_from=${from}&date_to=${to}&limit=100`,
+    `/performance-score-entries?employee_id=${employee?.id ?? ''}&date_from=${from}&date_to=${to}&status=ACTIVE&limit=100`,
     ['performance-score-entries', 'mtd', employee?.id ?? 'none'],
     { enabled: !!employee },
   );
@@ -172,7 +172,7 @@ export default function DashboardScreen() {
     { enabled: isManager },
   );
   const { data: teamScores } = useGetData<Paginated<ScoreEntry>>(
-    `/performance-score-entries?date_from=${from}&date_to=${to}&limit=100`,
+    `/performance-score-entries?date_from=${from}&date_to=${to}&status=ACTIVE&limit=100`,
     ['performance-score-entries', 'team-mtd', from],
     { enabled: isManager },
   );

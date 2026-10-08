@@ -41,7 +41,7 @@ export default function PerformanceScreen() {
   const isCurrentMonth = monthOffset === 0;
 
   const { data: scores, isLoading } = useGetData<Paginated<ScoreEntry>>(
-    `/performance-score-entries?employee_id=${employee?.id ?? ''}&date_from=${from}&date_to=${to}&limit=100`,
+    `/performance-score-entries?employee_id=${employee?.id ?? ''}&date_from=${from}&date_to=${to}&status=ACTIVE&limit=100`,
     ['performance-score-entries', employee?.id ?? 'none', from],
     { enabled: !!employee },
   );
@@ -135,7 +135,7 @@ export default function PerformanceScreen() {
                   {entry.criterion.replaceAll('_', ' ').toLowerCase()}
                 </AppText>
                 <AppText variant="data" color="muted">
-                  {shortDate(entry.date)}
+                  {shortDate(entry.incident_date)}
                 </AppText>
               </View>
               {/* Never truncated to one line — this is the only place a worker

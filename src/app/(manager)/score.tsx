@@ -55,7 +55,7 @@ export default function ScoreScreen() {
 
   const { from, to } = monthRange(new Date());
   const { data: scores } = useGetData<Paginated<ScoreEntry>>(
-    `/performance-score-entries?employee_id=${employee?.id ?? ''}&date_from=${from}&date_to=${to}&limit=100`,
+    `/performance-score-entries?employee_id=${employee?.id ?? ''}&date_from=${from}&date_to=${to}&status=ACTIVE&limit=100`,
     ['performance-score-entries', 'mtd', employee?.id ?? 'none'],
     { enabled: !!employee },
   );
