@@ -40,7 +40,7 @@ export function HouseHero({ house, balance }: { house: House; balance: BatchHous
             {house.number ?? '—'}
           </AppText>
         </View>
-        <AppText variant="caption" color="muted" style={styles.flex}>
+        <AppText variant="caption" color="muted" style={styles.flex} numberOfLines={2}>
           {meta}
         </AppText>
         <StatusPill status={running ? 'RUNNING' : 'EMPTY'} />

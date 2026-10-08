@@ -17,8 +17,25 @@ assert.deepEqual(freshness(at(2026, 9, 1), now), { text: '6 days ago', today: fa
 assert.deepEqual(freshness(at(2026, 8, 30), now), { text: '7 days ago', today: false });
 assert.deepEqual(freshness(at(2026, 8, 23), now), { text: '2 weeks ago', today: false });
 assert.deepEqual(freshness(at(2026, 7, 12), now), { text: '8 weeks ago', today: false }, '56 days');
-assert.deepEqual(freshness(at(2026, 7, 7), now), { text: 'Over 2 months ago', today: false }, '61 days');
-assert.deepEqual(freshness(at(2026, 5, 1), now), { text: 'Over 2 months ago', today: false });
+assert.deepEqual(freshness(at(2026, 7, 7), now), { text: '2+ months ago', today: false }, '61 days');
+assert.deepEqual(freshness(at(2026, 5, 1), now), { text: '2+ months ago', today: false });
+
+// --- thresholds: 13 -> days, 14 -> weeks, 59 -> weeks, 60 -> months -----------------------------------
+assert.deepEqual(freshness(at(2026, 8, 24), now), { text: '13 days ago', today: false }, '13 days');
+assert.deepEqual(freshness(at(2026, 8, 23), now), { text: '2 weeks ago', today: false }, '14 days');
+assert.deepEqual(freshness(at(2026, 7, 9), now), { text: '8 weeks ago', today: false }, '59 days');
+assert.deepEqual(freshness(at(2026, 7, 8), now), { text: '2+ months ago', today: false }, '60 days');
+
+// --- daylight-saving changes: counted in calendar days, not 24-hour blocks ------------------------------
+// (Only zones that observe DST exercise this, e.g. `TZ=America/Los_Angeles bun src/lib/house-detail.test.ts`.)
+{
+  const afterFallBack = new Date(2026, 10, 2, 9, 0); // 2 Nov 2026, just after US clocks went back
+  assert.deepEqual(freshness(at(2026, 9, 31), afterFallBack), { text: '2 days ago', today: false }, '49 hours between local midnights');
+  assert.deepEqual(freshness(at(2026, 10, 1), afterFallBack), { text: 'Yesterday', today: false });
+  const afterSpringForward = new Date(2026, 2, 9, 9, 0); // 9 Mar 2026, just after US clocks went forward
+  assert.deepEqual(freshness(at(2026, 2, 6), afterSpringForward), { text: '3 days ago', today: false }, '71 hours between local midnights');
+  assert.deepEqual(freshness(at(2026, 2, 8), afterSpringForward), { text: 'Yesterday', today: false });
+}
 
 // A timestamp slightly in the future (a phone clock a few minutes behind) is still today.
 assert.deepEqual(freshness(at(2026, 9, 7, 9, 45), now), { text: 'Today', today: true });

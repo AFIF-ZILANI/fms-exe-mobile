@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { RefreshControl, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
 
 import { HouseHero, LogTile, ShortcutTile } from '@/components/house-detail-parts';
 import { Screen } from '@/components/ui/screen';
@@ -24,6 +23,9 @@ type Dated = { id: string; date?: string; recorded_at?: string };
 
 const when = (row: Dated | undefined) => row?.date ?? row?.recorded_at ?? null;
 
+/** Pull-to-refresh stops spinning after this even if requests are paused (offline). */
+const REFRESH_TIMEOUT_MS = 6000;
+
 const LOGS: {
   key: 'mortality' | 'feed' | 'weight' | 'environment' | 'treatment';
   label: string;
@@ -42,7 +44,6 @@ const LOGS: {
  *  still to log today, stock actions for this house, and its open tasks. */
 export default function HouseDetailScreen() {
   const theme = useTheme();
-  const queryClient = useQueryClient();
   const { width } = useWindowDimensions();
   const { id } = useLocalSearchParams<{ id: string }>();
   // Read once and refreshed on pull-down: new Date() during render is impure.
@@ -50,13 +51,15 @@ export default function HouseDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const houseQ = useGetData<House>(`/houses/${id}`, ['houses', id]);
-  // Same URL and key as useResolvedBatch, so the cache is shared with the log forms.
+  // Not `limit=1`: the server returns a house's balances newest-updated first with no quantity filter, so a
+  // zero row (a batch moved out or fully lost) can sit ahead of the live one. Read a few and take the first
+  // with birds in it, the same "running" rule as the Houses tab. Its own key: the log forms keep theirs.
   const balanceQ = useGetData<Paginated<BatchHouseBalance>>(
-    `/batch-house-balances?house_id=${id}&limit=1`,
-    ['batch-house-balances', id],
+    `/batch-house-balances?house_id=${id}&limit=20`,
+    ['batch-house-balances', 'house', id],
   );
   const house = houseQ.data;
-  const balance = balanceQ.data?.results?.[0] ?? null;
+  const balance = balanceQ.data?.results?.find((b) => b.quantity > 0) ?? null;
   const running = !!balance && balance.quantity > 0;
   const batchId = running && balance ? balance.batch_id : undefined;
 
@@ -97,7 +100,13 @@ export default function HouseDetailScreen() {
     setRefreshing(true);
     try {
       setNow(new Date());
-      await queryClient.invalidateQueries();
+      // Offline, refetches are paused and never settle: don't wait for them forever.
+      const refetches = [houseQ, balanceQ, mortality, consumption, weight, environment, tasks].map((q) => q.refetch());
+      if (batchId) refetches.push(medications.refetch(), vaccinations.refetch());
+      await Promise.race([
+        Promise.allSettled(refetches),
+        new Promise((resolve) => setTimeout(resolve, REFRESH_TIMEOUT_MS)),
+      ]);
     } finally {
       setRefreshing(false);
     }
@@ -111,7 +120,8 @@ export default function HouseDetailScreen() {
     treatment: newestIso(when(medications.data?.results[0]), when(vaccinations.data?.results[0])),
   };
 
-  const tileWidth = (width - 2 * Spacing.xl - 2 * Spacing.md) / 3;
+  // floor: rounding up by a fraction would make three tiles overflow the row and wrap to two.
+  const tileWidth = Math.floor((width - 2 * Spacing.xl - 2 * Spacing.md) / 3);
   const withHouse = (path: string) => `${path}?house_id=${id}` as Href;
   const openTasks = tasks.data?.results ?? [];
 

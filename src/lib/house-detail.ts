@@ -21,7 +21,7 @@ export function freshness(iso: string | null | undefined, now: Date): Freshness 
   if (days === 1) return { text: 'Yesterday', today: false };
   if (days < 14) return { text: `${days} days ago`, today: false };
   if (days < 60) return { text: `${Math.floor(days / 7)} weeks ago`, today: false };
-  return { text: 'Over 2 months ago', today: false };
+  return { text: '2+ months ago', today: false };
 }
 
 /** The later of two optional timestamps (the latest medication vs vaccination). An unreadable one never wins. */
