@@ -223,7 +223,7 @@ export default function AlertsScreen() {
           ) : null}
 
           <AppText variant="caption" color="muted" style={styles.note}>
-            Alerts are resolved by your manager.
+            Alerts clear on their own once the issue is fixed.
           </AppText>
         </>
       )}
