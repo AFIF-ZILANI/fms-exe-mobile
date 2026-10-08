@@ -37,3 +37,6 @@ Audit findings this fixes (docs/ux-audit-2026-10.md): two launchers with differe
 
 ## Out of scope
 Push notifications, editing profile fields, alert acknowledgement/resolving, stock adjustments beyond the existing Report discrepancy flow.
+
+## Alerts (2026-10-08)
+Alerts are filtered server-side by role (see server/docs/api.md "Who sees what"). The screen: severity filter chips with counts; one card per alert; tap to read the full text, open what it is about (`alertTarget` in `lib/alerts-view.ts`, by the family in the server's dedupe key) and, for managers, "Mark resolved" (online-only, with a confirm). "New" tags and the Home bell count use a per-employee seen list kept on the phone (`lib/use-seen-alerts.ts`), saved when the person leaves the screen; the Home strip keeps the full active total. Resolved alerts are folded away. Environment/sensor alerts are deliberately not built yet.

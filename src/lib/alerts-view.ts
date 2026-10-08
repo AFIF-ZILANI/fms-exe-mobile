@@ -34,6 +34,53 @@ export function countByLevel(alerts: FarmAlert[]): Record<LevelFilter, number> {
 export const filterAlerts = (alerts: FarmAlert[], filter: LevelFilter): FarmAlert[] =>
   filter === 'ALL' ? alerts : alerts.filter((a) => a.level === filter);
 
+/** Where "open it" goes for an alert: the screen where the person can act on what it is about. The
+ *  family is the part of the server's dedupe key before the colon. Null when there is nowhere to go. */
+export type AlertTarget = { label: string; href: string };
+
+export function alertTarget(alert: Pick<FarmAlert, 'dedupe_key' | 'related_id'>): AlertTarget | null {
+  const family = alert.dedupe_key?.split(':')[0];
+  const id = alert.related_id;
+  switch (family) {
+    case 'LOW_STOCK':
+      return id ? { label: 'View item', href: `/stock/${id}` } : null;
+    case 'EXPIRY':
+      return { label: 'View stock', href: '/stock' };
+    case 'MORTALITY':
+    case 'LOG_MISSING':
+      return id ? { label: 'Open house', href: `/houses/${id}` } : null;
+    case 'TASK_OVERDUE':
+      return id ? { label: 'View task', href: `/tasks/${id}` } : null;
+    case 'NEG_PERF':
+    case 'PROBATION':
+      return id ? { label: 'View person', href: `/team/${id}` } : null;
+    default:
+      return null;
+  }
+}
+
+/** Ids of alerts this person has already looked at, kept on the phone. A damaged entry is an empty list. */
+export function parseSeen(raw: string | null | undefined): string[] {
+  try {
+    const v: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+const SEEN_CAP = 300;
+
+/** Adds ids to the seen list, oldest dropped past the cap so it never grows without bound. */
+export function mergeSeen(seen: string[], ids: string[]): string[] {
+  return [...new Set([...seen, ...ids])].slice(-SEEN_CAP);
+}
+
+export const unseenAlerts = (alerts: FarmAlert[], seen: string[]): FarmAlert[] => {
+  const known = new Set(seen);
+  return alerts.filter((a) => !known.has(a.id));
+};
+
 const LEVEL: Record<AlertLevel, string> = { CRITICAL: 'Critical', WARNING: 'Warning', INFO: 'Info' };
 export const levelWord = (level: AlertLevel): string => LEVEL[level];
 

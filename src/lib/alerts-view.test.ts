@@ -2,7 +2,18 @@
 
 import assert from 'node:assert/strict';
 
-import { alertTypeLabel, countByLevel, filterAlerts, levelWord, sortAlerts, summarizeAlerts } from './alerts-view';
+import {
+  alertTarget,
+  alertTypeLabel,
+  countByLevel,
+  filterAlerts,
+  levelWord,
+  mergeSeen,
+  parseSeen,
+  sortAlerts,
+  summarizeAlerts,
+  unseenAlerts,
+} from './alerts-view';
 import type { FarmAlert } from './types';
 
 const alert = (id: string, level: FarmAlert['level'], issued_at: string, over: Partial<FarmAlert> = {}): FarmAlert => ({
@@ -76,5 +87,28 @@ assert.deepEqual(countByLevel([]), { ALL: 0, CRITICAL: 0, WARNING: 0, INFO: 0 })
 assert.deepEqual(filterAlerts(mix, 'CRITICAL').map((a) => a.id), ['b', 'c']);
 assert.equal(filterAlerts(mix, 'ALL').length, 3);
 assert.equal(filterAlerts(mix, 'WARNING').length, 0);
+
+// --- where an alert leads ---------------------------------------------------------
+const t = (dedupe_key: string | null, related_id: string | null) => alertTarget({ dedupe_key, related_id });
+assert.deepEqual(t('LOW_STOCK:i1', 'i1'), { label: 'View item', href: '/stock/i1' });
+assert.deepEqual(t('MORTALITY:b1:h9', 'h9'), { label: 'Open house', href: '/houses/h9' });
+assert.deepEqual(t('LOG_MISSING:h9:2026-10-08', 'h9'), { label: 'Open house', href: '/houses/h9' });
+assert.deepEqual(t('TASK_OVERDUE:k1', 'k1'), { label: 'View task', href: '/tasks/k1' });
+assert.deepEqual(t('NEG_PERF:e1', 'e1'), { label: 'View person', href: '/team/e1' });
+assert.deepEqual(t('EXPIRY:lot1', 'lot1'), { label: 'View stock', href: '/stock' });
+assert.equal(t(null, null), null, 'an alert raised by hand has nowhere to go');
+assert.equal(t('LOW_STOCK:i1', null), null, 'no id, no link');
+assert.equal(t('SOMETHING_NEW:x', 'x'), null, 'an unknown family is not linked');
+
+// --- seen / new --------------------------------------------------------------------
+assert.deepEqual(parseSeen(null), []);
+assert.deepEqual(parseSeen('not json'), []);
+assert.deepEqual(parseSeen('{"a":1}'), []);
+assert.deepEqual(parseSeen('["a",3,"b"]'), ['a', 'b']);
+assert.deepEqual(mergeSeen(['a', 'b'], ['b', 'c']), ['a', 'b', 'c']);
+assert.equal(mergeSeen([], Array.from({ length: 400 }, (_, i) => String(i))).length, 300);
+assert.equal(mergeSeen([], Array.from({ length: 400 }, (_, i) => String(i))).at(-1), '399', 'newest kept');
+assert.deepEqual(unseenAlerts(mix, ['b']).map((a) => a.id), ['a', 'c']);
+assert.equal(unseenAlerts([], ['b']).length, 0);
 
 console.log('alerts-view checks passed');

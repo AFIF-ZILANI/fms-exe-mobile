@@ -207,4 +207,8 @@ export type FarmAlert = {
   issued_at: string;
   resolved_at: string | null;
   created_at: string;
+  /** What the alert is about: an item, house, task or person id, depending on the family in `dedupe_key`. */
+  related_id: string | null;
+  /** "FAMILY:id" naming the condition. Null for an alert a person raised by hand. */
+  dedupe_key: string | null;
 };

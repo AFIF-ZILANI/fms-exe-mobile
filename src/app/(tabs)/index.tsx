@@ -18,7 +18,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { useSession } from '@/lib/session';
 import { can } from '@/lib/permissions';
 import { useGetData, type Paginated } from '@/lib/api';
-import { summarizeAlerts } from '@/lib/alerts-view';
+import { summarizeAlerts, unseenAlerts } from '@/lib/alerts-view';
+import { useSeenAlerts } from '@/lib/use-seen-alerts';
 import { dueLabel, groupTasks, taskHref } from '@/lib/tasks-view';
 import { formatSignedPoints, formatTime } from '@/lib/format';
 import { cycleProgress } from '@/lib/houses-summary';
@@ -120,6 +121,9 @@ export default function DashboardScreen() {
   // Same URL and key as the Alerts screen, so the bell badge and the list agree.
   const { data: activeAlerts } = useGetData<Paginated<FarmAlert>>('/alerts?status=ACTIVE&limit=50', ['alerts', 'active']);
   const alertSummary = summarizeAlerts(activeAlerts?.results ?? [], activeAlerts?.total);
+  // The bell counts only what this person hasn't opened the Alerts screen on yet; the strip below keeps the full total.
+  const { seen } = useSeenAlerts();
+  const newAlerts = seen ? unseenAlerts(activeAlerts?.results ?? [], seen).length : 0;
 
   if (isLoading) return <Screen />;
 
@@ -165,7 +169,7 @@ export default function DashboardScreen() {
         action={{
           icon: 'bell',
           label: 'Alerts',
-          badge: alertSummary.count,
+          badge: newAlerts,
           badgeTone: alertSummary.critical ? 'critical' : 'warning',
           onPress: () => router.push('/alerts' as Href),
         }}
