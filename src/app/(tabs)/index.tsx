@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, View, StyleSheet } from 'react-native';
 import { router, type Href } from 'expo-router';
 
 import { Screen } from '@/components/ui/screen';
@@ -11,14 +11,14 @@ import { LedgerRow } from '@/components/ui/ledger-row';
 import { DayCycleBar } from '@/components/ui/day-cycle-bar';
 import { StatusPill } from '@/components/ui/status-pill';
 import { AppText } from '@/components/ui/text';
-import { IconTile } from '@/components/ui/icon';
+import { Icon, IconTile } from '@/components/ui/icon';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useSession } from '@/lib/session';
 import { can } from '@/lib/permissions';
 import { useGetData, type Paginated } from '@/lib/api';
 import { summarizeAlerts } from '@/lib/alerts-view';
-import { taskHref } from '@/lib/tasks-view';
+import { dueLabel, groupTasks, taskHref } from '@/lib/tasks-view';
 import { formatBatchCode, formatSignedPoints, formatTime } from '@/lib/format';
 import { dayOfCycle, expectedCycleDays, houseToken, initials, monthRange } from '@/lib/farm';
 import type { BatchHouseBalance, Employee, FarmAlert, TaskAssignment } from '@/lib/types';
@@ -32,11 +32,17 @@ function greeting(now = new Date()): string {
   return 'Good evening';
 }
 
+/** 9,812 stays whole; 12,400 becomes 12.4k so three stat cards fit one row. */
+const compactCount = (n: number) =>
+  n >= 10_000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : n.toLocaleString();
+
 /** docs/layout/01-dashboard.md — the screen a worker opens by reflex. */
 export default function DashboardScreen() {
   const theme = useTheme();
   const { employee, isLoading, refresh } = useSession();
   const isManager = can(employee?.role, 'assign_task');
+  // Held in state: new Date() during render is impure, and groupTasks needs one stable "now".
+  const [now] = useState(() => new Date());
   const { from, to } = useMemo(() => monthRange(new Date()), []);
 
   const endOfToday = useMemo(() => {
@@ -89,10 +95,13 @@ export default function DashboardScreen() {
   }
 
   const all = tasks?.results ?? [];
-  const pending = all.filter((t) => t.status === 'PENDING');
-  // Done tasks stay visible but sink below pending — a worker wants proof of
-  // what they finished. docs/layout/01-dashboard.md.
-  const ordered = [...pending, ...all.filter((t) => t.status === 'DONE')].slice(0, 4);
+  const groups = groupTasks(all, now);
+  const pendingCount = groups.overdue.length + groups.today.length;
+  // Overdue first, then what is still due today, then what is finished — a worker wants proof of
+  // what they finished, but never above what is left. docs/layout/01-dashboard.md.
+  const ordered = [...groups.overdue, ...groups.today, ...groups.done].slice(0, 5);
+  const doneCount = groups.done.length;
+  const total = pendingCount + doneCount;
 
   const points = (scores?.results ?? []).reduce((sum, s) => sum + s.points, 0);
   const activeBalances = (balances?.results ?? []).filter((b) => b.quantity > 0);
@@ -121,30 +130,75 @@ export default function DashboardScreen() {
 
       <View style={styles.statRow}>
         <StatCard
-          value={birds.toLocaleString()}
+          value={String(pendingCount)}
+          eyebrow="Tasks left"
+          tint={groups.overdue.length ? 'tintRed' : pendingCount ? 'tintBlue' : 'tintGreen'}
+          valueColor={groups.overdue.length ? 'critical' : pendingCount ? 'ink' : 'success'}
+          icon={
+            <IconTile
+              name={pendingCount ? 'check-square' : 'check-circle'}
+              tint={groups.overdue.length ? 'tintRed' : pendingCount ? 'tintBlue' : 'tintGreen'}
+              color={groups.overdue.length ? 'critical' : pendingCount ? 'info' : 'success'}
+              size={32}
+            />
+          }
+          onPress={() => router.push('/tasks' as Href)}
+        />
+        <StatCard
+          value={compactCount(birds)}
           eyebrow="Birds"
           tint="tintGreen"
-          icon={<IconTile name="home" tint="tintGreen" color="success" />}
+          icon={<IconTile name="home" tint="tintGreen" color="success" size={32} />}
+          onPress={() => router.push('/houses')}
         />
         <StatCard
           value={formatSignedPoints(points)}
-          eyebrow={`Points · ${new Date().toLocaleDateString(undefined, { month: 'short' })}`}
+          eyebrow="Points"
           tint="tintAmber"
           valueColor={points > 0 ? 'success' : points < 0 ? 'critical' : 'ink'}
-          icon={<IconTile name="award" tint="tintAmber" color="warning" />}
-          onPress={() => router.push('/performance', { withAnchor: true })}
+          icon={<IconTile name="award" tint="tintAmber" color="warning" size={32} />}
+          onPress={() => router.push('/performance')}
         />
       </View>
 
+      {alertSummary.count > 0 && (
+        <Pressable
+          onPress={() => router.push('/alerts' as Href)}
+          accessibilityRole="button"
+          accessibilityLabel={`${alertSummary.count} active alerts`}
+          style={[
+            styles.alertStrip,
+            { backgroundColor: alertSummary.critical ? theme.tintRed : theme.tintAmber },
+          ]}
+        >
+          <Icon
+            name="alert-triangle"
+            size={20}
+            color={alertSummary.critical ? 'critical' : 'warning'}
+          />
+          <AppText variant="label" style={styles.flex}>
+            {alertSummary.count} active {alertSummary.count === 1 ? 'alert' : 'alerts'}
+            {alertSummary.critical ? ' · needs attention' : ''}
+          </AppText>
+          <Icon name="chevron-right" size={20} color="muted" />
+        </Pressable>
+      )}
+
       <Card
         rows
-        eyebrow={`Today · ${new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}${
-          all.length ? ` · ${all.length - pending.length} of ${all.length} done` : ''
-        }`}
-        action="All tasks"
+        eyebrow={`Today · ${now.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`}
+        note={total ? `${doneCount} of ${total} done` : undefined}
+        action={total ? undefined : 'All tasks'}
         onActionPress={() => router.push('/tasks' as Href)}
         style={styles.card}
       >
+        {total > 0 && (
+          <View style={[styles.track, { backgroundColor: theme.line }]}>
+            <View
+              style={[styles.fill, { backgroundColor: theme.success, width: `${(doneCount / total) * 100}%` }]}
+            />
+          </View>
+        )}
         {ordered.length === 0 ? (
           <EmptyState
             compact
@@ -156,6 +210,7 @@ export default function DashboardScreen() {
         ) : (
           ordered.map((task, i) => {
             const done = task.status === 'DONE';
+            const overdue = groups.overdue.includes(task);
             return (
               <LedgerRow
                 key={task.id}
@@ -168,14 +223,27 @@ export default function DashboardScreen() {
                     {task.title}
                   </AppText>
                   {done ? <StatusPill status="DONE" /> : null}
+                  {overdue ? <StatusPill status="OVERDUE" /> : null}
                 </View>
-                <AppText variant="caption" color="muted">
+                <AppText variant="caption" color={overdue ? 'critical' : 'muted'}>
+                  {overdue ? `${dueLabel(task.due_at, now)} · ` : ''}
                   {formatTime(task.due_at)}
                   {task.location_note ? ` · ${task.location_note}` : ''}
                 </AppText>
               </LedgerRow>
             );
           })
+        )}
+        {total > ordered.length && (
+          <Pressable
+            onPress={() => router.push('/tasks' as Href)}
+            accessibilityRole="button"
+            style={styles.more}
+          >
+            <AppText variant="label" color="primary">
+              See all {total} tasks
+            </AppText>
+          </Pressable>
         )}
       </Card>
 
@@ -211,7 +279,7 @@ export default function DashboardScreen() {
 
       <Card
         rows
-        eyebrow="Houses"
+        eyebrow={`Houses · ${activeBalances.length} running`}
         action="All"
         onActionPress={() => router.push('/houses')}
         style={styles.card}
@@ -219,11 +287,11 @@ export default function DashboardScreen() {
         {activeBalances.length === 0 ? (
           <EmptyState compact icon="home" tint="surfaceAlt" title="No running batches." />
         ) : (
-          activeBalances.slice(0, 4).map((balance, i) => (
+          activeBalances.slice(0, 6).map((balance, i) => (
             <LedgerRow
               key={balance.id}
               gutter={houseToken(balance.house?.number)}
-              last={i === Math.min(activeBalances.length, 4) - 1}
+              last={i === Math.min(activeBalances.length, 6) - 1}
               onPress={() => router.push(`/houses/${balance.house_id}` as Href, { withAnchor: true })}
             >
               <View style={styles.rowTop}>
@@ -248,7 +316,24 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  statRow: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.xs },
+  statRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.xs },
+  alertStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    marginTop: Spacing.md,
+    padding: Spacing.lg,
+    borderRadius: Radius.card,
+  },
+  track: {
+    height: 6,
+    borderRadius: Radius.pill,
+    overflow: 'hidden',
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.sm,
+  },
+  fill: { height: '100%', borderRadius: Radius.pill },
+  more: { alignItems: 'center', paddingTop: Spacing.md, paddingBottom: Spacing.xs, minHeight: 44 },
   card: { marginTop: Spacing.md },
   rowTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   avatar: {
