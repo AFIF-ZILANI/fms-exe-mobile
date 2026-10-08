@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { router, type Href } from 'expo-router';
 
+import { CycleBar } from '@/components/cycle-bar';
 import { AppText } from '@/components/ui/text';
 import { StatusPill } from '@/components/ui/status-pill';
 import { Radius, Spacing, elevation } from '@/constants/theme';
@@ -82,17 +83,7 @@ export function HouseCard({ line }: { line: HouseLine }) {
 
           {progress ? (
             <View style={styles.progress}>
-              <View style={[styles.track, { backgroundColor: theme.line }]}>
-                <View
-                  style={[
-                    styles.fill,
-                    {
-                      width: `${Math.round(progress.ratio * 100)}%`,
-                      backgroundColor: progress.over ? theme.warning : theme.primary,
-                    },
-                  ]}
-                />
-              </View>
+              <CycleBar progress={progress} />
               <AppText variant="caption" color={progress.over ? 'warning' : 'muted'}>
                 {progress.over ? `${progress.label} · past plan` : progress.label}
               </AppText>
@@ -130,7 +121,5 @@ const styles = StyleSheet.create({
   },
   count: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.xs },
   progress: { marginTop: Spacing.sm, gap: Spacing.xs },
-  track: { height: 6, borderRadius: Radius.pill, overflow: 'hidden' },
-  fill: { height: 6, borderRadius: Radius.pill },
   emptyNote: { marginTop: Spacing.md },
 });

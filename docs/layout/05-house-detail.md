@@ -1,5 +1,7 @@
 # 05 · House Detail
 
+> **Superseded 2026-10-08:** the house page now has a hero card, five "Today's records" tiles that show when each was last logged, Stock shortcuts and Open tasks; see [`../house-detail-redesign-design.md`](../house-detail-redesign-design.md). The "Recent activity" card and three-tile row below are kept for history.
+
 **Route:** `src/app/(tabs)/houses/[id].tsx` · **Tier:** Both
 
 ---
