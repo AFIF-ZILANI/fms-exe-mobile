@@ -15,14 +15,12 @@ import Animated, {
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { AppText } from '@/components/ui/text';
-import { Radius, Spacing, type ThemeColor } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type Feature = {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
-  tint: Extract<ThemeColor, 'tintGreen' | 'tintAmber' | 'tintBlue' | 'primarySoft' | 'surfaceAlt'>;
-  color: ThemeColor;
   href: string;
 };
 
@@ -34,13 +32,13 @@ const SPRING = { damping: 18, stiffness: 260, mass: 0.6 };
  *  Alerts is not here: the bell and the alert strip already cover it. */
 function featuresFor(isManager: boolean): Feature[] {
   const list: Feature[] = [
-    { label: 'Houses', icon: 'home', tint: 'tintGreen', color: 'success', href: '/houses' },
-    { label: 'Stock', icon: 'cube', tint: 'tintBlue', color: 'info', href: '/stock' },
+    { label: 'Houses', icon: 'home', href: '/houses' },
+    { label: 'Stock', icon: 'cube', href: '/stock' },
   ];
-  if (isManager) list.push({ label: 'Team', icon: 'people', tint: 'tintAmber', color: 'warning', href: '/team' });
+  if (isManager) list.push({ label: 'Team', icon: 'people', href: '/team' });
   list.push(
-    { label: 'Sync', icon: 'cloud-done', tint: 'primarySoft', color: 'primary', href: '/sync' },
-    { label: 'Settings', icon: 'settings', tint: 'surfaceAlt', color: 'inkSoft', href: '/settings' },
+    { label: 'Sync', icon: 'cloud-done', href: '/sync' },
+    { label: 'Settings', icon: 'settings', href: '/settings' },
   );
   return list;
 }
@@ -63,8 +61,8 @@ function Tile({ feature }: { feature: Feature }) {
       style={styles.cell}
     >
       <Animated.View style={[styles.tile, style]}>
-        <View style={[styles.icon, { backgroundColor: theme[feature.tint] }]}>
-          <Ionicons name={feature.icon} size={28} color={theme[feature.color]} />
+        <View style={[styles.icon, { backgroundColor: theme.surfaceAlt }]}>
+          <Ionicons name={feature.icon} size={28} color={theme.inkSoft} />
         </View>
         <AppText variant="label" numberOfLines={1}>
           {feature.label}
