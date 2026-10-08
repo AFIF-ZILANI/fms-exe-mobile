@@ -1,275 +1,236 @@
-import { Pressable, View, StyleSheet } from 'react-native';
+import { useState } from 'react';
+import { RefreshControl, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 
+import { HouseHero, LogTile, ShortcutTile } from '@/components/house-detail-parts';
 import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SyncBanner } from '@/components/ui/sync-banner';
 import { LedgerRow } from '@/components/ui/ledger-row';
-import { DayCycleBar } from '@/components/ui/day-cycle-bar';
-import { StatusPill } from '@/components/ui/status-pill';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AppText } from '@/components/ui/text';
-import { IconTile, type IconName } from '@/components/ui/icon';
-import { Radius, Spacing, elevation, type ThemeColor } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import type { IconName } from '@/components/ui/icon';
+import { Spacing, type ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useGetData, type Paginated } from '@/lib/api';
-import { useResolvedBatch } from '@/components/ui/batch-resolver';
-import { dayOfCycle, expectedCycleDays } from '@/lib/farm';
-import { formatBatchCode, formatRelative, formatTime } from '@/lib/format';
-import type { House, TaskAssignment } from '@/lib/types';
+import { formatTime } from '@/lib/format';
+import { freshness, newestIso } from '@/lib/house-detail';
+import type { BatchHouseBalance, House, TaskAssignment } from '@/lib/types';
 
 type Dated = { id: string; date?: string; recorded_at?: string };
 
-/** The three logs recorded daily. Environment and treatment stay in the log
- *  sheet — surfacing five tiles makes all five equally forgettable.
- *  docs/layout/05-house-detail.md. */
-const QUICK_LOGS: {
+const when = (row: Dated | undefined) => row?.date ?? row?.recorded_at ?? null;
+
+/** Pull-to-refresh stops spinning after this even if requests are paused (offline). */
+const REFRESH_TIMEOUT_MS = 6000;
+
+const LOGS: {
+  key: 'mortality' | 'feed' | 'weight' | 'environment' | 'treatment';
   label: string;
   path: string;
   icon: IconName;
-  tint: Extract<ThemeColor, 'tintRed' | 'tintAmber' | 'tintBlue'>;
+  tint: Extract<ThemeColor, 'tintRed' | 'tintAmber' | 'tintBlue' | 'tintGreen'>;
 }[] = [
-  { label: 'Mortality', path: '/log/mortality', icon: 'alert-circle', tint: 'tintRed' },
-  { label: 'Feed', path: '/log/consumption', icon: 'package', tint: 'tintAmber' },
-  { label: 'Weight', path: '/log/weight', icon: 'bar-chart-2', tint: 'tintBlue' },
+  { key: 'mortality', label: 'Mortality', path: '/log/mortality', icon: 'alert-circle', tint: 'tintRed' },
+  { key: 'feed', label: 'Feed', path: '/log/consumption', icon: 'package', tint: 'tintAmber' },
+  { key: 'weight', label: 'Weight', path: '/log/weight', icon: 'bar-chart-2', tint: 'tintBlue' },
+  { key: 'environment', label: 'Environment', path: '/log/environment', icon: 'thermometer', tint: 'tintBlue' },
+  { key: 'treatment', label: 'Treatment', path: '/log/treatment', icon: 'plus-square', tint: 'tintGreen' },
 ];
 
-/** docs/layout/05-house-detail.md — everything about the house you're standing
- *  in, and every action you might take in it. */
+/** docs/house-detail-redesign-design.md — the house you're standing in: its birds and cycle, what is
+ *  still to log today, stock actions for this house, and its open tasks. */
 export default function HouseDetailScreen() {
   const theme = useTheme();
-  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+  const { width } = useWindowDimensions();
   const { id } = useLocalSearchParams<{ id: string }>();
+  // Read once and refreshed on pull-down: new Date() during render is impure.
+  const [now, setNow] = useState(() => new Date());
+  const [refreshing, setRefreshing] = useState(false);
 
-  const { data: house, isLoading } = useGetData<House>(`/houses/${id}`, ['houses', id]);
-  const { balance } = useResolvedBatch(id);
-
-  // Four separate limit=1 reads rather than one aggregate endpoint — each is
-  // already ordered newest-first server-side, and react-query caches them
-  // independently. Written longhand: wrapping useGetData in a local helper
-  // would call a hook from a nested function.
-  const { data: mortality } = useGetData<Paginated<Dated>>(
-    `/mortality-logs?house_id=${id}&limit=1`,
-    ['mortality-logs', 'latest', id],
+  const houseQ = useGetData<House>(`/houses/${id}`, ['houses', id]);
+  // Not `limit=1`: the server returns a house's balances newest-updated first with no quantity filter, so a
+  // zero row (a batch moved out or fully lost) can sit ahead of the live one. Read a few and take the first
+  // with birds in it, the same "running" rule as the Houses tab. Its own key: the log forms keep theirs.
+  const balanceQ = useGetData<Paginated<BatchHouseBalance>>(
+    `/batch-house-balances?house_id=${id}&limit=20`,
+    ['batch-house-balances', 'house', id],
   );
-  const { data: environment } = useGetData<Paginated<Dated>>(
+  const house = houseQ.data;
+  const balance = balanceQ.data?.results?.find((b) => b.quantity > 0) ?? null;
+  const running = !!balance && balance.quantity > 0;
+  const batchId = running && balance ? balance.batch_id : undefined;
+
+  // Latest-record reads (limit=1, newest first server-side). Written longhand: wrapping useGetData in a
+  // local helper would call a hook from a nested function.
+  const mortality = useGetData<Paginated<Dated>>(`/mortality-logs?house_id=${id}&limit=1`, ['mortality-logs', 'latest', id]);
+  const consumption = useGetData<Paginated<Dated>>(`/consumptions?house_id=${id}&limit=1`, ['consumptions', 'latest', id]);
+  const weight = useGetData<Paginated<Dated>>(`/weight-records?house_id=${id}&limit=1`, ['weight-records', 'latest', id]);
+  const environment = useGetData<Paginated<Dated>>(
     `/environment-records?house_id=${id}&limit=1`,
     ['environment-records', 'latest', id],
   );
-  const { data: weight } = useGetData<Paginated<Dated>>(
-    `/weight-records?house_id=${id}&limit=1`,
-    ['weight-records', 'latest', id],
+  // Treatments are recorded per batch, not per house: the tile shows the batch's latest medication or vaccination.
+  const medications = useGetData<Paginated<Dated>>(
+    batchId ? `/medications?batch_id=${batchId}&limit=1` : '',
+    ['medications', 'latest', batchId ?? 'none'],
+    { enabled: !!batchId },
   );
-  const { data: consumption } = useGetData<Paginated<Dated>>(
-    `/consumptions?house_id=${id}&limit=1`,
-    ['consumptions', 'latest', id],
+  const vaccinations = useGetData<Paginated<Dated>>(
+    batchId ? `/vaccinations?batch_id=${batchId}&limit=1` : '',
+    ['vaccinations', 'latest', batchId ?? 'none'],
+    { enabled: !!batchId },
   );
-
-  const { data: tasks } = useGetData<Paginated<TaskAssignment>>(
+  const tasks = useGetData<Paginated<TaskAssignment>>(
     `/task-assignments?house_id=${id}&status=PENDING&limit=20`,
     ['task-assignments', 'house', id],
   );
 
-  // One row per kind, not a merged feed: the question is "has today's
-  // environment reading been done", not "what happened recently".
-  // A kind with no record is omitted rather than shown as "—".
-  const activity = (
-    [
-      { label: 'Mortality', icon: 'alert-circle', tint: 'tintRed', row: mortality?.results[0] },
-      { label: 'Feed', icon: 'package', tint: 'tintAmber', row: consumption?.results[0] },
-      { label: 'Weight sample', icon: 'bar-chart-2', tint: 'tintBlue', row: weight?.results[0] },
-      { label: 'Environment', icon: 'thermometer', tint: 'tintBlue', row: environment?.results[0] },
-    ] as const
-  ).filter((a) => a.row);
+  // Wait for BOTH the house and its birds: otherwise a house whose counts have not arrived reads "Empty".
+  // `isPending`, not `isLoading`: offline with nothing cached a query is paused and `isLoading` is false.
+  const ready = !houseQ.isPending && !balanceQ.isPending;
+  const failed = (houseQ.isError && !houseQ.data) || (balanceQ.isError && !balanceQ.data);
+  const offlineNoData =
+    (houseQ.isPending && houseQ.fetchStatus === 'paused') ||
+    (balanceQ.isPending && balanceQ.fetchStatus === 'paused');
 
-  const batch = balance?.batch;
-  const openTasks = tasks?.results ?? [];
+  const refresh = async () => {
+    setRefreshing(true);
+    try {
+      setNow(new Date());
+      // Offline, refetches are paused and never settle: don't wait for them forever.
+      const refetches = [houseQ, balanceQ, mortality, consumption, weight, environment, tasks].map((q) => q.refetch());
+      if (batchId) refetches.push(medications.refetch(), vaccinations.refetch());
+      await Promise.race([
+        Promise.allSettled(refetches),
+        new Promise((resolve) => setTimeout(resolve, REFRESH_TIMEOUT_MS)),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
+  const lastLogged: Record<(typeof LOGS)[number]['key'], string | null> = {
+    mortality: when(mortality.data?.results[0]),
+    feed: when(consumption.data?.results[0]),
+    weight: when(weight.data?.results[0]),
+    environment: when(environment.data?.results[0]),
+    treatment: newestIso(when(medications.data?.results[0]), when(vaccinations.data?.results[0])),
+  };
+
+  // floor: rounding up by a fraction would make three tiles overflow the row and wrap to two.
+  const tileWidth = Math.floor((width - 2 * Spacing.xl - 2 * Spacing.md) / 3);
   const withHouse = (path: string) => `${path}?house_id=${id}` as Href;
+  const openTasks = tasks.data?.results ?? [];
 
   return (
-    <Screen>
+    <Screen
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={theme.primary} />
+      }
+    >
       <Header title={house?.name ?? 'House'} leading="back" />
       <SyncBanner />
 
-      <Card style={styles.hero}>
-        <View style={styles.heroMeta}>
-          <AppText variant="eyebrow" color="muted">
-            {house ? house.type : ''}
-            {house?.capacity ? `  ·  CAP ${house.capacity.toLocaleString()}` : ''}
-          </AppText>
-          <StatusPill status={batch ? 'RUNNING' : 'EMPTY'} />
-        </View>
-
-        {isLoading ? (
-          <View style={styles.heroSkeleton}>
-            <Skeleton width="60%" height={44} />
-          </View>
-        ) : batch ? (
-          <>
-            <AppText variant="hero" style={styles.centre}>
-              {balance!.quantity.toLocaleString()}
-            </AppText>
-            <AppText variant="eyebrow" color="muted" style={styles.centre}>
-              Live birds
-            </AppText>
-          </>
-        ) : (
-          <>
-            <AppText variant="h2" color="muted" style={styles.centre}>
-              Empty house
-            </AppText>
-            <AppText variant="caption" color="muted" style={styles.centre}>
-              Logging needs a batch in this house.
-            </AppText>
-          </>
-        )}
-
-        {batch && (
-          <>
-            <View style={[styles.rule, { backgroundColor: theme.line }]} />
-            <View style={styles.batchLine}>
-              <AppText variant="data">{formatBatchCode(batch.batch_code, balance?.batch_id)}</AppText>
-              <AppText variant="caption" color="muted">
-                {batch.breed.toLowerCase()} · {batch.phase.toLowerCase()}
-              </AppText>
-            </View>
-            <View style={styles.batchLine}>
-              <DayCycleBar
-                day={dayOfCycle(batch.starting_date)}
-                expectedDays={expectedCycleDays(batch)}
-              />
-              <DaysLeft day={dayOfCycle(batch.starting_date)} total={expectedCycleDays(batch)} />
-            </View>
-          </>
-        )}
-      </Card>
-
-      {/* Hidden without a batch — a tile opening a form that can't submit is
-          worse than no tile. */}
-      {batch && (
-        <View style={styles.quickRow}>
-          {QUICK_LOGS.map((q) => (
-            <Pressable
-              key={q.path}
-              onPress={() => router.push(withHouse(q.path))}
-              accessibilityRole="button"
-              accessibilityLabel={`Log ${q.label.toLowerCase()}`}
-              style={({ pressed }) => [
-                styles.quickTile,
-                { backgroundColor: theme.surface },
-                elevation(scheme, 'card'),
-                pressed && { transform: [{ scale: 0.97 }] },
-              ]}
-            >
-              <IconTile name={q.icon} tint={q.tint} />
-              <AppText variant="label">{q.label}</AppText>
-            </Pressable>
-          ))}
-        </View>
-      )}
-
-      <Card rows eyebrow="Recent activity" style={styles.card}>
-        {activity.length === 0 ? (
+      {offlineNoData ? (
+        <Card style={styles.state}>
           <EmptyState
             compact
-            icon="clock"
+            icon="wifi-off"
             tint="surfaceAlt"
-            title="Nothing logged here yet."
-            body={batch ? 'Use the buttons above to start.' : undefined}
+            title="You're offline."
+            body="This house loads when you're back online."
           />
-        ) : (
-          activity.map((a, i) => (
-            <LedgerRow
-              key={a.label}
-              gutterNode={<IconTile name={a.icon} tint={a.tint} size={32} />}
-              last={i === activity.length - 1}
-            >
-              <View style={styles.activityRow}>
-                <AppText variant="bodyStrong" style={styles.flex}>
-                  {a.label}
-                </AppText>
-                <AppText variant="caption" color="muted">
-                  {formatRelative((a.row!.date ?? a.row!.recorded_at)!)}
-                </AppText>
-              </View>
-            </LedgerRow>
-          ))
-        )}
-      </Card>
-
-      {/* Omitted entirely when empty, rather than shown empty. */}
-      {openTasks.length > 0 && (
-        <Card rows eyebrow="Open tasks" note={String(openTasks.length)} style={styles.card}>
-          {openTasks.map((task, i) => (
-            <LedgerRow
-              key={task.id}
-              gutter={formatTime(task.due_at)}
-              last={i === openTasks.length - 1}
-              onPress={() => router.push(`/tasks/${task.id}` as Href)}
-            >
-              <AppText variant="bodyStrong">{task.title}</AppText>
-              <AppText variant="caption" color="muted">
-                {task.employee?.profile?.name ?? 'Unassigned'}
-              </AppText>
-            </LedgerRow>
-          ))}
         </Card>
+      ) : !ready ? (
+        <View style={styles.state}>
+          <Skeleton height={200} />
+        </View>
+      ) : failed || !house ? (
+        <Card style={styles.state}>
+          <EmptyState
+            compact
+            icon="alert-circle"
+            tint="tintRed"
+            title="Couldn't load this house."
+            action={{
+              label: 'Retry',
+              onPress: () => void Promise.all([houseQ.refetch(), balanceQ.refetch()]),
+            }}
+          />
+        </Card>
+      ) : (
+        <>
+          <HouseHero house={house} balance={balance} />
+
+          {/* A tile that opens a form which cannot submit is worse than no tile: logging needs a batch. */}
+          {running ? (
+            <>
+              <AppText variant="eyebrow" color="muted" style={styles.section}>
+                Today&apos;s records
+              </AppText>
+              <View style={styles.tiles}>
+                {LOGS.map((log) => (
+                  <LogTile
+                    key={log.key}
+                    label={log.label}
+                    icon={log.icon}
+                    tint={log.tint}
+                    freshness={freshness(lastLogged[log.key], now)}
+                    width={tileWidth}
+                    onPress={() => router.push(withHouse(log.path))}
+                  />
+                ))}
+              </View>
+            </>
+          ) : null}
+
+          <AppText variant="eyebrow" color="muted" style={styles.section}>
+            Stock
+          </AppText>
+          <View style={styles.shortcuts}>
+            <ShortcutTile
+              label="Move to house"
+              icon="arrow-right"
+              onPress={() => router.push(withHouse('/scan/allocate'))}
+            />
+            <ShortcutTile
+              label="Use an item"
+              icon="box"
+              onPress={() => router.push(withHouse('/scan/consume'))}
+            />
+          </View>
+
+          {/* Omitted entirely when empty, rather than shown empty. */}
+          {openTasks.length > 0 ? (
+            <Card rows eyebrow="Open tasks" note={String(openTasks.length)} style={styles.card}>
+              {openTasks.map((task, i) => (
+                <LedgerRow
+                  key={task.id}
+                  gutter={formatTime(task.due_at)}
+                  last={i === openTasks.length - 1}
+                  onPress={() => router.push(`/tasks/${task.id}` as Href)}
+                >
+                  <AppText variant="bodyStrong">{task.title}</AppText>
+                  <AppText variant="caption" color="muted">
+                    {task.employee?.profile?.name ?? 'Unassigned'}
+                  </AppText>
+                </LedgerRow>
+              ))}
+            </Card>
+          ) : null}
+        </>
       )}
     </Screen>
   );
 }
 
-/** Goes `warning` at =< 3 days, and never shows a negative — a batch past its
- *  expected end reads "Day 38 of ~35". docs/layout/05-house-detail.md. */
-function DaysLeft({ day, total }: { day: number; total: number }) {
-  const left = total - day;
-  if (left < 0) {
-    return (
-      <AppText variant="caption" color="muted">
-        Day {day} of ~{total}
-      </AppText>
-    );
-  }
-  return (
-    <AppText variant="caption" color={left <= 3 ? 'warning' : 'muted'}>
-      {left === 0 ? 'Cycle ends today' : `${left} days left`}
-    </AppText>
-  );
-}
-
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  centre: { textAlign: 'center' },
-  hero: { marginTop: Spacing.xs, padding: Spacing.xl },
-  heroMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.md,
-  },
-  heroSkeleton: { alignItems: 'center', paddingVertical: Spacing.xs },
-  rule: { height: 1, marginVertical: Spacing.lg },
-  batchLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.sm,
-    marginTop: Spacing.xs,
-  },
-  quickRow: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.md },
-  quickTile: {
-    flex: 1,
-    minHeight: 80,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    borderRadius: Radius.card,
-    padding: Spacing.md,
-  },
-  card: { marginTop: Spacing.md },
-  activityRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  state: { marginTop: Spacing.md },
+  section: { marginTop: Spacing.xl, marginBottom: Spacing.sm, paddingHorizontal: Spacing.xs },
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
+  shortcuts: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
+  card: { marginTop: Spacing.xl },
 });
