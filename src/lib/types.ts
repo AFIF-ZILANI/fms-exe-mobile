@@ -113,14 +113,21 @@ export type ScoreEntry = {
   given_by?: { id: string; name: string; role: string };
 };
 
+/** A month's locked payroll. Money arrives as decimal strings. Pay is the fixed wage plus an allowance that
+ *  moves with the month's points: total_pay = fixed_wage + allowance. */
 export type PayrollRecord = {
   id: string;
   employee_id: string;
+  /** The first of the month, midnight UTC. */
   month: string;
-  baseline_salary: string;
+  reference_salary: string;
+  fixed_wage: string;
+  /** Raw sum of the month's points, before the clamp. */
   score_sum: number;
-  adjustment_percent: string;
-  final_salary: string;
+  /** The clamped adjustment, a whole percent. */
+  adjustment_percent: number | string;
+  allowance: string;
+  total_pay: string;
 };
 
 export type Warehouse = {

@@ -1,5 +1,8 @@
 # 03 · My Performance
 
+> **Updated 2026-10-08 (redesign):** month stepper · hero with this month's points and a −10%…+20% scale showing where they land (zero a third of the way in, the floor easier to reach than the ceiling) · Applied/Projected adjustment · Earned and Lost cards · for a month whose payroll has run, a payslip (fixed wage + performance allowance = total pay, from `total_pay`/`fixed_wage`/`allowance`) · points as one card each (settled entries only) · pay history as cards; tapping a month opens it above. Fixed: pay history showed ৳0 for every month (the app read fields the server does not have).
+
+
 **Route:** `src/app/(tabs)/me/performance.tsx` · **Tab:** Me · **Tier:** Both
 
 ---
