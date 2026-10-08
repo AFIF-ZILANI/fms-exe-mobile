@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { DateTimePicker } from '@expo/ui/community/datetime-picker';
 
 import { FormScreen } from '@/components/ui/form-screen';
 import { EmployeePicker, usePrefillEmployee } from '@/components/ui/employee-picker';
+import { DueField } from '@/components/ui/due-field';
 import { HousePicker } from '@/components/ui/house-picker';
 import { PickerField } from '@/components/ui/picker-field';
 import { TextField } from '@/components/ui/text-field';
@@ -12,7 +12,6 @@ import { SegmentedToggle } from '@/components/ui/segmented-toggle';
 import { AppText } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
 import { useGetData, type Paginated } from '@/lib/api';
@@ -34,7 +33,6 @@ function defaultDue(): Date {
  *  makes the invalid combination unrepresentable rather than caught at POST. */
 export default function AssignScreen() {
   const params = useLocalSearchParams<{ employee_id?: string }>();
-  const theme = useTheme();
   const { employee: actor } = useSession();
   const submit = useQueuedSubmit();
 
@@ -186,12 +184,7 @@ export default function AssignScreen() {
         <AppText variant="eyebrow" color="muted">
           Due
         </AppText>
-        <DateTimePicker
-          value={dueAt}
-          mode="datetime"
-          onValueChange={(_, date) => setDueAt(date)}
-          accentColor={theme.primary}
-        />
+        <DueField value={dueAt} onChange={setDueAt} />
       </View>
     </FormScreen>
   );
