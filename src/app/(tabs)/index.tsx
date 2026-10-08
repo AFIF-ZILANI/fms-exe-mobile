@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { SyncBanner } from '@/components/ui/sync-banner';
 import { LedgerRow } from '@/components/ui/ledger-row';
 import { CycleBar } from '@/components/cycle-bar';
+import { FeatureGrid } from '@/components/feature-grid';
 import { StatusPill } from '@/components/ui/status-pill';
 import { AppText } from '@/components/ui/text';
 import { Icon, IconTile } from '@/components/ui/icon';
@@ -290,6 +291,8 @@ export default function DashboardScreen() {
           </Pressable>
         )}
       </Card>
+
+      <FeatureGrid isManager={isManager} />
 
       {isManager && mates.length > 0 && (
         <Card

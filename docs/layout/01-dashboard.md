@@ -7,7 +7,7 @@
 > **Updated 2026-10-07:** Home no longer has a settings gear, a Manager action grid, or a "My performance" button. Manager tools live in the Log launcher's Manage group (see docs/navigation-redesign-design.md). Rows below that mention them are historical.
 
 
-> **Updated 2026-10-08 (Home redesign):** a worker covers every house, so Home is a "what's left, what's the farm doing" screen. Order: header + sync banner · three stat cards (Tasks left → Tasks tab, Birds → Houses, Points → Performance; Tasks left goes red when anything is overdue and green with a check at zero) · an alert strip, only while an alert is active (red when Critical) · Today's tasks with a progress bar and "N of M done" (overdue first, then due today, then done; top 5, "See all N tasks") · Houses (up to 6 running: name, cycle bar and day, live birds) · Team (managers only). Deferred: a "logged today" activity list, pending a data check.
+> **Updated 2026-10-08 (Home redesign):** a worker covers every house, so Home is a "what's left, what's the farm doing" screen. Order: header + sync banner · three stat cards (Tasks left → Tasks tab, Birds → Houses, Points → Performance; Tasks left goes red when anything is overdue and green with a check at zero) · an alert strip, only while an alert is active (red when Critical) · Today's tasks with a progress bar and "N of M done" (overdue first, then due today, then done; top 5, "See all N tasks") · Features grid (4 per row: Houses, Stock, Alerts, Sync; Team for managers; Settings; extra rows behind "See more", animated; add entries in `featuresFor` in `feature-grid.tsx`) · Houses (up to 6 running: name, cycle bar and day, live birds) · Team (managers only). Deferred: a "logged today" activity list, pending a data check.
 
 ## Purpose
 
