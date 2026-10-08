@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { router, type Href } from 'expo-router';
 
 import { Screen } from '@/components/ui/screen';
@@ -18,10 +18,13 @@ import { useGetData, type Paginated } from '@/lib/api';
 import { can } from '@/lib/permissions';
 import { humanise } from '@/lib/profile-format';
 import { useSession } from '@/lib/session';
-import { formatBalance, summarizeStock, type StockRow } from '@/lib/stock-summary';
+import { formatBalance, searchStock, summarizeStock, type StockRow } from '@/lib/stock-summary';
 import type { Item } from '@/lib/types';
 
 type Filter = 'ALL' | 'LOW';
+
+const REFRESH_TIMEOUT_MS = 6000;
+const PAGE = 100;
 
 const WORKER_SHORTCUTS: { label: string; path: string; icon: IconName }[] = [
   { label: 'Move to house', path: '/scan/allocate', icon: 'arrow-right' },
@@ -34,8 +37,10 @@ export default function StockScreen() {
   const { employee } = useSession();
   const isManager = can(employee?.role, 'assign_task');
   const [filter, setFilter] = useState<Filter>('ALL');
+  const [query, setQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
-  // ponytail: limit=100 is the server max; items past 100 silently drop. Phase 4: page, or use /items/low-stock.
+  // ponytail: limit=100 is the server max; past that the list says so (see `truncated`). Page it if a farm ever has more.
   const items = useGetData<Paginated<Item>>('/items?is_active=true&limit=100', ['items', 'active']);
   const rows = useGetData<StockRow[]>('/items/stock-by-location', ['items', 'stock-by-location']);
 
@@ -44,17 +49,40 @@ export default function StockScreen() {
     [items.data, rows.data],
   );
   const lowCount = lines.filter((l) => l.isLow).length;
-  const shown = filter === 'LOW' ? lines.filter((l) => l.isLow) : lines;
+  const byFilter = filter === 'LOW' ? lines.filter((l) => l.isLow) : lines;
+  const shown = searchStock(byFilter, query);
+  const searching = query.trim().length > 0;
+  const truncated = (items.data?.total ?? 0) > PAGE;
 
   const shortcuts = isManager
     ? [...WORKER_SHORTCUTS, { label: 'Link items', path: '/link', icon: 'maximize' as IconName }]
     : WORKER_SHORTCUTS;
 
-  const isLoading = items.isLoading || rows.isLoading;
+  // `isPending`, not `isLoading`: offline with nothing cached a query is paused and never "loading".
+  const isLoading = (items.isPending && !items.data) || (rows.isPending && !rows.data);
+  const offlineNoData =
+    (items.isPending && items.fetchStatus === 'paused') || (rows.isPending && rows.fetchStatus === 'paused');
+
+  const refresh = async () => {
+    setRefreshing(true);
+    try {
+      // Offline, refetches are paused and never settle: don't wait for them forever.
+      await Promise.race([
+        Promise.allSettled([items.refetch(), rows.refetch()]),
+        new Promise((resolve) => setTimeout(resolve, REFRESH_TIMEOUT_MS)),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
   const isError = (items.isError && !items.data) || (rows.isError && !rows.data);
 
   return (
-    <Screen>
+    <Screen
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={theme.primary} />
+      }
+    >
       <Header title="Stock" />
       <SyncBanner />
 
@@ -77,6 +105,25 @@ export default function StockScreen() {
             </AppText>
           </Pressable>
         ))}
+      </View>
+
+      <View style={[styles.search, { backgroundColor: theme.surface, borderColor: theme.line }]}>
+        <Icon name="search" size={20} color="muted" />
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search items"
+          placeholderTextColor={theme.muted}
+          accessibilityLabel="Search items"
+          returnKeyType="search"
+          autoCorrect={false}
+          style={[styles.searchInput, { color: theme.ink }]}
+        />
+        {searching ? (
+          <Pressable onPress={() => setQuery('')} accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={12}>
+            <Icon name="x" size={20} color="muted" />
+          </Pressable>
+        ) : null}
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
@@ -112,6 +159,14 @@ export default function StockScreen() {
               <Skeleton key={i} height={60} />
             ))}
           </View>
+        ) : offlineNoData ? (
+          <EmptyState
+            compact
+            icon="wifi-off"
+            tint="surfaceAlt"
+            title="You're offline."
+            body="Stock shows up once you're connected."
+          />
         ) : isError ? (
           <EmptyState
             compact
@@ -128,6 +183,14 @@ export default function StockScreen() {
           />
         ) : lines.length === 0 ? (
           <EmptyState compact icon="archive" tint="surfaceAlt" title="No items yet." body="Items are set up in the admin dashboard." />
+        ) : shown.length === 0 && searching ? (
+          <EmptyState
+            compact
+            icon="search"
+            tint="surfaceAlt"
+            title="No items match."
+            action={{ label: 'Clear search', onPress: () => setQuery('') }}
+          />
         ) : shown.length === 0 ? (
           <EmptyState
             compact
@@ -149,6 +212,7 @@ export default function StockScreen() {
                 />
               }
               last={i === shown.length - 1}
+              onPress={() => router.push(`/stock/${line.item.id}` as Href)}
             >
               <View style={styles.rowTop}>
                 <AppText variant="bodyStrong" style={styles.flex} numberOfLines={2}>
@@ -168,6 +232,12 @@ export default function StockScreen() {
           ))
         )}
       </Card>
+
+      {truncated ? (
+        <AppText variant="caption" color="muted" style={styles.note}>
+          Showing the first {PAGE} items. Search to narrow the list.
+        </AppText>
+      ) : null}
     </Screen>
   );
 }
@@ -192,6 +262,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: Radius.pill,
   },
+  search: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    borderWidth: 1,
+    borderRadius: Radius.control,
+  },
+  searchInput: { flex: 1, minHeight: 48, fontSize: 16 },
+  note: { marginTop: Spacing.md, paddingHorizontal: Spacing.xs },
   card: { marginTop: Spacing.md },
   skeletons: { gap: Spacing.sm, paddingHorizontal: Spacing.lg },
   rowTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },

@@ -48,3 +48,21 @@ export function summarizeStock(items: Item[], rows: StockRow[]): StockLine[] {
 export function formatBalance(n: number): string {
   return n.toLocaleString('en-US', { maximumFractionDigits: 3 });
 }
+
+/** Case-insensitive match on item name or category ("feed", "vacc"); a blank query keeps everything. */
+export function searchStock(lines: StockLine[], query: string): StockLine[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return lines;
+  return lines.filter(
+    (l) => l.item.name.toLowerCase().includes(q) || l.item.category.toLowerCase().replace(/_/g, ' ').includes(q),
+  );
+}
+
+/** An item's non-zero balances split into warehouses and houses, each A-Z, for the item detail screen. */
+export function groupLocations(line: StockLine): { warehouses: StockLine['locations']; houses: StockLine['locations'] } {
+  const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, undefined, { numeric: true });
+  return {
+    warehouses: line.locations.filter((l) => l.type === 'WAREHOUSE').sort(byName),
+    houses: line.locations.filter((l) => l.type !== 'WAREHOUSE').sort(byName),
+  };
+}

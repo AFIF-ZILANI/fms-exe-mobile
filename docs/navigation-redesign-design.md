@@ -1,6 +1,6 @@
 # Navigation redesign
 
-Status: **Phases 1–3 built** (2026-10-08). Phase 4 (Stock polish) pending. Known oddity: Back from Team goes to Home even when Team was opened from another tab. Open follow-up: outbox owner column (see docs/offline-sync.md).
+Status: **Phases 1–4 built** (2026-10-08). Known oddity: Back from Team goes to Home even when Team was opened from another tab.
 
 ## Why
 
@@ -33,7 +33,7 @@ Audit findings this fixes (docs/ux-audit-2026-10.md): two launchers with differe
 1. **Shell:** the bar, Stock tab v1, grouped launcher, Me = Profile, Settings, Home cleanup.
 2. **Sync center:** Settings → Sync center: queued and failed records in plain words, Retry, Discard (the outbox already has `retryDeadLetter` and `discardDeadLetter`), last synced time. Replaces the raw error alert.
 3. **My tasks + Alerts:** `/tasks` list (today, overdue, done) from Home's "Today · All"; `/alerts` from the bell, read-only, severity shown by word and icon, badge count of open alerts. **Built:** My tasks groups pending tasks into Overdue (due time passed, including earlier today), Today (rest of the local day) and Later, plus the 20 most recent Done; cancelled are hidden; tapping a pending task uses the same route as Home's Today card (`taskHref`). Alerts shows Active (Critical → Warning → Info, newest first) and Resolved, read-only. The bell badge shows the server's active total (capped "9+") and is red only when a Critical alert is active.
-4. **Stock polish:** item detail with balance by location, search, pull to refresh.
+4. **Stock polish:** item detail with balance by location, search, pull to refresh. **Built:** search by name or category; `/stock/[id]` shows the total, reorder level and non-zero balances by warehouse and house (read-only, from the same cached queries); pull to refresh (6 s time-box); an offline state; a note when there are more than 100 items (the list shows the first 100).
 
 ## Out of scope
 Push notifications, editing profile fields, alert acknowledgement/resolving, stock adjustments beyond the existing Report discrepancy flow.

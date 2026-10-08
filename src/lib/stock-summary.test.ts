@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 
-import { formatBalance, summarizeStock, type StockRow } from './stock-summary';
+import { formatBalance, groupLocations, searchStock, summarizeStock, type StockRow } from './stock-summary';
 import type { Item } from './types';
 
 const item = (over: Partial<Item> & { id: string; name: string }): Item => ({
@@ -68,5 +68,29 @@ assert.equal(formatBalance(1200), '1,200');
 assert.equal(formatBalance(0), '0');
 assert.equal(formatBalance(0.12345), '0.123');
 assert.equal(formatBalance(2.0), '2');
+
+// --- search: name or category, case-insensitive; blank keeps all -------------------------------------
+{
+  const lines = summarizeStock([feed, vaccine, husk], []);
+  assert.deepEqual(searchStock(lines, 'NEWCASTLE').map((l) => l.item.id), ['vac']);
+  assert.deepEqual(searchStock(lines, ' vacc ').map((l) => l.item.id), ['vac'], 'matches category, trims');
+  assert.deepEqual(searchStock(lines, 'zzz'), []);
+  assert.equal(searchStock(lines, '').length, 3);
+  assert.equal(searchStock(lines, '   ').length, 3);
+  const med = summarizeStock([item({ id: 'm', name: 'Tonic', category: 'FEED_ADDITIVE' })], []);
+  assert.equal(searchStock(med, 'feed additive').length, 1, 'underscored categories match their spaced words');
+}
+
+// --- locations grouped: warehouses then houses, natural A-Z ------------------------------------------------
+{
+  const [line] = summarizeStock(
+    [feed],
+    [row('feed', '1', 'House 10', 'HOUSE'), row('feed', '2', 'House 2', 'HOUSE'), row('feed', '3', 'Warehouse B'), row('feed', '4', 'Warehouse A')],
+  );
+  const g = groupLocations(line);
+  assert.deepEqual(g.warehouses.map((l) => l.name), ['Warehouse A', 'Warehouse B']);
+  assert.deepEqual(g.houses.map((l) => l.name), ['House 2', 'House 10'], 'House 2 before House 10');
+  assert.deepEqual(groupLocations(summarizeStock([feed], [])[0]), { warehouses: [], houses: [] });
+}
 
 console.log('stock-summary checks passed');
