@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Alert, View, StyleSheet } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 
 import { FormScreen } from '@/components/ui/form-screen';
 import { ItemPicker } from '@/components/ui/item-picker';
@@ -16,6 +16,7 @@ import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
 import { useGetData, type Paginated } from '@/lib/api';
 import type { Item, StockByLocation, Warehouse } from '@/lib/types';
+import { goBack } from '@/lib/nav';
 
 type LocationKind = 'warehouse' | 'house';
 
@@ -107,7 +108,7 @@ export default function AdjustScreen() {
           ...(note.trim() && { note: note.trim() }),
         },
       });
-      if (queued) router.back();
+      if (queued) goBack();
     } finally {
       setSubmitting(false);
     }

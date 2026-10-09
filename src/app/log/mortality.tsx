@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 
 import { FormScreen } from '@/components/ui/form-screen';
 import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
@@ -9,6 +9,7 @@ import { NumberField } from '@/components/ui/number-field';
 import { TextField } from '@/components/ui/text-field';
 import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
+import { goBack } from '@/lib/nav';
 
 /** Warn past this share of the house's live birds. A fat-fingered 50 for 5 is
  *  the costly typo here, and this write decrements BatchHouseBalance for real.
@@ -55,7 +56,7 @@ export default function MortalityScreen() {
         },
         taskId: params.task_id,
       });
-      if (queued) router.back();
+      if (queued) goBack();
     } finally {
       setSubmitting(false);
     }

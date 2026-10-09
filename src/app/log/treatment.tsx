@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 
 import { FormScreen } from '@/components/ui/form-screen';
 import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
@@ -12,6 +12,7 @@ import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
 import { useGetData, type Paginated } from '@/lib/api';
 import type { Doctor } from '@/lib/types';
+import { goBack } from '@/lib/nav';
 
 type TreatmentType = 'medication' | 'vaccination';
 
@@ -75,7 +76,7 @@ export default function TreatmentScreen() {
         },
         taskId: params.task_id,
       });
-      if (queued) router.back();
+      if (queued) goBack();
     } finally {
       setSubmitting(false);
     }

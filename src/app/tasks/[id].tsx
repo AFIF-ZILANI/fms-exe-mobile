@@ -21,6 +21,7 @@ import { useQueuedSubmit } from '@/lib/use-queued-submit';
 import { routeForTaskType } from '@/lib/task-forms';
 import { formatTime } from '@/lib/format';
 import type { TaskAssignment } from '@/lib/types';
+import { goBack } from '@/lib/nav';
 
 /**
  * docs/layout/06-task-detail.md. This is where the unknown-TaskType fallback
@@ -99,7 +100,7 @@ export default function TaskDetailScreen() {
         endpoint: `/task-assignments/${task.id}/complete`,
         body: note.trim() ? { completion_note: note.trim() } : {},
       });
-      if (queued) router.back();
+      if (queued) goBack();
     } finally {
       setSubmitting(false);
     }
@@ -115,7 +116,7 @@ export default function TaskDetailScreen() {
           setSubmitting(true);
           try {
             const queued = await submit({ endpoint: `/task-assignments/${task.id}/cancel`, body: {} });
-            if (queued) router.back();
+            if (queued) goBack();
           } finally {
             setSubmitting(false);
           }

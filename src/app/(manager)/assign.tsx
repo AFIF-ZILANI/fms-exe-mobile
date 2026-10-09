@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 
 import { FormScreen } from '@/components/ui/form-screen';
 import { EmployeePicker, usePrefillEmployee } from '@/components/ui/employee-picker';
@@ -10,15 +10,27 @@ import { PickerField } from '@/components/ui/picker-field';
 import { TextField } from '@/components/ui/text-field';
 import { SegmentedToggle } from '@/components/ui/segmented-toggle';
 import { AppText } from '@/components/ui/text';
-import { Icon } from '@/components/ui/icon';
-import { Spacing } from '@/constants/theme';
+import { Icon, IconTile } from '@/components/ui/icon';
+import { Radius, Spacing, elevation } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/hooks/use-theme';
 import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
 import { useGetData, type Paginated } from '@/lib/api';
+import { isPastDue } from '@/lib/due-date';
+import { formatTime } from '@/lib/format';
+import { humanise } from '@/lib/profile-format';
 import { routeForTaskType } from '@/lib/task-forms';
+import { dueLabel } from '@/lib/tasks-view';
 import type { House, Task } from '@/lib/types';
+import { goBack } from '@/lib/nav';
 
 type Location = 'house' | 'other';
+
+const PAST_MESSAGE = 'Pick a time in the future.';
+
+/** The full name when it fits a button, otherwise the first word. */
+const shortName = (name: string): string => (name.length <= 18 ? name : (name.split(' ')[0] ?? name));
 
 /** The next quarter-hour at least 30 minutes out, so the common case needs no
  *  time picker at all. docs/layout/15-assign-task.md. */
@@ -33,6 +45,8 @@ function defaultDue(): Date {
  *  makes the invalid combination unrepresentable rather than caught at POST. */
 export default function AssignScreen() {
   const params = useLocalSearchParams<{ employee_id?: string }>();
+  const theme = useTheme();
+  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const { employee: actor } = useSession();
   const submit = useQueuedSubmit();
 
@@ -45,6 +59,7 @@ export default function AssignScreen() {
   const [house, setHouse] = useState<House | null>(null);
   const [locationNote, setLocationNote] = useState('');
   const [dueAt, setDueAt] = useState(defaultDue);
+  const [duePast, setDuePast] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const { data: tasks, isLoading: tasksLoading } = useGetData<Paginated<Task>>(
@@ -56,7 +71,8 @@ export default function AssignScreen() {
     !!employee &&
     !!task &&
     title.trim() !== '' &&
-    (location === 'house' ? !!house : locationNote.trim() !== '');
+    (location === 'house' ? !!house : locationNote.trim() !== '') &&
+    !duePast;
 
   // Tells the manager what the worker will actually see. Assigning "Clean
   // waterers" and expecting a form is the misunderstanding this prevents.
@@ -67,8 +83,18 @@ export default function AssignScreen() {
       : 'Marked done by hand — no form.'
     : undefined;
 
+  const pickDue = (next: Date) => {
+    setDueAt(next);
+    setDuePast(isPastDue(next, new Date()));
+  };
+
   const handleSubmit = async () => {
     if (!employee || !task || !actor) return;
+    // The form may have been open a while: check the time again at the moment of sending.
+    if (isPastDue(dueAt, new Date())) {
+      setDuePast(true);
+      return;
+    }
     setSubmitting(true);
     try {
       const queued = await submit({
@@ -84,7 +110,7 @@ export default function AssignScreen() {
             : { location_note: locationNote.trim() }),
         },
       });
-      if (queued) router.back();
+      if (queued) goBack();
     } finally {
       setSubmitting(false);
     }
@@ -98,20 +124,22 @@ export default function AssignScreen() {
     else setHouse(null);
   };
 
+  const where = location === 'house' ? house?.name : locationNote.trim();
+  const previewReady = !!title.trim();
+
   return (
     <FormScreen
       title="Assign a task"
-      dirty={!!task || !!title || !!description || !!locationNote}
+      dirty={!!task || !!title || !!description || !!locationNote || !!house}
       submit={{
-        label: employee ? `Assign to ${employee.profile.name.split(' ')[0]}` : 'Assign task',
+        label: employee ? `Assign to ${shortName(employee.profile.name)}` : 'Assign task',
         onPress: handleSubmit,
         disabled: !isValid,
         loading: submitting,
       }}
     >
-      {!params.employee_id && (
-        <EmployeePicker value={employee} onChange={setEmployee} role="WORKER" />
-      )}
+      {/* Always shown, even when we arrive from someone's page: the manager can see who it is for, and change it. */}
+      <EmployeePicker value={employee} onChange={setEmployee} label="Assign to" />
 
       <View style={styles.taskBlock}>
         <PickerField
@@ -120,7 +148,7 @@ export default function AssignScreen() {
           options={tasks?.results ?? []}
           getKey={(t) => t.id}
           getLabel={(t) => t.label}
-          getSubLabel={(t) => t.task_type?.code ?? 'No form'}
+          getSubLabel={(t) => (t.task_type?.label ?? (t.task_type?.code ? humanise(t.task_type.code) : 'No form'))}
           onChange={(t) => {
             setTask(t);
             // Only fills a title the manager hasn't edited. Once touched, it's
@@ -147,12 +175,14 @@ export default function AssignScreen() {
           setTitle(t);
           setTitleTouched(true);
         }}
+        helper="What the worker sees on their list."
       />
       <TextField
-        label="Description (optional)"
+        label="Notes (optional)"
         value={description}
         onChangeText={setDescription}
         multiline
+        placeholder="Anything they should know…"
       />
 
       <View style={styles.group}>
@@ -162,7 +192,7 @@ export default function AssignScreen() {
         <SegmentedToggle
           options={[
             { value: 'house', label: 'House' },
-            { value: 'other', label: 'Other' },
+            { value: 'other', label: 'Somewhere else' },
           ]}
           value={location}
           onChange={switchLocation}
@@ -184,8 +214,29 @@ export default function AssignScreen() {
         <AppText variant="eyebrow" color="muted">
           Due
         </AppText>
-        <DueField value={dueAt} onChange={setDueAt} />
+        <DueField value={dueAt} onChange={pickDue} error={duePast ? PAST_MESSAGE : undefined} />
       </View>
+
+      {/* How it will look on the worker's list, so a mistake shows before it is sent. */}
+      {previewReady ? (
+        <View style={styles.group}>
+          <AppText variant="eyebrow" color="muted">
+            Preview
+          </AppText>
+          <View style={[styles.preview, { backgroundColor: theme.surface }, elevation(scheme, 'card')]}>
+            <IconTile name="clock" tint="tintBlue" color="info" />
+            <View style={styles.previewText}>
+              <AppText variant="bodyStrong" numberOfLines={2}>
+                {title.trim()}
+              </AppText>
+              <AppText variant="caption" color="muted" numberOfLines={1}>
+                {dueLabel(dueAt.toISOString(), new Date())} · {formatTime(dueAt.toISOString())}
+                {where ? ` · ${where}` : ''}
+              </AppText>
+            </View>
+          </View>
+        </View>
+      ) : null}
     </FormScreen>
   );
 }
@@ -194,4 +245,12 @@ const styles = StyleSheet.create({
   taskBlock: { gap: Spacing.xs },
   hint: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
   group: { gap: Spacing.sm },
+  preview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    padding: Spacing.lg,
+    borderRadius: Radius.card,
+  },
+  previewText: { flex: 1 },
 });

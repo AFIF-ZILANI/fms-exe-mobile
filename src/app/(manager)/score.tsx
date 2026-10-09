@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 
 import { FormScreen } from '@/components/ui/form-screen';
 import { EmployeePicker, usePrefillEmployee } from '@/components/ui/employee-picker';
@@ -16,6 +16,7 @@ import { formatSignedPoints } from '@/lib/format';
 import { useGetData, type Paginated } from '@/lib/api';
 import { POSITIVE_CRITERIA, NEGATIVE_CRITERIA, pointsFor, type Criterion } from '@/lib/criteria';
 import type { ScoreEntry } from '@/lib/types';
+import { goBack } from '@/lib/nav';
 
 /** ±1..±5 excluding 0 — the same range the server itself refines. */
 const OTHER_POINTS: { value: string; label: string; tone: 'success' | 'critical' }[] = [
@@ -91,7 +92,7 @@ export default function ScoreScreen() {
           ...(criterion === 'OTHER' && { points: Number(otherPoints) }),
         },
       });
-      if (queued) router.back();
+      if (queued) goBack();
     } finally {
       setSubmitting(false);
     }

@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 
 import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
 import { SubmitBar } from '@/components/ui/submit-bar';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { goBack } from '@/lib/nav';
 
 type FormScreenProps = {
   title: string;
@@ -34,12 +34,12 @@ export function FormScreen({ title, children, submit, dirty }: FormScreenProps) 
 
   const close = () => {
     if (!dirty) {
-      router.back();
+      goBack();
       return;
     }
     Alert.alert('Discard this entry?', 'Nothing has been recorded yet.', [
       { text: 'Keep editing', style: 'cancel' },
-      { text: 'Discard', style: 'destructive', onPress: () => router.back() },
+      { text: 'Discard', style: 'destructive', onPress: () => goBack() },
     ]);
   };
 

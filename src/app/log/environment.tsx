@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 
 import { FormScreen } from '@/components/ui/form-screen';
 import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
@@ -11,6 +11,7 @@ import { AppText } from '@/components/ui/text';
 import { Spacing } from '@/constants/theme';
 import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
+import { goBack } from '@/lib/nav';
 
 type TimePeriod = 'MORNING' | 'NOON' | 'AFTERNOON' | 'EVENING' | 'NIGHT' | 'MIDNIGHT' | 'LATENIGHT';
 
@@ -100,7 +101,7 @@ export default function EnvironmentScreen() {
         },
         taskId: params.task_id,
       });
-      if (queued) router.back();
+      if (queued) goBack();
     } finally {
       setSubmitting(false);
     }

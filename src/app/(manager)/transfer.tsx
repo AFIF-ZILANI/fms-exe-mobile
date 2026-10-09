@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Alert, View, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
 
 import { FormScreen } from '@/components/ui/form-screen';
 import { BatchPicker } from '@/components/ui/batch-picker';
@@ -15,6 +14,7 @@ import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
 import { useGetData, type Paginated } from '@/lib/api';
 import type { Batch, BatchHouseBalance, House } from '@/lib/types';
+import { goBack } from '@/lib/nav';
 
 type Reason = 'TRANSFER' | 'ADJUSTMENT';
 
@@ -69,7 +69,7 @@ export default function TransferScreen() {
           reason,
         },
       });
-      if (queued) router.back();
+      if (queued) goBack();
     } finally {
       setSubmitting(false);
     }

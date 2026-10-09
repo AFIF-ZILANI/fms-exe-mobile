@@ -1,5 +1,8 @@
 # 15 · Assign a Task
 
+> **Updated 2026-10-09 (Assign redesign):** "Assign to" is always shown (prefilled from a person's page, changeable, any role) · Task with its kind in plain words · Title (what the worker sees) · Notes · Where (House / Somewhere else) · Due with one-tap chips (In 1 hour, Today 6 PM while it is still sensible, Tomorrow 8 AM) above a field that opens the date then the time dialog (Android) · inline error and a disabled button when the time is not in the future (also re-checked at send) · a Preview of how it will look on the worker's list · button says "Assign to <full name>". Fixed: the Android due picker was an undismissable dialog; closing or sending a form opened by a deep link crashed with "GO_BACK was not handled" (all forms now use `goBack()` in `lib/nav.ts`).
+
+
 **Route:** `src/app/(manager)/assign.tsx` · **Tier:** Manager `[C assign_task]`
 **Tab bar:** hidden
 

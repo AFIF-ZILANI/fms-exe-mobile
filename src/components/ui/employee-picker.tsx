@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { PickerField } from '@/components/ui/picker-field';
 import { useGetData, type Paginated } from '@/lib/api';
+import { humanise } from '@/lib/profile-format';
 import type { Employee, EmployeeRole } from '@/lib/types';
 
 /** Resolves a `?employee_id=` deep-link param (e.g. from the team detail
@@ -50,7 +51,7 @@ export function EmployeePicker({
       options={data?.results ?? []}
       getKey={(e) => e.id}
       getLabel={(e) => e.profile.name}
-      getSubLabel={(e) => e.role}
+      getSubLabel={(e) => humanise(e.role)}
       onChange={onChange}
       loading={isLoading}
       error={error}

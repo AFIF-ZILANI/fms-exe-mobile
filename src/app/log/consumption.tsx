@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 
 import { FormScreen } from '@/components/ui/form-screen';
 import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
@@ -10,6 +10,7 @@ import { TextField } from '@/components/ui/text-field';
 import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
 import type { Item } from '@/lib/types';
+import { goBack } from '@/lib/nav';
 
 /** docs/layout/08-log-consumption.md. Items filtered to is_unit_tracked:false
  *  — without QR in v1 this is the aggregate branch ConsumptionService already
@@ -46,7 +47,7 @@ export default function ConsumptionScreen() {
         },
         taskId: params.task_id,
       });
-      if (queued) router.back();
+      if (queued) goBack();
     } finally {
       setSubmitting(false);
     }

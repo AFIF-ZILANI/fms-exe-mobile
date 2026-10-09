@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { humanise } from '@/lib/profile-format';
 import { PickerField } from '@/components/ui/picker-field';
 import { useGetData, type Paginated } from '@/lib/api';
 import type { House } from '@/lib/types';
@@ -53,7 +54,7 @@ export function HousePicker({ value, onChange, error, label = 'House' }: HousePi
       options={data?.results ?? []}
       getKey={(h) => h.id}
       getLabel={(h) => h.name}
-      getSubLabel={(h) => h.type}
+      getSubLabel={(h) => humanise(h.type)}
       onChange={onChange}
       loading={isLoading}
       error={error}

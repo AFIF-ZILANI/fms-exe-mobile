@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
 
 import { FormScreen } from '@/components/ui/form-screen';
 import { ItemPicker } from '@/components/ui/item-picker';
@@ -11,6 +10,7 @@ import { Spacing } from '@/constants/theme';
 import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
 import type { Item } from '@/lib/types';
+import { goBack } from '@/lib/nav';
 
 type AlertType = 'FEED' | 'MEDICINE';
 type AlertLevel = 'INFO' | 'WARNING' | 'CRITICAL';
@@ -73,7 +73,7 @@ export default function FlagStockScreen() {
           ...(item && { related_id: item.id }),
         },
       });
-      if (queued) router.back();
+      if (queued) goBack();
     } finally {
       setSubmitting(false);
     }
