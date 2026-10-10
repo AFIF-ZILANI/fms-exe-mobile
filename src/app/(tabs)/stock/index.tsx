@@ -6,10 +6,9 @@ import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
-import { Icon, IconTile, type IconName } from '@/components/ui/icon';
-import { LedgerRow } from '@/components/ui/ledger-row';
+import { Icon, type IconName } from '@/components/ui/icon';
+import { StockItemCard, categoryIcon } from '@/components/stock-item-card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { StatusPill } from '@/components/ui/status-pill';
 import { SyncBanner } from '@/components/ui/sync-banner';
 import { AppText } from '@/components/ui/text';
 import { Radius, Size, Spacing } from '@/constants/theme';
@@ -18,10 +17,17 @@ import { useGetData, type Paginated } from '@/lib/api';
 import { can } from '@/lib/permissions';
 import { humanise } from '@/lib/profile-format';
 import { useSession } from '@/lib/session';
-import { formatBalance, searchStock, summarizeStock, type StockRow } from '@/lib/stock-summary';
+import {
+  attentionOrder,
+  categoryCounts,
+  filterStock,
+  searchStock,
+  statusCounts,
+  summarizeStock,
+  type StockFilter,
+  type StockRow,
+} from '@/lib/stock-summary';
 import type { Item } from '@/lib/types';
-
-type Filter = 'ALL' | 'LOW';
 
 const REFRESH_TIMEOUT_MS = 6000;
 const PAGE = 100;
@@ -31,12 +37,24 @@ const WORKER_SHORTCUTS: { label: string; path: string; icon: IconName }[] = [
   { label: 'Use an item', path: '/scan/consume', icon: 'box' },
 ];
 
+const STATUS_CHIPS: { value: StockFilter['status']; label: string }[] = [
+  { value: 'ALL', label: 'All' },
+  { value: 'LOW', label: 'Low' },
+  { value: 'OUT', label: 'Out' },
+];
+
+const EMPTY_BY_STATUS = {
+  LOW: 'Nothing is below its reorder level.',
+  OUT: 'Nothing is out of stock.',
+} as const;
+
 /** docs/navigation-redesign-design.md — what stock there is, what is running low, and the scan actions. */
 export default function StockScreen() {
   const theme = useTheme();
   const { employee } = useSession();
   const isManager = can(employee?.role, 'assign_task');
-  const [filter, setFilter] = useState<Filter>('ALL');
+  const [status, setStatus] = useState<StockFilter['status']>('ALL');
+  const [category, setCategory] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -48,9 +66,9 @@ export default function StockScreen() {
     () => summarizeStock(items.data?.results ?? [], rows.data ?? []),
     [items.data, rows.data],
   );
-  const lowCount = lines.filter((l) => l.isLow).length;
-  const byFilter = filter === 'LOW' ? lines.filter((l) => l.isLow) : lines;
-  const shown = searchStock(byFilter, query);
+  const counts = statusCounts(lines);
+  const categories = categoryCounts(lines);
+  const shown = attentionOrder(searchStock(filterStock(lines, { status, category }), query));
   const searching = query.trim().length > 0;
   const truncated = (items.data?.total ?? 0) > PAGE;
 
@@ -76,6 +94,11 @@ export default function StockScreen() {
     }
   };
   const isError = (items.isError && !items.data) || (rows.isError && !rows.data);
+  const clearFilters = () => {
+    setStatus('ALL');
+    setCategory(null);
+    setQuery('');
+  };
 
   return (
     <Screen
@@ -86,6 +109,7 @@ export default function StockScreen() {
       <Header title="Stock" />
       <SyncBanner />
 
+      {/* The scan actions, compact: they are shortcuts, not the point of the screen. */}
       <View style={styles.shortcuts}>
         {shortcuts.map((s) => (
           <Pressable
@@ -95,12 +119,14 @@ export default function StockScreen() {
             accessibilityLabel={s.label}
             style={({ pressed }) => [
               styles.shortcut,
-              { backgroundColor: theme.surfaceAlt },
-              pressed && { transform: [{ scale: 0.97 }] },
+              { backgroundColor: theme.surface, borderColor: theme.line },
+              pressed && { backgroundColor: theme.surfaceAlt },
             ]}
           >
-            <Icon name={s.icon} size={20} color="primary" />
-            <AppText variant="label" style={styles.flex}>
+            <View style={[styles.shortcutIcon, { backgroundColor: theme.primarySoft }]}>
+              <Icon name={s.icon} size={20} color="primary" />
+            </View>
+            <AppText variant="caption" color="inkSoft" numberOfLines={1}>
               {s.label}
             </AppText>
           </Pressable>
@@ -126,40 +152,69 @@ export default function StockScreen() {
         ) : null}
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-        {(['ALL', 'LOW'] as const).map((f) => {
-          const active = f === filter;
+      <View style={styles.chips}>
+        {STATUS_CHIPS.map((c) => {
+          const on = status === c.value;
           return (
             <Pressable
-              key={f}
-              onPress={() => setFilter(f)}
-              hitSlop={6}
+              key={c.value}
+              onPress={() => setStatus(c.value)}
               accessibilityRole="button"
-              accessibilityState={{ selected: active }}
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={`${c.label}, ${counts[c.value]}`}
               style={[
                 styles.chip,
-                {
-                  backgroundColor: active ? theme.primarySoft : theme.surface,
-                  borderColor: active ? theme.primary : theme.line,
-                },
+                { backgroundColor: on ? theme.primary : theme.surface, borderColor: on ? theme.primary : theme.line },
               ]}
             >
-              <AppText variant="label" color={active ? 'primary' : 'inkSoft'}>
-                {f === 'ALL' ? 'All' : `Low${lowCount ? ` · ${lowCount}` : ''}`}
+              <AppText variant="label" color={on ? 'onPrimary' : 'inkSoft'}>
+                {c.label}
+              </AppText>
+              <AppText variant="data" color={on ? 'onPrimary' : 'muted'}>
+                {counts[c.value]}
               </AppText>
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
 
-      <Card rows style={styles.card}>
-        {isLoading ? (
-          <View style={styles.skeletons}>
-            {[0, 1, 2, 3].map((i) => (
-              <Skeleton key={i} height={60} />
-            ))}
-          </View>
-        ) : offlineNoData ? (
+      {categories.length > 1 ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categories}>
+          {categories.map((c) => {
+            const on = category === c.category;
+            return (
+              <Pressable
+                key={c.category}
+                onPress={() => setCategory(on ? null : c.category)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                accessibilityLabel={`${humanise(c.category)}, ${c.count}`}
+                style={[
+                  styles.chipSmall,
+                  {
+                    backgroundColor: on ? theme.primarySoft : theme.surface,
+                    borderColor: on ? theme.primary : theme.line,
+                  },
+                ]}
+              >
+                <Icon name={categoryIcon(c.category)} size={16} color={on ? 'primary' : 'muted'} />
+                <AppText variant="label" color={on ? 'primary' : 'inkSoft'}>
+                  {humanise(c.category)}
+                </AppText>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      ) : null}
+
+      {isLoading ? (
+        <View style={styles.list}>
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} height={88} />
+          ))}
+        </View>
+      ) : offlineNoData ? (
+        <Card style={styles.card}>
           <EmptyState
             compact
             icon="wifi-off"
@@ -167,7 +222,9 @@ export default function StockScreen() {
             title="You're offline."
             body="Stock shows up once you're connected."
           />
-        ) : isError ? (
+        </Card>
+      ) : isError ? (
+        <Card style={styles.card}>
           <EmptyState
             compact
             icon="alert-circle"
@@ -181,57 +238,28 @@ export default function StockScreen() {
               },
             }}
           />
-        ) : lines.length === 0 ? (
+        </Card>
+      ) : lines.length === 0 ? (
+        <Card style={styles.card}>
           <EmptyState compact icon="archive" tint="surfaceAlt" title="No items yet." body="Items are set up in the admin dashboard." />
-        ) : shown.length === 0 && searching ? (
+        </Card>
+      ) : shown.length === 0 ? (
+        <Card style={styles.card}>
           <EmptyState
             compact
-            icon="search"
-            tint="surfaceAlt"
-            title="No items match."
-            action={{ label: 'Clear search', onPress: () => setQuery('') }}
+            icon={searching ? 'search' : 'check-circle'}
+            tint={searching ? 'surfaceAlt' : 'tintGreen'}
+            title={searching ? 'No items match.' : status === 'ALL' ? 'Nothing in this category.' : EMPTY_BY_STATUS[status]}
+            action={{ label: 'Clear filters', onPress: clearFilters }}
           />
-        ) : shown.length === 0 ? (
-          <EmptyState
-            compact
-            icon="check-circle"
-            tint="tintGreen"
-            title="Nothing below reorder level right now."
-            action={{ label: 'Show all', onPress: () => setFilter('ALL') }}
-          />
-        ) : (
-          shown.map((line, i) => (
-            <LedgerRow
-              key={line.item.id}
-              gutterNode={
-                <IconTile
-                  name="package"
-                  tint={line.isLow ? 'tintAmber' : 'surfaceAlt'}
-                  color={line.isLow ? 'warning' : 'muted'}
-                  size={32}
-                />
-              }
-              last={i === shown.length - 1}
-              onPress={() => router.push(`/stock/${line.item.id}` as Href)}
-            >
-              <View style={styles.rowTop}>
-                <AppText variant="bodyStrong" style={styles.flex} numberOfLines={2}>
-                  {line.item.name}
-                </AppText>
-                <AppText variant="figure" color={line.isLow ? 'warning' : 'ink'}>
-                  {formatBalance(line.balance)}
-                </AppText>
-              </View>
-              <View style={styles.rowTop}>
-                <AppText variant="caption" color="muted" style={styles.flex}>
-                  {humanise(line.item.category)} · {line.item.unit.toLowerCase()}
-                </AppText>
-                {line.isLow ? <StatusPill status="LOW" label="Low" /> : null}
-              </View>
-            </LedgerRow>
-          ))
-        )}
-      </Card>
+        </Card>
+      ) : (
+        <View style={styles.list}>
+          {shown.map((line) => (
+            <StockItemCard key={line.item.id} line={line} />
+          ))}
+        </View>
+      )}
 
       {truncated ? (
         <AppText variant="caption" color="muted" style={styles.note}>
@@ -244,23 +272,22 @@ export default function StockScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  shortcuts: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, marginTop: Spacing.xs },
+  shortcuts: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.xs },
   shortcut: {
-    width: '47.5%',
-    minHeight: 64,
-    flexDirection: 'row',
+    flex: 1,
     alignItems: 'center',
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderRadius: Radius.control,
-  },
-  filters: { gap: Spacing.sm, marginTop: Spacing.md },
-  chip: {
-    minHeight: Size.chip,
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.md,
+    gap: Spacing.xs,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xs,
     borderWidth: 1,
+    borderRadius: Radius.card,
+  },
+  shortcutIcon: {
+    width: 40,
+    height: 40,
     borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   search: {
     minHeight: 48,
@@ -273,8 +300,27 @@ const styles = StyleSheet.create({
     borderRadius: Radius.control,
   },
   searchInput: { flex: 1, minHeight: 48, fontSize: 16 },
+  chips: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    minHeight: 40,
+    paddingHorizontal: Spacing.md,
+    borderWidth: 1,
+    borderRadius: Radius.pill,
+  },
+  categories: { gap: Spacing.sm, marginTop: Spacing.sm },
+  chipSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    minHeight: Size.chip,
+    paddingHorizontal: Spacing.md,
+    borderWidth: 1,
+    borderRadius: Radius.pill,
+  },
   note: { marginTop: Spacing.md, paddingHorizontal: Spacing.xs },
   card: { marginTop: Spacing.md },
-  skeletons: { gap: Spacing.sm, paddingHorizontal: Spacing.lg },
-  rowTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  list: { gap: Spacing.sm, marginTop: Spacing.md },
 });

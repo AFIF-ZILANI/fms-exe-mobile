@@ -2,7 +2,20 @@
 
 import assert from 'node:assert/strict';
 
-import { formatBalance, groupLocations, searchStock, summarizeStock, type StockRow } from './stock-summary';
+import {
+  attentionOrder,
+  categoryCounts,
+  filterStock,
+  formatBalance,
+  groupLocations,
+  levelRatio,
+  reorderGap,
+  searchStock,
+  statusCounts,
+  stockState,
+  summarizeStock,
+  type StockRow,
+} from './stock-summary';
 import type { Item } from './types';
 
 const item = (over: Partial<Item> & { id: string; name: string }): Item => ({
@@ -91,6 +104,42 @@ assert.equal(formatBalance(2.0), '2');
   assert.deepEqual(g.warehouses.map((l) => l.name), ['Warehouse A', 'Warehouse B']);
   assert.deepEqual(g.houses.map((l) => l.name), ['House 2', 'House 10'], 'House 2 before House 10');
   assert.deepEqual(groupLocations(summarizeStock([feed], [])[0]), { warehouses: [], houses: [] });
+}
+
+// --- state, level bar, filters ---------------------------------------------------------------
+{
+  const lines = summarizeStock(
+    [feed, vaccine, husk, item({ id: 'water', name: 'Water treatment', category: 'SUPPLEMENT', reorder_level: '10' })],
+    [row('feed', '40'), row('vac', '500'), row('water', '0')],
+  );
+  const by = (id: string) => lines.find((l) => l.item.id === id)!;
+  assert.equal(stockState(by('feed')), 'LOW', '40 of 100 is under the reorder level');
+  assert.equal(stockState(by('vac')), 'OK');
+  assert.equal(stockState(by('water')), 'OUT');
+  assert.equal(stockState(by('husk')), 'OUT', 'no stock, no reorder level: still out');
+
+  assert.equal(levelRatio(by('feed')), 0.2, '40 / (100 x 2)');
+  assert.equal(levelRatio(by('vac')), 1, 'capped at full');
+  assert.equal(levelRatio(by('husk')), null, 'nothing to measure against');
+  assert.equal(levelRatio({ balance: 100, item: { reorder_level: '100' } }), 0.5, 'exactly at the reorder level is halfway');
+
+  assert.deepEqual(reorderGap(by('feed')), { short: true, amount: 60 }, '60 short of the reorder level');
+  assert.deepEqual(reorderGap(by('vac')), { short: false, amount: 450 });
+  assert.equal(reorderGap(by('husk')), null);
+
+  assert.deepEqual(statusCounts(lines), { ALL: 4, LOW: 1, OUT: 2 });
+  const ids = (f: Parameters<typeof filterStock>[1]) => filterStock(lines, f).map((l) => l.item.id).sort();
+  assert.deepEqual(ids({ status: 'LOW', category: null }), ['feed']);
+  assert.deepEqual(ids({ status: 'OUT', category: null }), ['husk', 'water']);
+  assert.deepEqual(ids({ status: 'ALL', category: 'VACCINE' }), ['vac']);
+  assert.deepEqual(ids({ status: 'OUT', category: 'FEED' }), ['husk'], 'status and category both apply');
+
+  assert.deepEqual(categoryCounts(lines), [
+    { category: 'FEED', count: 2 },
+    { category: 'SUPPLEMENT', count: 1 },
+    { category: 'VACCINE', count: 1 },
+  ]);
+  assert.deepEqual(attentionOrder(lines).map((l) => l.item.id), ['feed', 'vac', 'husk', 'water'], 'low, then in stock, then empty (each A-Z)');
 }
 
 console.log('stock-summary checks passed');
