@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 
 import {
   alertTarget,
+  canResolveByHand,
   alertTypeLabel,
   countByLevel,
   filterAlerts,
@@ -110,5 +111,9 @@ assert.equal(mergeSeen([], Array.from({ length: 400 }, (_, i) => String(i))).len
 assert.equal(mergeSeen([], Array.from({ length: 400 }, (_, i) => String(i))).at(-1), '399', 'newest kept');
 assert.deepEqual(unseenAlerts(mix, ['b']).map((a) => a.id), ['a', 'c']);
 assert.equal(unseenAlerts([], ['b']).length, 0);
+
+// --- who may resolve what -----------------------------------------------------------
+assert.equal(canResolveByHand({ dedupe_key: null }), true, 'raised by hand: resolvable');
+assert.equal(canResolveByHand({ dedupe_key: 'TASK_OVERDUE:t1' }), false, 'raised by the scan: clears on its own');
 
 console.log('alerts-view checks passed');

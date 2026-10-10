@@ -20,6 +20,7 @@ import { useTheme } from '@/hooks/use-theme';
 import {
   alertTarget,
   alertTypeLabel,
+  canResolveByHand,
   countByLevel,
   filterAlerts,
   levelWord,
@@ -190,12 +191,14 @@ export default function AlertsScreen() {
     shownIds.current = activeAll.map((a) => a.id);
   });
   useFocusEffect(
-    useCallback(
-      () => () => {
+    useCallback(() => {
+      // Coming back from a task or house that was just dealt with: refresh now, so an alert the server has
+      // already cleared (a cancelled task's overdue alert) is gone, not left showing from the cache.
+      void queryClient.invalidateQueries({ queryKey: ['alerts'] });
+      return () => {
         void markSeen(shownIds.current);
-      },
-      [markSeen],
-    ),
+      };
+    }, [markSeen, queryClient]),
   );
 
   // After logout the session clears before the route unmounts; render nothing rather than flash.
@@ -311,7 +314,7 @@ export default function AlertsScreen() {
                   alert={a}
                   resolved={false}
                   isNew={newIds.has(a.id)}
-                  onResolve={isManager ? () => resolveAlert(a.id) : undefined}
+                  onResolve={isManager && canResolveByHand(a) ? () => resolveAlert(a.id) : undefined}
                 />
               ))}
             </View>

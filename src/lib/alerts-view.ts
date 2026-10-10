@@ -81,6 +81,11 @@ export const unseenAlerts = (alerts: FarmAlert[], seen: string[]): FarmAlert[] =
   return alerts.filter((a) => !known.has(a.id));
 };
 
+/** Only an alert a person raised by hand (no condition key) is theirs to resolve. One the scan raised is about a
+ *  condition: it clears by itself when the condition does, and resolving it by hand would only bring it back on
+ *  the next scan while the condition still holds. */
+export const canResolveByHand = (alert: Pick<FarmAlert, 'dedupe_key'>): boolean => !alert.dedupe_key;
+
 const LEVEL: Record<AlertLevel, string> = { CRITICAL: 'Critical', WARNING: 'Warning', INFO: 'Info' };
 export const levelWord = (level: AlertLevel): string => LEVEL[level];
 
