@@ -63,3 +63,9 @@ export function formatBatchCode(code?: string | null, id?: string | null): strin
   const label = raw.replace(UUID_TAIL, '').trim() || raw;
   return label.length > 14 ? `${label.slice(0, 13)}…` : label;
 }
+
+/** The newest of a set of timestamps (ms since the epoch), ignoring zeros and junk; null when there are none. */
+export function latestTimestamp(times: number[]): number | null {
+  const good = times.filter((t) => Number.isFinite(t) && t > 0);
+  return good.length ? Math.max(...good) : null;
+}

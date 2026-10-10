@@ -5,7 +5,7 @@
 
 import assert from 'node:assert/strict';
 
-import { formatBatchCode, formatSignedPercent, formatSignedPoints, parseMoney } from './format';
+import { formatBatchCode, formatSignedPercent, formatSignedPoints, latestTimestamp, parseMoney } from './format';
 
 // The bug this function exists for: a uuid pasted into the batch code field,
 // which v1 rendered in full as a house label on the dashboard.
@@ -34,5 +34,10 @@ assert.equal(formatSignedPercent(-2.5), '-2.5%');
 // Money arrives as a Prisma Decimal serialised to a string.
 assert.equal(parseMoney('15750.00'), 15750);
 assert.equal(parseMoney('not money'), 0);
+
+// The newest timestamp, ignoring zeros and junk.
+assert.equal(latestTimestamp([0, 1_700_000_000_000, 1_600_000_000_000]), 1_700_000_000_000);
+assert.equal(latestTimestamp([0, NaN]), null);
+assert.equal(latestTimestamp([]), null);
 
 console.log('format.ts checks passed');
