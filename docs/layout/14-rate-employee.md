@@ -1,5 +1,8 @@
 # 14 · Rate an Employee
 
+> **Updated 2026-10-10 (redesign):** person card with this month's points and, once a rating is picked, where they will land ("-2 -> +1") · a Good work / A problem switch (green / red) · one list of ratings as radio rows with the points as a coloured badge on the right (the ones that need written notice, -4 and -5, sit greyed at the end with "Needs written notice (web)"; "Other" is gone because it needs an admin's approval) · Reason · the button says "Record +3 points". Switching the kind clears the choice.
+
+
 **Route:** `src/app/(manager)/score.tsx` · **Tier:** Manager `[C score_employee]`
 **Tab bar:** hidden
 

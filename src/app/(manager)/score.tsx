@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { Pressable, View, StyleSheet } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
 import { Avatar } from '@/components/ui/avatar';
@@ -7,14 +7,15 @@ import { FormCard } from '@/components/ui/form-card';
 import { FormScreen } from '@/components/ui/form-screen';
 import { EmployeePicker, usePrefillEmployee } from '@/components/ui/employee-picker';
 import { TextField } from '@/components/ui/text-field';
-import { PillSelect } from '@/components/ui/pill-select';
+import { SegmentedToggle } from '@/components/ui/segmented-toggle';
 import { AppText } from '@/components/ui/text';
-import { Radius, Spacing } from '@/constants/theme';
+import { Radius, Size, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
 import { monthRange } from '@/lib/farm';
 import { formatSignedPoints } from '@/lib/format';
+import { humanise } from '@/lib/profile-format';
 import { useGetData, type Paginated } from '@/lib/api';
 import { POSITIVE_CRITERIA, NEGATIVE_CRITERIA, needsAdminPaperwork, pointsFor, type Criterion } from '@/lib/criteria';
 import type { ScoreEntry } from '@/lib/types';
@@ -33,6 +34,8 @@ import { goBack } from '@/lib/nav';
  * No confirm dialog: it's an append-only ledger entry, a correction is a new
  * offsetting entry, and a dialog on the fastest path defeats the screen.
  */
+type Kind = 'good' | 'problem';
+
 export default function ScoreScreen() {
   const params = useLocalSearchParams<{ employee_id?: string }>();
   const theme = useTheme();
@@ -40,6 +43,7 @@ export default function ScoreScreen() {
   const submit = useQueuedSubmit();
 
   const [employee, setEmployee] = usePrefillEmployee(params.employee_id);
+  const [kind, setKind] = useState<Kind>('good');
   const [criterion, setCriterion] = useState<Criterion | null>(null);
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -88,10 +92,18 @@ export default function ScoreScreen() {
     }
   };
 
-  const pickCriterion = (v: Criterion | null) => {
-    setCriterion(v);
-    // A chip and the stepper are the same field.
+  // Switching kind drops a choice from the other list: a "+3" must not stay selected under "Problem".
+  const switchKind = (next: Kind) => {
+    setKind(next);
+    setCriterion(null);
   };
+
+  // The ones this phone can send come first; the ones that need paperwork sit greyed at the end.
+  const base = kind === 'good' ? POSITIVE_CRITERIA : NEGATIVE_CRITERIA;
+  const list = [...base].sort(
+    (a, b) => Number(needsAdminPaperwork(a.value, a.points)) - Number(needsAdminPaperwork(b.value, b.points)),
+  );
+  const after = mtd + points;
 
   return (
     <FormScreen
@@ -109,13 +121,23 @@ export default function ScoreScreen() {
           someone's pay must be able to confirm who. Tappable only when the
           employee wasn't passed in. */}
       {params.employee_id ? (
-        <View style={[styles.subject, { backgroundColor: theme.primarySoft }]}>
-          <Avatar name={employee?.profile.name ?? ''} uri={employee?.profile.avatar?.image_url} size={44} />
+        <View style={[styles.subject, { backgroundColor: theme.surface }]}>
+          <Avatar name={employee?.profile.name ?? ''} uri={employee?.profile.avatar?.image_url} size={48} />
           <View style={styles.flex}>
             <AppText variant="bodyStrong">{employee?.profile.name ?? '…'}</AppText>
             <AppText variant="caption" color="muted">
-              {employee?.role.toLowerCase()} · {formatSignedPoints(mtd)} this month
+              {employee ? humanise(employee.role) : ''}
             </AppText>
+          </View>
+          <View style={styles.month}>
+            <AppText variant="figure" color={criterion ? 'muted' : mtd > 0 ? 'success' : mtd < 0 ? 'critical' : 'ink'}>
+              {formatSignedPoints(mtd)}
+            </AppText>
+            {criterion ? (
+              <AppText variant="figure" color={after > 0 ? 'success' : after < 0 ? 'critical' : 'ink'}>
+                {`→ ${formatSignedPoints(after)}`}
+              </AppText>
+            ) : null}
           </View>
         </View>
       ) : (
@@ -127,33 +149,59 @@ export default function ScoreScreen() {
       {/* Positive first, deliberately: the ledger is meant to be mostly a
           record of good work, and surfacing penalties first teaches the
           opposite. */}
-      <FormCard title="Good work">
-        <PillSelect
-          options={POSITIVE_CRITERIA.map((c) => ({
-            value: c.value,
-            label: `+${c.points} ${c.label}`,
-            tone: 'success' as const,
-          }))}
-          value={criterion}
-          onChange={pickCriterion}
-        />
-      </FormCard>
+      <SegmentedToggle
+        height={48}
+        options={[
+          { value: 'good', label: 'Good work', activeTint: 'tintGreen', activeColor: 'success' },
+          { value: 'problem', label: 'A problem', activeTint: 'tintRed', activeColor: 'critical' },
+        ]}
+        value={kind}
+        onChange={switchKind}
+      />
 
-      <FormCard title="Problems">
-        <PillSelect
-          options={NEGATIVE_CRITERIA.map((c) => ({
-            value: c.value,
-            label: `${c.points} ${c.label}`,
-            tone: 'critical' as const,
-            disabled: needsAdminPaperwork(c.value, c.points),
-          }))}
-          value={criterion}
-          onChange={pickCriterion}
-        />
-        <AppText variant="caption" color="muted">
-          −4 and worse need written notice first, which an admin adds on the web. Pick a smaller one here.
-        </AppText>
-      </FormCard>
+      <View style={[styles.list, { backgroundColor: theme.surface }]}>
+        {list.map((c, i) => {
+          const on = criterion === c.value;
+          const blocked = needsAdminPaperwork(c.value, c.points);
+          const tone = c.points > 0 ? theme.success : theme.critical;
+          return (
+            <View key={c.value}>
+              {i > 0 ? <View style={[styles.rule, { backgroundColor: theme.line }]} /> : null}
+              <Pressable
+                onPress={() => setCriterion(c.value)}
+                disabled={blocked}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: on, disabled: blocked }}
+                accessibilityLabel={`${c.label}, ${formatSignedPoints(c.points)} points${blocked ? ', needs written notice first' : ''}`}
+                style={({ pressed }) => [
+                  styles.row,
+                  { opacity: blocked ? 0.45 : 1 },
+                  (on || pressed) && { backgroundColor: on ? theme.primarySoft : theme.surfaceAlt },
+                ]}
+              >
+                <View style={[styles.radio, { borderColor: on ? theme.primary : theme.line }]}>
+                  {on ? <View style={[styles.radioDot, { backgroundColor: theme.primary }]} /> : null}
+                </View>
+                <View style={styles.flex}>
+                  <AppText variant="body" numberOfLines={2}>
+                    {c.label}
+                  </AppText>
+                  {blocked ? (
+                    <AppText variant="caption" color="muted">
+                      Needs written notice (web)
+                    </AppText>
+                  ) : null}
+                </View>
+                <View style={[styles.badge, { backgroundColor: c.points > 0 ? theme.tintGreen : theme.tintRed }]}>
+                  <AppText variant="data" style={{ color: tone }}>
+                    {formatSignedPoints(c.points)}
+                  </AppText>
+                </View>
+              </Pressable>
+            </View>
+          );
+        })}
+      </View>
 
       <FormCard title="Why">
         <TextField
@@ -178,23 +226,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-    minHeight: 64,
-    padding: Spacing.md,
-    paddingHorizontal: Spacing.lg,
+    padding: Spacing.lg,
     borderRadius: Radius.card,
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.pill,
+  month: { alignItems: 'flex-end' },
+  list: { borderRadius: Radius.card, overflow: 'hidden' },
+  row: {
+    minHeight: Size.rowSingle,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+  },
+  rule: { height: StyleSheet.hairlineWidth, marginLeft: Spacing.lg + 22 + Spacing.md },
+  radio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  group: { gap: Spacing.sm },
-  otherWell: {
-    gap: Spacing.sm,
-    padding: Spacing.lg,
-    borderRadius: Radius.card,
-    marginTop: Spacing.xs,
+  radioDot: { width: 10, height: 10, borderRadius: 5 },
+  badge: {
+    minWidth: 40,
+    alignItems: 'center',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radius.pill,
   },
 });
