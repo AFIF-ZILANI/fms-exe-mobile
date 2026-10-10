@@ -99,7 +99,7 @@ export function LogSheet({ open, onClose }: LogSheetProps) {
                           },
                         ]}
                       >
-                        <IconTile name={item.icon} tint={item.tint} size={40} />
+                        <IconTile name={item.icon} tint="surfaceAlt" color="inkSoft" size={40} />
                         <AppText variant="label" numberOfLines={2} style={styles.tileLabel}>
                           {item.label}
                         </AppText>
