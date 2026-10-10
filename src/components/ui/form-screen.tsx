@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
+import { AppText } from '@/components/ui/text';
 import { SubmitBar } from '@/components/ui/submit-bar';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -11,6 +12,8 @@ import { goBack } from '@/lib/nav';
 
 type FormScreenProps = {
   title: string;
+  /** One line under the title saying what this records, so nobody has to guess. */
+  hint?: string;
   children: ReactNode;
   submit: {
     label: string;
@@ -29,7 +32,7 @@ type FormScreenProps = {
  * scrolling body, sticky submit bar. The tab bar is hidden on these routes,
  * so the submit bar owns the bottom. docs/layout/07-log-mortality.md.
  */
-export function FormScreen({ title, children, submit, dirty }: FormScreenProps) {
+export function FormScreen({ title, hint, children, submit, dirty }: FormScreenProps) {
   const theme = useTheme();
 
   const close = () => {
@@ -49,6 +52,11 @@ export function FormScreen({ title, children, submit, dirty }: FormScreenProps) 
           chevron would say it's saved. */}
       <View style={styles.header}>
         <Header title={title} leading="close" onLeadingPress={close} />
+        {hint ? (
+          <AppText variant="caption" color="muted" style={styles.hint}>
+            {hint}
+          </AppText>
+        ) : null}
       </View>
 
       <KeyboardAvoidingView
@@ -68,5 +76,6 @@ export function FormScreen({ title, children, submit, dirty }: FormScreenProps) 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   header: { paddingHorizontal: Spacing.xl },
+  hint: { marginTop: -Spacing.xs, marginBottom: Spacing.md },
   body: { gap: Spacing.lg, paddingTop: Spacing.xs },
 });

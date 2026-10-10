@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Alert } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
+import { FormCard } from '@/components/ui/form-card';
 import { FormScreen } from '@/components/ui/form-screen';
 import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
 import { BatchResolver, useResolvedBatch } from '@/components/ui/batch-resolver';
@@ -80,6 +81,7 @@ export default function MortalityScreen() {
   return (
     <FormScreen
       title="Log mortality"
+      hint="Birds that died. The count comes off the house's live total."
       dirty={!!count || !!causeNote}
       submit={{
         label: countNum > 0 ? `Record ${countNum} death${countNum === 1 ? '' : 's'}` : 'Record mortality',
@@ -88,28 +90,32 @@ export default function MortalityScreen() {
         loading: submitting,
       }}
     >
-      <HousePicker value={house} onChange={setHouse} />
-      <BatchResolver houseId={house?.id} />
+      <FormCard>
+        <HousePicker value={house} onChange={setHouse} />
+        <BatchResolver houseId={house?.id} />
+      </FormCard>
 
-      <NumberField
-        label="Birds that died"
-        value={count}
-        onChangeText={setCount}
-        autoFocus
-        allowDecimal={false}
-        steppers
-        warn={overThreshold}
-        helper={
-          share === null
-            ? undefined
-            : overThreshold
-              ? `${countNum} is ${share.toFixed(1)}% of the flock. Unusual — check the count.`
-              : `${share.toFixed(2)}% of the flock`
-        }
-        helperColor={overThreshold ? 'warning' : 'muted'}
-      />
-
-      <TextField label="Cause (optional)" value={causeNote} onChangeText={setCauseNote} multiline />
+      <FormCard title="What happened">
+        <NumberField
+          label="Birds that died"
+          value={count}
+          onChangeText={setCount}
+          autoFocus
+          allowDecimal={false}
+          steppers
+          quick={[1, 2, 5, 10]}
+          warn={overThreshold}
+          helper={
+            share === null
+              ? undefined
+              : overThreshold
+                ? `${countNum} is ${share.toFixed(1)}% of the flock. Unusual — check the count.`
+                : `${share.toFixed(2)}% of the flock`
+          }
+          helperColor={overThreshold ? 'warning' : 'muted'}
+        />
+        <TextField label="Cause (optional)" value={causeNote} onChangeText={setCauseNote} multiline />
+      </FormCard>
     </FormScreen>
   );
 }

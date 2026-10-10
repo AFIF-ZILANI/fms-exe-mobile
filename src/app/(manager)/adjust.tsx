@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Alert, View, StyleSheet } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
+import { FormCard } from '@/components/ui/form-card';
 import { FormScreen } from '@/components/ui/form-screen';
 import { ItemPicker } from '@/components/ui/item-picker';
 import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
@@ -17,6 +18,7 @@ import { useQueuedSubmit } from '@/lib/use-queued-submit';
 import { useGetData, type Paginated } from '@/lib/api';
 import type { Item, StockByLocation, Warehouse } from '@/lib/types';
 import { goBack } from '@/lib/nav';
+import { humanise } from '@/lib/profile-format';
 
 type LocationKind = 'warehouse' | 'house';
 
@@ -145,6 +147,7 @@ export default function AdjustScreen() {
   return (
     <FormScreen
       title="Report discrepancy"
+      hint="The count on the shelf doesn't match the ledger. Say what you counted."
       dirty={!!item || !!counted || !!note}
       submit={{
         label:
@@ -158,82 +161,88 @@ export default function AdjustScreen() {
         loading: submitting,
       }}
     >
-      <ItemPicker value={item} onChange={setItem} />
+      <FormCard title="What and where">
+        <ItemPicker value={item} onChange={setItem} />
 
-      <View style={styles.group}>
-        <AppText variant="eyebrow" color="muted">
-          Where
-        </AppText>
-        <SegmentedToggle
-          options={[
-            { value: 'warehouse', label: 'Warehouse' },
-            { value: 'house', label: 'House' },
-          ]}
-          value={kind}
-          onChange={setKind}
-        />
-      </View>
-
-      {kind === 'house' ? (
-        <HousePicker value={house} onChange={setHouse} />
-      ) : (
-        <PickerField
-          label="Warehouse"
-          value={warehouse}
-          options={warehouses?.results ?? []}
-          getKey={(w) => w.id}
-          getLabel={(w) => w.name}
-          onChange={setWarehouse}
-          loading={warehousesLoading}
-          emptyLabel="No warehouses."
-        />
-      )}
-
-      {/* Read-only, muted, no border — context rather than input. */}
-      <View style={styles.group}>
-        <AppText variant="eyebrow" color="muted">
-          On record
-        </AppText>
-        <View style={[styles.readOnly, { backgroundColor: theme.surfaceAlt }]}>
-          <AppText variant="figure" color="muted" style={styles.flex}>
-            {onRecord.toLocaleString()}
+        <View style={styles.group}>
+          <AppText variant="eyebrow" color="muted">
+            Where
           </AppText>
-          <AppText variant="body" color="muted">
-            {item?.unit ?? ''}
+          <SegmentedToggle
+            options={[
+              { value: 'warehouse', label: 'Warehouse' },
+              { value: 'house', label: 'House' },
+            ]}
+            value={kind}
+            onChange={setKind}
+          />
+        </View>
+
+        {kind === 'house' ? (
+          <HousePicker value={house} onChange={setHouse} />
+        ) : (
+          <PickerField
+            label="Warehouse"
+            value={warehouse}
+            options={warehouses?.results ?? []}
+            getKey={(w) => w.id}
+            getLabel={(w) => w.name}
+            onChange={setWarehouse}
+            loading={warehousesLoading}
+            emptyLabel="No warehouses."
+          />
+        )}
+      </FormCard>
+
+      <FormCard title="The count">
+        {/* Read-only, muted, no border — context rather than input. */}
+        <View style={styles.group}>
+          <AppText variant="eyebrow" color="muted">
+            On record
+          </AppText>
+          <View style={[styles.readOnly, { backgroundColor: theme.surfaceAlt }]}>
+            <AppText variant="figure" color="muted" style={styles.flex}>
+              {onRecord.toLocaleString()}
+            </AppText>
+            <AppText variant="body" color="muted">
+              {item?.unit ?? ''}
+            </AppText>
+          </View>
+          <AppText variant="caption" color="muted">
+            From the ledger
           </AppText>
         </View>
-        <AppText variant="caption" color="muted">
-          From the ledger
-        </AppText>
-      </View>
 
-      <NumberField label="Counted" value={counted} onChangeText={setCounted} unit={item?.unit} />
+        <NumberField label="Counted" value={counted} onChangeText={setCounted} unit={item?.unit} />
 
-      <View style={[styles.delta, { backgroundColor: theme[deltaTint] }]}>
-        <AppText variant="stat" color={deltaColor}>
-          {hasCount ? `${delta > 0 ? '+' : ''}${delta.toLocaleString()} ${item?.unit ?? ''}` : '—'}
-        </AppText>
-        <AppText variant="eyebrow" color="muted">
-          {deltaLabel}
-        </AppText>
-      </View>
+        <View style={[styles.delta, { backgroundColor: theme[deltaTint] }]}>
+          <AppText variant="stat" color={deltaColor}>
+            {hasCount ? `${delta > 0 ? '+' : ''}${delta.toLocaleString()} ${item?.unit ?? ''}` : '—'}
+          </AppText>
+          <AppText variant="eyebrow" color="muted">
+            {deltaLabel}
+          </AppText>
+        </View>
+      </FormCard>
 
-      <PickerField
-        label="Reason"
-        value={reason}
-        options={REASONS}
-        getKey={(r) => r}
-        getLabel={(r) => r}
-        onChange={setReason}
-        searchable={false}
-      />
+      <FormCard title="Why">
+        <PickerField
+          label="Reason"
+          value={reason}
+          options={REASONS}
+          getKey={(r) => r}
+          getLabel={(r) => humanise(r)}
+          onChange={setReason}
+          searchable={false}
+        />
 
-      <TextField
-        label={noteRequired ? 'Note' : 'Note (optional)'}
-        value={note}
-        onChangeText={setNote}
-        multiline
-      />
+        <TextField
+          label={noteRequired ? 'Note' : 'Note (optional)'}
+          value={note}
+          onChangeText={setNote}
+          multiline
+        />
+      </FormCard>
     </FormScreen>
   );
 }

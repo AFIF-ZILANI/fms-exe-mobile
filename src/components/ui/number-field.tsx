@@ -23,6 +23,8 @@ type NumberFieldProps = {
   /** Warns without blocking: amber border, amber helper. A real event must
    *  always be recordable. */
   warn?: boolean;
+  /** One-tap values shown under the field (e.g. 1, 2, 5, 10). Tapping sets the field to that value. */
+  quick?: number[];
 };
 
 /** Numeric keypad + Plex Mono — every count, weight and reading in the app
@@ -39,6 +41,7 @@ export function NumberField({
   allowDecimal = true,
   steppers,
   warn,
+  quick,
 }: NumberFieldProps) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
@@ -99,6 +102,31 @@ export function NumberField({
         ) : null}
       </View>
 
+      {quick && quick.length > 0 ? (
+        <View style={styles.quick}>
+          {quick.map((q) => {
+            const on = value === String(q);
+            return (
+              <Pressable
+                key={q}
+                onPress={() => onChangeText(String(q))}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                accessibilityLabel={`Set to ${q}`}
+                style={[
+                  styles.chip,
+                  { backgroundColor: on ? theme.primary : theme.surface, borderColor: on ? theme.primary : theme.line },
+                ]}
+              >
+                <AppText variant="data" color={on ? 'onPrimary' : 'inkSoft'}>
+                  {q}
+                </AppText>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+
       {error ? (
         <AppText variant="caption" color="critical">
           {error}
@@ -145,6 +173,16 @@ function Stepper({
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.xs },
   row: { flexDirection: 'row', alignItems: 'stretch', gap: Spacing.sm },
+  quick: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  chip: {
+    minWidth: 48,
+    minHeight: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.md,
+    borderWidth: 1,
+    borderRadius: Radius.pill,
+  },
   field: {
     flex: 1,
     flexDirection: 'row',

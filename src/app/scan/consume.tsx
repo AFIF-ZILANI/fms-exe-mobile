@@ -4,6 +4,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useNetworkState } from 'expo-network';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { FormCard } from '@/components/ui/form-card';
 import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
 import { Button } from '@/components/ui/button';
@@ -69,40 +70,38 @@ export default function ConsumeScreen() {
       <Header title="Use an item" leading="back" />
 
       <View style={styles.form}>
-        <HousePicker
-          label="Used in"
-          value={house}
-          onChange={(h) => {
-            setHouse(h);
-            session.reset();
-          }}
-        />
-        <BatchResolver houseId={house?.id} />
-        {house && !batchLoading && !balance ? (
-          <AppText variant="caption" color="muted">
-            Will be saved without a batch.
-          </AppText>
-        ) : null}
-        <ItemPicker
-          unitTracked
-          value={item}
-          onChange={(i) => {
-            setItem(i);
-            session.reset();
-          }}
-        />
-        {item ? (
-          <Button
-            variant="ghost"
-            label="Any item"
-            onPress={() => {
+        <FormCard>
+          <HousePicker
+            label="Used in"
+            value={house}
+            onChange={(h) => {
+              setHouse(h);
+              session.reset();
+            }}
+          />
+          <BatchResolver houseId={house?.id} />
+          {house && !batchLoading && !balance ? (
+            <AppText variant="caption" color="muted">
+              Will be saved without a batch.
+            </AppText>
+          ) : null}
+        </FormCard>
+
+        <FormCard title="Which units" hint="Optional">
+          <ItemPicker
+            unitTracked
+            value={item}
+            onChange={(i) => {
+              setItem(i);
+              session.reset();
+            }}
+            onClear={() => {
               setItem(null);
               session.reset();
             }}
-            block
           />
-        ) : null}
-        <ScanModeField value={mode} onChange={setMode} />
+          <ScanModeField value={mode} onChange={setMode} />
+        </FormCard>
       </View>
 
       {offline ? (

@@ -9,6 +9,7 @@ import { useGetData, type Paginated } from '@/lib/api';
 import { pickLiveBalance } from '@/lib/batch-balance';
 import { formatBatchCode } from '@/lib/format';
 import { dayOfCycle } from '@/lib/farm';
+import { humanise } from '@/lib/profile-format';
 import type { BatchHouseBalance } from '@/lib/types';
 
 /**
@@ -43,7 +44,7 @@ export function BatchResolver({ houseId }: { houseId: string | undefined }) {
     return (
       <View style={[styles.block, { backgroundColor: theme.surfaceAlt }]}>
         <AppText variant="caption" color="muted">
-          Pick a house first
+          Pick a house to see its flock.
         </AppText>
       </View>
     );
@@ -73,17 +74,18 @@ export function BatchResolver({ houseId }: { houseId: string | undefined }) {
 
   const batch = balance.batch;
 
+  // Quiet on purpose: this is a check ("am I on the right flock?"), not a result.
   return (
-    <View style={[styles.block, { backgroundColor: theme.tintGreen }]}>
-      <View style={styles.line}>
-        <AppText variant="data">{formatBatchCode(batch?.batch_code, balance.batch_id)}</AppText>
+    <View style={[styles.block, styles.row, { backgroundColor: theme.surfaceAlt }]}>
+      <View style={styles.flex}>
+        <AppText variant="label">{formatBatchCode(batch?.batch_code, balance.batch_id)}</AppText>
         {batch ? (
           <AppText variant="caption" color="muted">
-            {batch.breed.toLowerCase()} · d{dayOfCycle(batch.starting_date)}
+            {humanise(batch.breed)} · day {dayOfCycle(batch.starting_date)}
           </AppText>
         ) : null}
       </View>
-      <View style={styles.line}>
+      <View style={styles.birds}>
         <AppText variant="figure">{balance.quantity.toLocaleString()}</AppText>
         <AppText variant="caption" color="muted">
           live birds
@@ -96,13 +98,12 @@ export function BatchResolver({ houseId }: { houseId: string | undefined }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   block: {
-    minHeight: 64,
+    minHeight: 60,
     justifyContent: 'center',
-    gap: 2,
     padding: Spacing.md,
     paddingHorizontal: Spacing.lg,
-    borderRadius: Radius.card,
+    borderRadius: Radius.control,
   },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  line: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.sm },
+  birds: { alignItems: 'flex-end' },
 });

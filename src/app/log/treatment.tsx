@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 
+import { FormCard } from '@/components/ui/form-card';
 import { FormScreen } from '@/components/ui/form-screen';
 import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
 import { BatchResolver, useResolvedBatch } from '@/components/ui/batch-resolver';
@@ -85,6 +86,7 @@ export default function TreatmentScreen() {
   return (
     <FormScreen
       title="Log treatment"
+      hint={isVaccination ? 'A vaccination given to a flock.' : 'A medicine given to a flock.'}
       dirty={!!name || !!dosage || !!cause || !!remarks}
       submit={{
         label: isVaccination ? 'Record vaccination' : 'Record medication',
@@ -105,55 +107,62 @@ export default function TreatmentScreen() {
         onChange={setType}
       />
 
-      <HousePicker value={house} onChange={setHouse} />
-      <BatchResolver houseId={house?.id} />
+      <FormCard>
+        <HousePicker value={house} onChange={setHouse} />
+        <BatchResolver houseId={house?.id} />
+      </FormCard>
 
-      <TextField
-        label={isVaccination ? 'Vaccine name' : 'Medication name'}
-        value={name}
-        onChangeText={setName}
-      />
-
-      {isVaccination ? (
-        <NumberField
-          label="Dose"
-          value={dosage}
-          onChangeText={setDosage}
-          unit="doses"
-          allowDecimal={false}
-        />
-      ) : (
-        // Free text on purpose: "1 g per litre, 5 days" is how it's written on
-        // the bottle and how a vet says it.
+      <FormCard title={isVaccination ? 'The vaccine' : 'The medicine'}>
         <TextField
-          label="Dosage"
-          value={dosage}
-          onChangeText={setDosage}
-          placeholder="e.g. 2ml/L for 5 days"
+          label={isVaccination ? 'Vaccine name' : 'Medication name'}
+          value={name}
+          onChangeText={setName}
         />
-      )}
 
-      <TextField
-        label={isVaccination ? 'Reason (optional)' : 'Cause (optional)'}
-        value={cause}
-        onChangeText={setCause}
-        multiline
-      />
+        {isVaccination ? (
+          <NumberField
+            label="Dose"
+            value={dosage}
+            onChangeText={setDosage}
+            unit="doses"
+            allowDecimal={false}
+          />
+        ) : (
+          // Free text on purpose: "1 g per litre, 5 days" is how it's written on
+          // the bottle and how a vet says it.
+          <TextField
+            label="Dosage"
+            value={dosage}
+            onChangeText={setDosage}
+            placeholder="e.g. 2ml/L for 5 days"
+          />
+        )}
+      </FormCard>
 
-      <PickerField
-        label="Doctor (optional)"
-        value={doctor}
-        options={doctors?.results ?? []}
-        getKey={(d) => d.id}
-        getLabel={(d) => d.profile.name}
-        getSubLabel={(d) => d.specialty ?? undefined}
-        onChange={setDoctor}
-        loading={doctorsLoading}
-        placeholder="None"
-        emptyLabel="No doctors on file."
-      />
+      <FormCard title="Details (optional)">
+        <TextField
+          label={isVaccination ? 'Reason' : 'Cause'}
+          value={cause}
+          onChangeText={setCause}
+          multiline
+        />
 
-      <TextField label="Remarks (optional)" value={remarks} onChangeText={setRemarks} multiline />
+        <PickerField
+          label="Doctor"
+          value={doctor}
+          options={doctors?.results ?? []}
+          getKey={(d) => d.id}
+          getLabel={(d) => d.profile.name}
+          getSubLabel={(d) => d.specialty ?? undefined}
+          onChange={setDoctor}
+          onClear={() => setDoctor(null)}
+          loading={doctorsLoading}
+          placeholder="None"
+          emptyLabel="No doctors on file."
+        />
+
+        <TextField label="Remarks" value={remarks} onChangeText={setRemarks} multiline />
+      </FormCard>
     </FormScreen>
   );
 }

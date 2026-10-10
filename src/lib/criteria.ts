@@ -40,3 +40,12 @@ export function pointsFor(criterion: Criterion, otherPoints?: number): number {
   if (criterion === 'OTHER') return otherPoints ?? 0;
   return ALL_FIXED.find((c) => c.value === criterion)?.points ?? 0;
 }
+
+/** The server refuses an entry of this many points or worse unless a written-notice document comes with it
+ *  (server/src/services/performance-score-entry.service.ts), and the phone has no way to attach one. */
+export const NOTICE_REQUIRED_AT = -4;
+
+/** True when giving these points needs paperwork the phone cannot supply: it would be refused and sit in the
+ *  Sync center as a failed record. OTHER is likewise refused without an admin's approval. */
+export const needsAdminPaperwork = (criterion: Criterion, points: number): boolean =>
+  criterion === 'OTHER' || points <= NOTICE_REQUIRED_AT;

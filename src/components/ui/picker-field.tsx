@@ -35,6 +35,8 @@ type PickerFieldProps<T> = {
   searchable?: boolean;
   emptyLabel?: string;
   disabled?: boolean;
+  /** For an optional field: shows a × that puts it back to nothing. */
+  onClear?: () => void;
 };
 
 /**
@@ -57,6 +59,7 @@ export function PickerField<T>({
   searchable,
   emptyLabel = 'Nothing to choose from.',
   disabled,
+  onClear,
 }: PickerFieldProps<T>) {
   const theme = useTheme();
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
@@ -104,7 +107,13 @@ export function PickerField<T>({
         <AppText variant="body" color={value ? 'ink' : 'muted'} numberOfLines={1} style={styles.flex}>
           {value ? getLabel(value) : placeholder}
         </AppText>
-        <Icon name="chevron-down" size={20} color="muted" />
+        {value && onClear ? (
+          <Pressable onPress={onClear} accessibilityRole="button" accessibilityLabel={`Clear ${label}`} hitSlop={12}>
+            <Icon name="x" size={20} color="muted" />
+          </Pressable>
+        ) : (
+          <Icon name="chevron-down" size={20} color="muted" />
+        )}
       </Pressable>
 
       {error ? (

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Alert, View, StyleSheet } from 'react-native';
 
+import { FormCard } from '@/components/ui/form-card';
 import { FormScreen } from '@/components/ui/form-screen';
 import { BatchPicker } from '@/components/ui/batch-picker';
 import { HousePicker } from '@/components/ui/house-picker';
@@ -15,6 +16,7 @@ import { useQueuedSubmit } from '@/lib/use-queued-submit';
 import { useGetData, type Paginated } from '@/lib/api';
 import type { Batch, BatchHouseBalance, House } from '@/lib/types';
 import { goBack } from '@/lib/nav';
+import { useTheme } from '@/hooks/use-theme';
 
 type Reason = 'TRANSFER' | 'ADJUSTMENT';
 
@@ -33,6 +35,7 @@ type Reason = 'TRANSFER' | 'ADJUSTMENT';
  * never appears in the reason toggle.
  */
 export default function TransferScreen() {
+  const theme = useTheme();
   const { employee } = useSession();
   const submit = useQueuedSubmit();
 
@@ -51,8 +54,10 @@ export default function TransferScreen() {
 
   const occupiedHouses = (balances?.results ?? []).filter((b) => b.quantity > 0);
   const quantityNum = Number(quantity);
+  // Moving birds to the house they are already in changes nothing, and would still be recorded as a move.
+  const sameHouse = !!fromBalance && !!toHouse && fromBalance.house_id === toHouse.id;
   const isValid =
-    !!batch && !!fromBalance && !!toHouse && quantityNum > 0 && Number.isInteger(quantityNum);
+    !!batch && !!fromBalance && !!toHouse && !sameHouse && quantityNum > 0 && Number.isInteger(quantityNum);
   const overCount = !!fromBalance && quantityNum > fromBalance.quantity;
 
   const doSubmit = async () => {
@@ -94,6 +99,7 @@ export default function TransferScreen() {
   return (
     <FormScreen
       title="Move birds"
+      hint="Birds move between houses. Both houses' live counts change."
       dirty={!!batch || !!quantity}
       submit={{
         label:
@@ -122,54 +128,66 @@ export default function TransferScreen() {
         />
       </View>
 
-      <BatchPicker
-        value={batch}
-        onChange={(b) => {
-          setBatch(b);
-          // The house list below is scoped to houses this batch occupies.
-          setFromBalance(null);
-        }}
-      />
+      <FormCard title="Which birds, from where">
+        <BatchPicker
+          value={batch}
+          onChange={(b) => {
+            setBatch(b);
+            // The house list below is scoped to houses this batch occupies.
+            setFromBalance(null);
+          }}
+        />
 
-      <PickerField
-        label="From"
-        value={fromBalance}
-        options={occupiedHouses}
-        getKey={(b) => b.house_id}
-        getLabel={(b) => b.house?.name ?? b.house_id}
-        getSubLabel={(b) => `${b.quantity.toLocaleString()} birds`}
-        onChange={setFromBalance}
-        loading={balancesLoading}
-        emptyLabel={batch ? 'This batch has no birds in any house.' : 'Pick a batch first.'}
-      />
+        <PickerField
+          label="From"
+          value={fromBalance}
+          options={occupiedHouses}
+          getKey={(b) => b.house_id}
+          getLabel={(b) => b.house?.name ?? b.house_id}
+          getSubLabel={(b) => `${b.quantity.toLocaleString()} birds`}
+          onChange={setFromBalance}
+          loading={balancesLoading}
+          emptyLabel={batch ? 'This batch has no birds in any house.' : 'Pick a batch first.'}
+        />
+      </FormCard>
 
       <View style={styles.arrow}>
-        <Icon name="arrow-down" size={24} color="muted" />
+        <View style={[styles.arrowDot, { backgroundColor: theme.surfaceAlt }]}>
+          <Icon name="arrow-down" size={20} color="muted" />
+        </View>
       </View>
 
-      <HousePicker value={toHouse} onChange={setToHouse} label="To" />
+      <FormCard title="To where, how many">
+        <HousePicker
+          value={toHouse}
+          onChange={setToHouse}
+          label="To"
+          error={sameHouse ? 'Pick a different house from the one the birds are in.' : undefined}
+        />
 
-      <NumberField
-        label="Quantity"
-        value={quantity}
-        onChangeText={setQuantity}
-        unit="birds"
-        allowDecimal={false}
-        warn={overCount}
-        helper={
-          !fromBalance || quantityNum <= 0
-            ? undefined
-            : overCount
-              ? `${fromBalance.house?.name} only has ${fromBalance.quantity.toLocaleString()}.`
-              : `${fromBalance.house?.name} keeps ${(fromBalance.quantity - quantityNum).toLocaleString()}`
-        }
-        helperColor={overCount ? 'critical' : 'muted'}
-      />
+        <NumberField
+          label="Quantity"
+          value={quantity}
+          onChangeText={setQuantity}
+          unit="birds"
+          allowDecimal={false}
+          warn={overCount}
+          helper={
+            !fromBalance || quantityNum <= 0
+              ? undefined
+              : overCount
+                ? `${fromBalance.house?.name} only has ${fromBalance.quantity.toLocaleString()}.`
+                : `${fromBalance.house?.name} keeps ${(fromBalance.quantity - quantityNum).toLocaleString()}`
+          }
+          helperColor={overCount ? 'critical' : 'muted'}
+        />
+      </FormCard>
     </FormScreen>
   );
 }
 
 const styles = StyleSheet.create({
   group: { gap: Spacing.sm },
-  arrow: { alignItems: 'center', marginVertical: -Spacing.sm },
+  arrow: { alignItems: 'center', marginVertical: -Spacing.xs },
+  arrowDot: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
 });

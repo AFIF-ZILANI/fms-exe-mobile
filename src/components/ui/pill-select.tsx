@@ -3,7 +3,13 @@ import { AppText } from '@/components/ui/text';
 import { MinTouchTarget, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-type PillOption<T extends string> = { value: T; label: string; tone?: 'success' | 'critical' };
+type PillOption<T extends string> = {
+  value: T;
+  label: string;
+  tone?: 'success' | 'critical';
+  /** Shown but not selectable (greyed). */
+  disabled?: boolean;
+};
 
 type PillSelectProps<T extends string> = {
   options: PillOption<T>[];
@@ -21,18 +27,20 @@ export function PillSelect<T extends string>({ options, value, onChange }: PillS
     <View style={styles.wrap}>
       {options.map((opt) => {
         const active = opt.value === value;
-        const textColor = active ? 'paper' : (opt.tone ?? 'ink');
+        const textColor = active ? 'onPrimary' : (opt.tone ?? 'inkSoft');
         return (
           <Pressable
             key={opt.value}
             onPress={() => onChange(opt.value)}
+            disabled={opt.disabled}
             accessibilityRole="button"
-            accessibilityState={{ selected: active }}
+            accessibilityState={{ selected: active, disabled: !!opt.disabled }}
             style={[
               styles.pill,
               {
-                borderColor: active ? theme.ink : theme.line,
-                backgroundColor: active ? theme.ink : 'transparent',
+                borderColor: active ? theme.primary : theme.line,
+                backgroundColor: active ? theme.primary : theme.surface,
+                opacity: opt.disabled ? 0.45 : 1,
               },
             ]}
           >

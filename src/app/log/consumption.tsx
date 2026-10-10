@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 
+import { FormCard } from '@/components/ui/form-card';
 import { FormScreen } from '@/components/ui/form-screen';
 import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
 import { BatchResolver, useResolvedBatch } from '@/components/ui/batch-resolver';
@@ -9,6 +10,8 @@ import { NumberField } from '@/components/ui/number-field';
 import { TextField } from '@/components/ui/text-field';
 import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
+import { useGetData, type Paginated } from '@/lib/api';
+import { formatBalance, summarizeStock, type StockRow } from '@/lib/stock-summary';
 import type { Item } from '@/lib/types';
 import { goBack } from '@/lib/nav';
 
@@ -27,7 +30,15 @@ export default function ConsumptionScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   const { balance } = useResolvedBatch(house?.id);
+  // What is on hand for the chosen item, so a typo (500 for 50) shows before it is recorded. Same URLs and
+  // keys as the Stock tab, so this is usually already cached.
+  const stockItems = useGetData<Paginated<Item>>('/items?is_active=true&limit=100', ['items', 'active'], { enabled: !!item });
+  const stockRows = useGetData<StockRow[]>('/items/stock-by-location', ['items', 'stock-by-location'], { enabled: !!item });
+  const onHand = item
+    ? summarizeStock(stockItems.data?.results ?? [], stockRows.data ?? []).find((l) => l.item.id === item.id)?.balance ?? null
+    : null;
   const quantityNum = Number(quantity);
+  const overStock = onHand !== null && quantityNum > onHand;
   const isValid = !!house && !!item && quantityNum > 0;
 
   const handleSubmit = async () => {
@@ -56,6 +67,7 @@ export default function ConsumptionScreen() {
   return (
     <FormScreen
       title="Log feed"
+      hint="Feed or supplies given to a house. It comes off stock."
       dirty={!!item || !!quantity || !!note}
       submit={{
         label:
@@ -67,24 +79,37 @@ export default function ConsumptionScreen() {
         loading: submitting,
       }}
     >
-      <HousePicker value={house} onChange={setHouse} />
-      <BatchResolver houseId={house?.id} />
+      <FormCard>
+        <HousePicker value={house} onChange={setHouse} />
+        <BatchResolver houseId={house?.id} />
+      </FormCard>
 
-      <ItemPicker value={item} onChange={setItem} unitTracked={false} />
+      <FormCard title="What">
+        <ItemPicker value={item} onChange={setItem} unitTracked={false} />
 
-      {/* No steppers: feed quantities are typed, not nudged, and a stepper on
-          a decimal field is a mis-tap generator. The unit follows the item —
-          leaving "kg" selected after switching to a piece-counted supply
-          writes a quantity wrong by three orders of magnitude. */}
-      <NumberField
-        label="Quantity"
-        value={quantity}
-        onChangeText={setQuantity}
-        unit={item?.unit}
-        autoFocus={!!params.house_id}
-      />
+        {/* No steppers: feed quantities are typed, not nudged, and a stepper on
+            a decimal field is a mis-tap generator. The unit follows the item —
+            leaving "kg" selected after switching to a piece-counted supply
+            writes a quantity wrong by three orders of magnitude. */}
+        <NumberField
+          label="Quantity"
+          value={quantity}
+          onChangeText={setQuantity}
+          unit={item?.unit}
+          autoFocus={!!params.house_id}
+          warn={overStock}
+          helper={
+            onHand === null
+              ? undefined
+              : overStock
+                ? `More than the ${formatBalance(onHand)} ${item?.unit.toLowerCase()} in stock — check the amount.`
+                : `${formatBalance(onHand)} ${item?.unit.toLowerCase()} in stock`
+          }
+          helperColor={overStock ? 'warning' : 'muted'}
+        />
 
-      <TextField label="Note (optional)" value={note} onChangeText={setNote} multiline />
+        <TextField label="Note (optional)" value={note} onChangeText={setNote} multiline />
+      </FormCard>
     </FormScreen>
   );
 }

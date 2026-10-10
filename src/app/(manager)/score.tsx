@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
+import { Avatar } from '@/components/ui/avatar';
+import { FormCard } from '@/components/ui/form-card';
 import { FormScreen } from '@/components/ui/form-screen';
 import { EmployeePicker, usePrefillEmployee } from '@/components/ui/employee-picker';
 import { TextField } from '@/components/ui/text-field';
@@ -11,21 +13,12 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
-import { initials, monthRange } from '@/lib/farm';
+import { monthRange } from '@/lib/farm';
 import { formatSignedPoints } from '@/lib/format';
 import { useGetData, type Paginated } from '@/lib/api';
-import { POSITIVE_CRITERIA, NEGATIVE_CRITERIA, pointsFor, type Criterion } from '@/lib/criteria';
+import { POSITIVE_CRITERIA, NEGATIVE_CRITERIA, needsAdminPaperwork, pointsFor, type Criterion } from '@/lib/criteria';
 import type { ScoreEntry } from '@/lib/types';
 import { goBack } from '@/lib/nav';
-
-/** ±1..±5 excluding 0 — the same range the server itself refines. */
-const OTHER_POINTS: { value: string; label: string; tone: 'success' | 'critical' }[] = [
-  -5, -4, -3, -2, -1, 1, 2, 3, 4, 5,
-].map((n) => ({
-  value: String(n),
-  label: formatSignedPoints(n),
-  tone: n > 0 ? 'success' : 'critical',
-}));
 
 /**
  * docs/layout/14-rate-employee.md — fifteen seconds is the design constraint,
@@ -36,7 +29,6 @@ const OTHER_POINTS: { value: string; label: string; tone: 'success' | 'critical'
  * A fixed criterion's point value is shown, never editable — it's a
  * server-side snapshot from FIXED_CRITERION_POINTS, and a manager who can set
  * "Helped coworker" to +5 has turned a shared scale into a personal one.
- * OTHER is the only case revealing a points control.
  *
  * No confirm dialog: it's an append-only ledger entry, a correction is a new
  * offsetting entry, and a dialog on the fastest path defeats the screen.
@@ -49,7 +41,6 @@ export default function ScoreScreen() {
 
   const [employee, setEmployee] = usePrefillEmployee(params.employee_id);
   const [criterion, setCriterion] = useState<Criterion | null>(null);
-  const [otherPoints, setOtherPoints] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [touchedReason, setTouchedReason] = useState(false);
@@ -62,13 +53,13 @@ export default function ScoreScreen() {
   );
   const mtd = (scores?.results ?? []).reduce((sum, s) => sum + s.points, 0);
 
-  const points = criterion ? pointsFor(criterion, otherPoints ? Number(otherPoints) : undefined) : 0;
+  const points = criterion ? pointsFor(criterion) : 0;
   const reasonMissing = touchedReason && reason.trim() === '';
   const isValid =
     !!employee &&
     !!criterion &&
     reason.trim() !== '' &&
-    (criterion !== 'OTHER' || otherPoints !== null);
+    !needsAdminPaperwork(criterion, points);
 
   const handleSubmit = async () => {
     // Validated before enqueueing: the server rejects blank, and a queued row
@@ -89,7 +80,6 @@ export default function ScoreScreen() {
           reason: reason.trim(),
           // The day it happened: the server needs it to know which month's pay the points land in.
           incident_date: new Date().toISOString(),
-          ...(criterion === 'OTHER' && { points: Number(otherPoints) }),
         },
       });
       if (queued) goBack();
@@ -101,12 +91,12 @@ export default function ScoreScreen() {
   const pickCriterion = (v: Criterion | null) => {
     setCriterion(v);
     // A chip and the stepper are the same field.
-    if (v !== 'OTHER') setOtherPoints(null);
   };
 
   return (
     <FormScreen
       title="Rate"
+      hint="Points go on this month's record and move their pay."
       dirty={!!criterion || !!reason}
       submit={{
         label: criterion ? `Record ${formatSignedPoints(points)} points` : 'Record points',
@@ -120,11 +110,7 @@ export default function ScoreScreen() {
           employee wasn't passed in. */}
       {params.employee_id ? (
         <View style={[styles.subject, { backgroundColor: theme.primarySoft }]}>
-          <View style={[styles.avatar, { backgroundColor: theme.surface }]}>
-            <AppText variant="label" color="primary">
-              {initials(employee?.profile.name ?? '')}
-            </AppText>
-          </View>
+          <Avatar name={employee?.profile.name ?? ''} uri={employee?.profile.avatar?.image_url} size={44} />
           <View style={styles.flex}>
             <AppText variant="bodyStrong">{employee?.profile.name ?? '…'}</AppText>
             <AppText variant="caption" color="muted">
@@ -133,16 +119,15 @@ export default function ScoreScreen() {
           </View>
         </View>
       ) : (
-        <EmployeePicker value={employee} onChange={setEmployee} />
+        <FormCard>
+          <EmployeePicker value={employee} onChange={setEmployee} />
+        </FormCard>
       )}
 
       {/* Positive first, deliberately: the ledger is meant to be mostly a
           record of good work, and surfacing penalties first teaches the
           opposite. */}
-      <View style={styles.group}>
-        <AppText variant="eyebrow" color="success">
-          Positive
-        </AppText>
+      <FormCard title="Good work">
         <PillSelect
           options={POSITIVE_CRITERIA.map((c) => ({
             value: c.value,
@@ -152,53 +137,37 @@ export default function ScoreScreen() {
           value={criterion}
           onChange={pickCriterion}
         />
-      </View>
+      </FormCard>
 
-      <View style={styles.group}>
-        <AppText variant="eyebrow" color="critical">
-          Negative
-        </AppText>
+      <FormCard title="Problems">
         <PillSelect
           options={NEGATIVE_CRITERIA.map((c) => ({
             value: c.value,
             label: `${c.points} ${c.label}`,
             tone: 'critical' as const,
+            disabled: needsAdminPaperwork(c.value, c.points),
           }))}
           value={criterion}
           onChange={pickCriterion}
         />
-      </View>
+        <AppText variant="caption" color="muted">
+          −4 and worse need written notice first, which an admin adds on the web. Pick a smaller one here.
+        </AppText>
+      </FormCard>
 
-      <View style={styles.group}>
-        <PillSelect
-          options={[{ value: 'OTHER', label: 'Other…' }]}
-          value={criterion}
-          onChange={pickCriterion}
+      <FormCard title="Why">
+        <TextField
+          label="Reason"
+          value={reason}
+          onChangeText={(t) => {
+            setReason(t);
+            setTouchedReason(true);
+          }}
+          placeholder="What happened?"
+          multiline
+          error={reasonMissing ? 'A reason is required.' : undefined}
         />
-        {criterion === 'OTHER' && (
-          <View style={[styles.otherWell, { backgroundColor: theme.surfaceAlt }]}>
-            <AppText variant="eyebrow" color="muted">
-              Points
-            </AppText>
-            <PillSelect options={OTHER_POINTS} value={otherPoints} onChange={setOtherPoints} />
-            <AppText variant="caption" color="muted">
-              −5 to +5, not zero
-            </AppText>
-          </View>
-        )}
-      </View>
-
-      <TextField
-        label="Reason"
-        value={reason}
-        onChangeText={(t) => {
-          setReason(t);
-          setTouchedReason(true);
-        }}
-        placeholder="What happened?"
-        multiline
-        error={reasonMissing ? 'A reason is required.' : undefined}
-      />
+      </FormCard>
     </FormScreen>
   );
 }

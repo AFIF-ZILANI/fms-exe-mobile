@@ -1,5 +1,6 @@
 import { PickerField } from '@/components/ui/picker-field';
 import { useGetData, type Paginated } from '@/lib/api';
+import { humanise } from '@/lib/profile-format';
 import type { Item } from '@/lib/types';
 
 type ItemPickerProps = {
@@ -12,6 +13,9 @@ type ItemPickerProps = {
   /** ItemCategory.code, e.g. "FEED" -- used by the feeding program screen. */
   category?: string;
   error?: string;
+  placeholder?: string;
+  /** For an optional use: shows a × that puts it back to nothing. */
+  onClear?: () => void;
 };
 
 export function ItemPicker({
@@ -20,6 +24,8 @@ export function ItemPicker({
   unitTracked,
   category,
   error,
+  placeholder,
+  onClear,
 }: ItemPickerProps) {
   // The server caps limit at 100 and 400s above it.
   const params = new URLSearchParams({ is_active: 'true', limit: '100' });
@@ -39,10 +45,12 @@ export function ItemPicker({
       options={data?.results ?? []}
       getKey={(i) => i.id}
       getLabel={(i) => i.name}
-      getSubLabel={(i) => i.category}
+      getSubLabel={(i) => humanise(i.category)}
       onChange={onChange}
       loading={isLoading}
       error={error}
+      onClear={onClear}
+      placeholder={placeholder}
       emptyLabel="No items found."
     />
   );

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
+import { FormCard } from '@/components/ui/form-card';
 import { FormScreen } from '@/components/ui/form-screen';
 import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
 import { BatchResolver, useResolvedBatch } from '@/components/ui/batch-resolver';
@@ -112,24 +113,30 @@ export default function EnvironmentScreen() {
   return (
     <FormScreen
       title="Log environment"
+      hint="Five readings from inside the house. Out-of-range values are flagged, never blocked."
       dirty={filled > 0}
       submit={{
-        label: filled === 5 ? 'Record 5 readings' : filled > 0 ? `${5 - filled} more reading${5 - filled === 1 ? '' : 's'} needed` : 'Record readings',
+        label: filled === 5 || filled === 0 ? 'Record readings' : `${5 - filled} more reading${5 - filled === 1 ? '' : 's'} needed`,
         onPress: handleSubmit,
         disabled: !isValid,
         loading: submitting,
       }}
     >
-      <HousePicker value={house} onChange={setHouse} />
-      <BatchResolver houseId={house?.id} />
+      <FormCard>
+        <HousePicker value={house} onChange={setHouse} />
+        <BatchResolver houseId={house?.id} />
+      </FormCard>
 
-      <View style={styles.periodBlock}>
-        <AppText variant="eyebrow" color="muted">
-          Time of day
-        </AppText>
-        <PillSelect options={TIME_PERIODS} value={timePeriod} onChange={setTimePeriod} />
-      </View>
+      <FormCard title="When">
+        <View style={styles.periodBlock}>
+          <AppText variant="eyebrow" color="muted">
+            Time of day
+          </AppText>
+          <PillSelect options={TIME_PERIODS} value={timePeriod} onChange={setTimePeriod} />
+        </View>
+      </FormCard>
 
+      <FormCard title="Readings" hint={`${filled} of 5`}>
       <NumberField
         label="Temperature"
         value={temperature}
@@ -138,7 +145,7 @@ export default function EnvironmentScreen() {
         autoFocus
         warn={outOfRange('temperature', temperature)}
         helper={outOfRange('temperature', temperature) ? 'Outside 18–34 °C' : undefined}
-        helperColor="critical"
+        helperColor="warning"
       />
       <NumberField
         label="Humidity"
@@ -147,7 +154,7 @@ export default function EnvironmentScreen() {
         unit="%"
         warn={outOfRange('humidity', humidity)}
         helper={outOfRange('humidity', humidity) ? 'Outside 40–70 %' : undefined}
-        helperColor="critical"
+        helperColor="warning"
       />
       {/* Ammonia is the reading that matters most and the one workers skip —
           third in the column rather than last, for exactly that reason. */}
@@ -158,7 +165,7 @@ export default function EnvironmentScreen() {
         unit="ppm"
         warn={outOfRange('ammonia', ammonia)}
         helper={outOfRange('ammonia', ammonia) ? 'Above 20 ppm' : undefined}
-        helperColor="critical"
+        helperColor="warning"
       />
       <NumberField
         label="CO₂"
@@ -167,7 +174,7 @@ export default function EnvironmentScreen() {
         unit="ppm"
         warn={outOfRange('co2', co2)}
         helper={outOfRange('co2', co2) ? 'Above 3,000 ppm' : undefined}
-        helperColor="critical"
+        helperColor="warning"
       />
       <NumberField
         label="Air pressure"
@@ -176,8 +183,9 @@ export default function EnvironmentScreen() {
         unit="hPa"
         warn={outOfRange('pressure', pressure)}
         helper={outOfRange('pressure', pressure) ? 'Outside 950–1,050 hPa' : undefined}
-        helperColor="critical"
+        helperColor="warning"
       />
+      </FormCard>
     </FormScreen>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 
+import { FormCard } from '@/components/ui/form-card';
 import { FormScreen } from '@/components/ui/form-screen';
 import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
 import { BatchResolver, useResolvedBatch } from '@/components/ui/batch-resolver';
@@ -57,6 +58,7 @@ export default function WeightScreen() {
   return (
     <FormScreen
       title="Log weight"
+      hint="One sample per house per day: weigh a handful and enter their average."
       dirty={!!averageWeight || !!sampleSize}
       submit={{
         label: avgNum > 0 ? `Record ${avgNum.toLocaleString()} g average` : 'Record weight',
@@ -65,25 +67,30 @@ export default function WeightScreen() {
         loading: submitting,
       }}
     >
-      <HousePicker value={house} onChange={setHouse} />
-      <BatchResolver houseId={house?.id} />
+      <FormCard>
+        <HousePicker value={house} onChange={setHouse} />
+        <BatchResolver houseId={house?.id} />
+      </FormCard>
 
-      {/* Grams is a fixed suffix, not a picker — the server stores grams and
-          there is no second unit. */}
-      <NumberField
-        label="Average weight"
-        value={averageWeight}
-        onChangeText={setAverageWeight}
-        unit="g"
-        autoFocus
-      />
-      <NumberField
-        label="Sample size"
-        value={sampleSize}
-        onChangeText={setSampleSize}
-        unit="birds"
-        allowDecimal={false}
-      />
+      <FormCard title="The sample">
+        {/* Grams is a fixed suffix, not a picker — the server stores grams and
+            there is no second unit. */}
+        <NumberField
+          label="Average weight"
+          value={averageWeight}
+          onChangeText={setAverageWeight}
+          unit="g"
+          autoFocus
+        />
+        <NumberField
+          label="Birds weighed"
+          value={sampleSize}
+          onChangeText={setSampleSize}
+          unit="birds"
+          allowDecimal={false}
+          quick={[10, 20, 50, 100]}
+        />
+      </FormCard>
     </FormScreen>
   );
 }

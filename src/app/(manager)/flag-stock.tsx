@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 
+import { FormCard } from '@/components/ui/form-card';
 import { FormScreen } from '@/components/ui/form-screen';
 import { ItemPicker } from '@/components/ui/item-picker';
 import { TextField } from '@/components/ui/text-field';
@@ -82,6 +83,7 @@ export default function FlagStockScreen() {
   return (
     <FormScreen
       title="Flag low stock"
+      hint="Tell the managers an item is running out. They see it in their alerts."
       dirty={!!item || !!title || !!description}
       submit={{
         label: VERB[level],
@@ -90,53 +92,54 @@ export default function FlagStockScreen() {
         loading: submitting,
       }}
     >
-      <ItemPicker
-        value={item}
-        onChange={(next) => {
-          setItem(next);
-          if (!titleTouched) setTitle(`Low stock: ${next.name}`);
-          // Default the type from the item's category, still overridable.
-          if (next.category === 'MEDICINE') setType('MEDICINE');
-          else if (next.category === 'FEED') setType('FEED');
-        }}
-      />
-
-      <View style={styles.group}>
-        <AppText variant="eyebrow" color="muted">
-          Type
-        </AppText>
-        <SegmentedToggle
-          options={[
-            { value: 'FEED', label: 'Feed' },
-            { value: 'MEDICINE', label: 'Medicine' },
-          ]}
-          value={type}
-          onChange={setType}
+      <FormCard title="Which item">
+        <ItemPicker
+          value={item}
+          onChange={(next) => {
+            setItem(next);
+            if (!titleTouched) setTitle(`Low stock: ${next.name}`);
+            // Default the type from the item's category, still overridable.
+            if (next.category === 'MEDICINE') setType('MEDICINE');
+            else if (next.category === 'FEED') setType('FEED');
+          }}
         />
-      </View>
 
-      <View style={styles.group}>
-        <AppText variant="eyebrow" color="muted">
-          Urgency
-        </AppText>
+        <View style={styles.group}>
+          <AppText variant="eyebrow" color="muted">
+            Type
+          </AppText>
+          <SegmentedToggle
+            options={[
+              { value: 'FEED', label: 'Feed' },
+              { value: 'MEDICINE', label: 'Medicine' },
+            ]}
+            value={type}
+            onChange={setType}
+          />
+        </View>
+      </FormCard>
+
+      <FormCard title="How urgent">
         <SegmentedToggle options={LEVELS} value={level} onChange={setLevel} />
-      </View>
+      </FormCard>
 
-      <TextField
-        label="Title"
-        value={title}
-        onChangeText={(t) => {
-          setTitle(t);
-          setTitleTouched(true);
-        }}
-      />
-      <TextField
-        label="Description"
-        value={description}
-        onChangeText={setDescription}
-        placeholder="How much is left, and how long it lasts"
-        multiline
-      />
+      <FormCard title="The message">
+        <TextField
+          label="Title"
+          value={title}
+          onChangeText={(t) => {
+            setTitle(t);
+            setTitleTouched(true);
+          }}
+        />
+        <TextField
+          label="Description"
+          value={description}
+          onChangeText={setDescription}
+          placeholder="How much is left, and how long it lasts"
+          multiline
+        />
+      </FormCard>
     </FormScreen>
   );
 }
