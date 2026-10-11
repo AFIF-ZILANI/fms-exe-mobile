@@ -158,6 +158,9 @@ export type PurchaseItem = {
   /** The unit this line was bought in (e.g. BOTTLE). A coded StockUnit is one of these. */
   unit: string;
   base_quantity: string;
+  /** Bottles this lot splits into; null until the first link fixes it. Caps StockUnits server-side. */
+  unit_count: number | null;
+  _count?: { stockUnits: number };
   item: Item;
   purchase: Purchase;
 };

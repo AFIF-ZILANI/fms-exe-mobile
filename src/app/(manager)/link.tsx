@@ -20,6 +20,7 @@ import { ScanModeField, ScanResults } from '@/components/scan-parts';
 import { apiFetch, useGetData, type Paginated } from '@/lib/api';
 import type { Mode } from '@/lib/scan-actions';
 import { useScanSession } from '@/lib/use-scan-session';
+import { codesNeeded } from '@/lib/lot-split';
 import type { PurchaseItem, StockUnit } from '@/lib/types';
 
 const MIN_QUERY = 3;
@@ -49,7 +50,8 @@ export default function LinkItemsScreen() {
   const queryClient = useQueryClient();
   const network = useNetworkState();
 
-  const [lot, setLot] = useState<PurchaseItem | null>(null);
+  const [lotId, setLotId] = useState<string | null>(null);
+  const [size, setSize] = useState('');
   const [scanning, setScanning] = useState(false);
   const [mode, setMode] = useState<Mode>('auto');
   const [manual, setManual] = useState(false);
@@ -63,6 +65,15 @@ export default function LinkItemsScreen() {
   // StockUnitService.bind rejects a lot whose item isn't QR-tracked. Filter
   // the list rather than explain the 400 afterwards.
   const trackedLots = (purchaseItems?.results ?? []).filter((p) => p.item.is_unit_tracked);
+  // Derived from the query so the count refreshes after each link.
+  const lot = trackedLots.find((p) => p.id === lotId) ?? null;
+
+  // The lot's bottle count: fixed once the first link saved it, until then whatever the size typed gives.
+  const typedCount = lot ? codesNeeded(Number(lot.base_quantity), Number(size.replace(',', '.'))) : null;
+  const cap = lot?.unit_count ?? typedCount;
+  const linkedTotal = lot?._count?.stockUnits ?? 0;
+  const full = cap !== null && linkedTotal >= cap;
+  const unitName = lot?.item.unit.toLowerCase() ?? '';
 
   const trimmed = query.trim();
   const { data: units, isLoading: unitsLoading } = useGetData<Paginated<StockUnit>>(
@@ -82,14 +93,17 @@ export default function LinkItemsScreen() {
     commit: async (unit) => {
       await apiFetch(`/stock-units/${unit.id}/bind`, {
         method: 'POST',
-        body: JSON.stringify({ purchase_item_id: lot?.id }),
+        body: JSON.stringify({
+          purchase_item_id: lot?.id,
+          // Only the first link of a lot sets its split; after that the server already knows it.
+          ...(lot?.unit_count == null && cap !== null && { unit_count: cap }),
+        }),
       });
+      void queryClient.invalidateQueries({ queryKey: ['purchase-items'] });
       // Anything showing unit counts or unassigned units is now stale.
       void queryClient.invalidateQueries({ queryKey: ['stock-units'] });
     },
   });
-
-  const linked = session.rows.filter((r) => r.state === 'ok').length;
 
   const bindManually = async (id: string) => {
     if (await session.runManual(id)) {
@@ -110,7 +124,8 @@ export default function LinkItemsScreen() {
         getLabel={(p) => p.item.name}
         getSubLabel={(p) => `${p.base_quantity} · ${formatDate(p.purchase.purchase_date)}`}
         onChange={(next) => {
-          setLot(next);
+          setLotId(next?.id ?? null);
+          setSize('');
           // A new lot is a new session — carrying counts across would
           // misreport what went into which delivery.
           session.reset();
@@ -138,14 +153,42 @@ export default function LinkItemsScreen() {
             <Detail label="Received" value={formatDate(lot.purchase.purchase_date)} />
             <Detail label="Lot" value={`…${lot.id.slice(-7)}`} mono />
 
+            {lot.unit_count == null ? (
+              <View style={styles.detail}>
+                <AppText variant="label" color="muted" style={styles.detailLabel}>
+                  Bottle size
+                </AppText>
+                <View
+                  style={[styles.sizeField, { backgroundColor: theme.surfaceAlt, borderColor: theme.line }]}
+                >
+                  <TextInput
+                    value={size}
+                    onChangeText={setSize}
+                    placeholder="1"
+                    placeholderTextColor={theme.muted}
+                    keyboardType="decimal-pad"
+                    style={[styles.searchInput, { color: theme.ink }]}
+                  />
+                  <AppText variant="caption" color="muted">
+                    {unitName}
+                  </AppText>
+                </View>
+              </View>
+            ) : (
+              <Detail
+                label="Split into"
+                value={`${lot.unit_count} × ${Number(lot.base_quantity) / lot.unit_count} ${unitName}`}
+              />
+            )}
+
             <View style={[styles.rule, { backgroundColor: theme.line }]} />
 
             <View style={styles.countRow}>
               <AppText variant="eyebrow" color="muted">
-                Linked this session
+                Codes linked
               </AppText>
-              <AppText variant="stat" color={linked > 0 ? 'success' : 'ink'}>
-                {linked}
+              <AppText variant="stat" color={full ? 'success' : 'ink'}>
+                {linkedTotal} / {cap ?? '—'}
               </AppText>
             </View>
           </Card>
@@ -161,6 +204,15 @@ export default function LinkItemsScreen() {
                 </AppText>
               </View>
             </View>
+          ) : cap === null ? (
+            <AppText variant="caption" color="muted" style={styles.card}>
+              Enter the bottle size to see how many codes this lot needs
+              {size.trim() ? ` — ${size} ${unitName} doesn't divide ${Number(lot.base_quantity)} ${unitName} evenly.` : '.'}
+            </AppText>
+          ) : full ? (
+            <AppText variant="bodyStrong" color="success" style={styles.card}>
+              All {cap} codes linked — this lot is complete.
+            </AppText>
           ) : (
             <View style={styles.actions}>
               <View style={styles.modeField}>
@@ -176,7 +228,7 @@ export default function LinkItemsScreen() {
             </View>
           )}
 
-          {manual && !offline && (
+          {manual && !offline && cap !== null && !full && (
             <Card style={styles.card}>
               <AppText variant="eyebrow" color="muted">
                 Find a unit by code
@@ -295,6 +347,16 @@ const styles = StyleSheet.create({
     borderRadius: Radius.control,
     paddingHorizontal: Spacing.lg,
     marginTop: Spacing.xs,
+  },
+  sizeField: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    height: 44,
+    borderWidth: 1,
+    borderRadius: Radius.control,
+    paddingHorizontal: Spacing.md,
   },
   searchInput: { flex: 1, fontFamily: FontFamily.mono, fontSize: 15 },
 });
