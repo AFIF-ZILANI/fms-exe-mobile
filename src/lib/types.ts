@@ -161,6 +161,10 @@ export type PurchaseItem = {
   /** Bottles this lot splits into; null until the first link fixes it. Caps StockUnits server-side. */
   unit_count: number | null;
   _count?: { stockUnits: number };
+  /** When a code was last linked to this line; null if none ever was. */
+  last_linked_at: string | null;
+  /** Units linked since the `since` the list was asked for (start of today). */
+  linked_since: number;
   item: Item;
   purchase: Purchase;
 };

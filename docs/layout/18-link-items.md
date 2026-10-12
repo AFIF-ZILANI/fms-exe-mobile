@@ -331,3 +331,18 @@ a beat after the last code the scanner closes on its own. Opening the scanner
 also refreshes the lot, in case another phone linked some since it was loaded.
 The server still refuses a bind past the count (409); this just stops the
 round trips and tells the operator before it happens.
+
+### Overview screen: KPIs, pending, completed (2026-10-12)
+
+With no lot chosen, the screen is three sections:
+
+1. **KPIs** — a 2 × 2 grid of `StatCard`s: **Pending lots** (note: how many still
+   need a bottle size), **Codes to link** (bottles left on lots whose count is
+   known), **Linked today** (units linked since the phone's midnight, across how
+   many lots), **Completed** (of all lots).
+2. **Pending** — every lot not yet complete, as tappable cards with the bottle strip.
+3. **Completed** — the latest five completed lots, newest finish first, not tappable
+   ("latest 5 of 12" when there are more).
+
+Figures come from `lib/link-summary.ts` (tested). `GET /purchase-items` takes
+`?since=<ISO>` and returns per line `last_linked_at` and `linked_since`.

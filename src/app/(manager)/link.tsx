@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
-import { Card } from '@/components/ui/card';
+import { Card, StatCard } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { LedgerRow } from '@/components/ui/ledger-row';
@@ -18,7 +18,8 @@ import { FontFamily, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ScanModeField, ScanResults } from '@/components/scan-parts';
 import { ApiError, apiFetch, useGetData, type Paginated } from '@/lib/api';
-import { codesNeeded, isLotComplete } from '@/lib/lot-split';
+import { codesNeeded } from '@/lib/lot-split';
+import { summarizeLots } from '@/lib/link-summary';
 import type { Mode } from '@/lib/scan-actions';
 import { useScanSession } from '@/lib/use-scan-session';
 import type { PurchaseItem, StockUnit } from '@/lib/types';
@@ -59,17 +60,21 @@ export default function LinkItemsScreen() {
   const [manual, setManual] = useState(false);
   const [query, setQuery] = useState('');
 
+  // Start of the phone's day: the server counts, per line, the units linked since then.
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const since = dayStart.toISOString();
+
   const { data: purchaseItems, isLoading: lotsLoading } = useGetData<Paginated<PurchaseItem>>(
-    '/purchase-items?limit=100',
-    ['purchase-items'],
+    `/purchase-items?limit=100&since=${encodeURIComponent(since)}`,
+    ['purchase-items', since],
   );
 
   // StockUnitService.bind rejects a lot whose item isn't QR-tracked. Filter
   // the list rather than explain the 400 afterwards.
   const trackedLots = (purchaseItems?.results ?? []).filter((p) => p.item.is_unit_tracked);
   const linkedOf = (p: PurchaseItem) => p._count?.stockUnits ?? 0;
-  const openLots = trackedLots.filter((p) => !isLotComplete(p.unit_count, linkedOf(p)));
-  const doneLots = trackedLots.filter((p) => isLotComplete(p.unit_count, linkedOf(p)));
+  const { pending, recent, kpis } = summarizeLots(trackedLots);
 
   // Derived from the query so the count refreshes after each link, and a lot
   // stays on screen the moment its last code lands.
@@ -205,44 +210,86 @@ export default function LinkItemsScreen() {
           </View>
         ) : (
           <>
-            {openLots.length === 0 ? (
-              <View style={styles.list}>
-                <EmptyState
-                  icon="check-circle"
-                  tint="tintGreen"
-                  title="Every lot is linked."
-                  body="Each bottle on every delivery has a code."
-                />
-              </View>
+            <View style={styles.kpiRow}>
+              <StatCard
+                value={String(kpis.pendingCount)}
+                eyebrow="Pending lots"
+                tint="tintAmber"
+                note={
+                  kpis.notSplit === 0
+                    ? 'all split'
+                    : `${kpis.notSplit} ${kpis.notSplit === 1 ? 'needs' : 'need'} a bottle size`
+                }
+              />
+              <StatCard
+                value={String(kpis.codesToLink)}
+                eyebrow="Codes to link"
+                tint="tintBlue"
+                note="on split lots"
+              />
+            </View>
+            <View style={styles.kpiRow}>
+              <StatCard
+                value={String(kpis.linkedToday)}
+                eyebrow="Linked today"
+                tint="tintGreen"
+                note={`across ${kpis.lotsTouchedToday} ${kpis.lotsTouchedToday === 1 ? 'lot' : 'lots'}`}
+              />
+              <StatCard
+                value={String(kpis.completedCount)}
+                eyebrow="Completed"
+                tint="tintGreen"
+                note={`of ${kpis.totalLots} lots`}
+              />
+            </View>
+
+            <View style={styles.sectionHead}>
+              <AppText variant="h2">Pending</AppText>
+              <AppText variant="caption" color="muted">
+                {kpis.pendingCount === 0 ? 'none' : `${kpis.pendingCount} to finish`}
+              </AppText>
+            </View>
+            {pending.length === 0 ? (
+              <EmptyState
+                icon="check-circle"
+                tint="tintGreen"
+                title="Every lot is linked."
+                body="Each bottle on every delivery has a code."
+              />
             ) : (
-              <>
-                <AppText variant="body" color="muted" style={styles.intro}>
-                  Pick the delivery these units arrived on, then scan their codes.
-                </AppText>
-                <View style={styles.list}>
-                  {openLots.map((p) => (
-                    <LotCard key={p.id} lot={p} linked={linkedOf(p)} onPress={() => choose(p)} />
-                  ))}
-                </View>
-              </>
+              <View style={styles.pendingList}>
+                {pending.map((p) => (
+                  <LotCard key={p.id} lot={p} linked={linkedOf(p)} onPress={() => choose(p)} />
+                ))}
+              </View>
             )}
 
-            {doneLots.length > 0 && (
-              <Card rows eyebrow="Complete" note={`${doneLots.length}`} style={styles.list}>
-                {doneLots.map((p, i) => (
-                  <LedgerRow
-                    key={p.id}
-                    gutterNode={<IconTile name="check" tint="tintGreen" color="success" size={32} />}
-                    last={i === doneLots.length - 1}
-                  >
-                    <AppText variant="bodyStrong">{p.item.name}</AppText>
-                    <AppText variant="caption" color="muted">
-                      {quantityLabel(p)} · {formatDate(p.purchase.purchase_date)} · {linkedOf(p)} /{' '}
-                      {p.unit_count} linked
-                    </AppText>
-                  </LedgerRow>
-                ))}
-              </Card>
+            {recent.length > 0 && (
+              <>
+                <View style={styles.sectionHead}>
+                  <AppText variant="h2">Completed</AppText>
+                  <AppText variant="caption" color="muted">
+                    {kpis.completedCount > recent.length
+                      ? `latest ${recent.length} of ${kpis.completedCount}`
+                      : `${kpis.completedCount}`}
+                  </AppText>
+                </View>
+                <Card rows>
+                  {recent.map((p, i) => (
+                    <LedgerRow
+                      key={p.id}
+                      gutterNode={<IconTile name="check" tint="tintGreen" color="success" size={32} />}
+                      last={i === recent.length - 1}
+                    >
+                      <AppText variant="bodyStrong">{p.item.name}</AppText>
+                      <AppText variant="caption" color="muted">
+                        {quantityLabel(p)} · {linkedOf(p)} / {p.unit_count} linked
+                        {p.last_linked_at ? ` · ${formatDate(p.last_linked_at)}` : ''}
+                      </AppText>
+                    </LedgerRow>
+                  ))}
+                </Card>
+              </>
             )}
           </>
         )}
@@ -477,8 +524,16 @@ function LotCard({ lot, linked, onPress }: { lot: PurchaseItem; linked: number; 
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  intro: { marginTop: Spacing.xs },
   list: { gap: Spacing.md, marginTop: Spacing.lg },
+  kpiRow: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.md },
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginTop: Spacing.xxl,
+    marginBottom: Spacing.md,
+  },
+  pendingList: { gap: Spacing.md },
   card: { marginTop: Spacing.md, gap: Spacing.md },
   lotCardHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginBottom: Spacing.md },
   lotCardNote: { marginTop: Spacing.sm },
