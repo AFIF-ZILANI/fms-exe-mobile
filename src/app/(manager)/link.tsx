@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Pressable, TextInput, View, StyleSheet } from 'react-native';
 import { useNetworkState } from 'expo-network';
 import { useQueryClient } from '@tanstack/react-query';
@@ -114,9 +114,21 @@ export default function LinkItemsScreen() {
       });
       // Anything showing unit counts or unassigned units is now stale.
       void queryClient.invalidateQueries({ queryKey: ['stock-units'] });
-      void queryClient.invalidateQueries({ queryKey: ['purchase-items'] });
+      // Awaited: the scanner takes one code at a time, so the next one is judged against the
+      // updated count rather than racing the refetch.
+      await queryClient.invalidateQueries({ queryKey: ['purchase-items'] });
     },
   });
+
+  // The last code in: close the camera after a beat, so the flash and the sound land first.
+  useEffect(() => {
+    if (!scanning || !full) return;
+    const t = setTimeout(() => {
+      session.close();
+      setScanning(false);
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [scanning, full, session]);
 
   const markComplete = () => {
     if (!lot || cap === null) return;
@@ -340,7 +352,15 @@ export default function LinkItemsScreen() {
           <View style={styles.modeField}>
             <ScanModeField value={mode} onChange={setMode} />
           </View>
-          <Button label="Scan codes" icon="camera" onPress={() => setScanning(true)} />
+          <Button
+            label="Scan codes"
+            icon="camera"
+            onPress={() => {
+              // Another phone may have linked some since this lot was loaded.
+              void queryClient.invalidateQueries({ queryKey: ['purchase-items'] });
+              setScanning(true);
+            }}
+          />
           <Button
             variant="ghost"
             label={manual ? 'Hide manual entry' : 'Type a code instead'}
@@ -414,6 +434,7 @@ export default function LinkItemsScreen() {
         onScanned={session.onScanned}
         pending={session.pending}
         offline={offline}
+        remaining={cap === null ? null : Math.max(0, cap - linkedTotal)}
       />
     </Screen>
   );

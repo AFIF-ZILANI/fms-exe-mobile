@@ -320,3 +320,14 @@ a lot that predates splits (null `unit_count`): enter the bottle size, and the
 button appears once the linked count has reached the count that size implies.
 `POST /purchase-items/:id/complete {unit_count}` re-checks that server-side
 (400 "Only X of Y units are linked") and 409s on a lot that already has a count.
+
+### Scan limit (2026-10-12)
+
+The scanner knows how many the lot can still take (`remaining`): its header
+reads "3 linked · 7 left" and counts down as codes land. Each bind awaits the
+lot's refetch, so the next code is judged against the updated count. At 0 the
+camera stops accepting codes ("This lot is full — no more codes needed"), and
+a beat after the last code the scanner closes on its own. Opening the scanner
+also refreshes the lot, in case another phone linked some since it was loaded.
+The server still refuses a bind past the count (409); this just stops the
+round trips and tells the operator before it happens.

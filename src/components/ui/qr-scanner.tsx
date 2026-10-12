@@ -74,6 +74,8 @@ type QrScannerProps = {
   onScanned: (row: ScanRow) => void;
   /** Blocks scanning — this screen deliberately requires a connection. */
   offline?: boolean;
+  /** How many more this target can take. At 0 the camera stops accepting codes; null/undefined = no limit. */
+  remaining?: number | null;
 };
 
 /**
@@ -89,6 +91,7 @@ export function QrScanner({
   rows,
   onScanned,
   offline,
+  remaining = null,
   labels = DEFAULT_LABELS,
   pending = null,
 }: QrScannerProps) {
@@ -174,6 +177,18 @@ export function QrScanner({
     async (payload: string) => {
       if (offline || pending || inFlight.current) return;
 
+      // A full target takes no more. Said once in a while, not on every frame, and the server
+      // would refuse it anyway -- this just stops a pallet's worth of pointless round trips.
+      if (remaining !== null && remaining <= 0) {
+        const now = Date.now();
+        if (now - lastNudgeAt.current > 2500) {
+          lastNudgeAt.current = now;
+          buzz('error');
+          show('error', 'This lot is full — no more codes needed');
+        }
+        return;
+      }
+
       const outcome = classifyScan(session.current, payload, Date.now());
 
       // Still in frame. Silent, and no buzz: onBarcodeScanned fires many times
@@ -214,7 +229,7 @@ export function QrScanner({
         inFlight.current = false;
       }
     },
-    [offline, pending, labels, onScan, settle, show],
+    [offline, pending, remaining, labels, onScan, settle, show],
   );
 
   // Only a code sitting inside the square counts. One outside it is ignored, with a nudge every
@@ -255,6 +270,7 @@ export function QrScanner({
               </AppText>
               <AppText variant="caption" style={styles.onDarkMuted}>
                 {linked} {labels.done}
+                {remaining !== null ? ` · ${remaining} left` : ''}
               </AppText>
             </View>
           </View>
