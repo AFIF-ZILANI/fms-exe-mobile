@@ -62,6 +62,9 @@ export default function ConsumeScreen() {
       });
       void queryClient.invalidateQueries({ queryKey: ['stock-units'] });
       void queryClient.invalidateQueries({ queryKey: ['consumptions'] });
+      // The house screen's Used stock card and page, and the Stock tab's levels, are still mounted behind this one.
+      void queryClient.invalidateQueries({ queryKey: ['house-stock'] });
+      void queryClient.invalidateQueries({ queryKey: ['items'] });
     },
   });
 
@@ -91,6 +94,7 @@ export default function ConsumeScreen() {
           <ItemPicker
             unitTracked
             value={item}
+            placeholder="Any item"
             onChange={(i) => {
               setItem(i);
               session.reset();
@@ -109,6 +113,11 @@ export default function ConsumeScreen() {
       ) : (
         <View style={styles.actions}>
           <Button label="Scan codes" icon="camera" disabled={!house || batchLoading} onPress={() => setScanning(true)} />
+          {!house ? (
+            <AppText variant="caption" color="muted" style={styles.hint}>
+              Choose the house first, then scan the units you used.
+            </AppText>
+          ) : null}
         </View>
       )}
 
@@ -135,5 +144,6 @@ export default function ConsumeScreen() {
 
 const styles = StyleSheet.create({
   form: { gap: Spacing.lg, marginTop: Spacing.xs },
-  actions: { marginTop: Spacing.lg },
+  actions: { marginTop: Spacing.lg, gap: Spacing.sm },
+  hint: { textAlign: 'center' },
 });

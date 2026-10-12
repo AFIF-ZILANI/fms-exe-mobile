@@ -8,6 +8,7 @@ import { FormCard } from '@/components/ui/form-card';
 import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
 import { Button } from '@/components/ui/button';
+import { AppText } from '@/components/ui/text';
 import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
 import { ItemPicker } from '@/components/ui/item-picker';
 import { QrScanner, type ScanLabels } from '@/components/ui/qr-scanner';
@@ -49,6 +50,8 @@ export default function AllocateScreen() {
         body: JSON.stringify({ house_id: house.id, idempotency_key: key }),
       });
       void queryClient.invalidateQueries({ queryKey: ['stock-units'] });
+      // The house screen's Allocated stock card and its full page, still mounted behind this one.
+      void queryClient.invalidateQueries({ queryKey: ['house-stock'] });
     },
   });
 
@@ -91,6 +94,11 @@ export default function AllocateScreen() {
       ) : (
         <View style={styles.actions}>
           <Button label="Scan codes" icon="camera" disabled={!house} onPress={() => setScanning(true)} />
+          {!house ? (
+            <AppText variant="caption" color="muted" style={styles.hint}>
+              Choose the house first, then scan the units going into it.
+            </AppText>
+          ) : null}
         </View>
       )}
 
@@ -117,5 +125,6 @@ export default function AllocateScreen() {
 
 const styles = StyleSheet.create({
   form: { gap: Spacing.lg, marginTop: Spacing.xs },
-  actions: { marginTop: Spacing.lg },
+  actions: { marginTop: Spacing.lg, gap: Spacing.sm },
+  hint: { textAlign: 'center' },
 });

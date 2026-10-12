@@ -99,3 +99,18 @@ UNASSIGNED --bind--> IN_STOCK --first consumption--> IN_USE --manual--> CONSUMED
 - Unit tests for the decision module (pure).
 - Camera and haptics: verify on a real device or simulator; the web build cannot
   exercise them.
+
+## 8. Audit follow-up (2026-10-13)
+
+- A successful move or use now also refreshes the house screen's Allocated / Used stock
+  cards and pages (`['house-stock']`), and a use refreshes the Stock tab's levels
+  (`['items']`). They sit mounted behind the scan screen, so without this they kept
+  showing the numbers from before the scan until a pull-to-refresh.
+- Use an item's item filter reads "Any item" (it was "Select…", which looked required).
+- A disabled *Scan codes* button now says why: choose the house first.
+- **Known gap (server):** a coded unit's draw writes an *untagged* stock-ledger row and a
+  move to a house writes none, while `/items/stock-by-location` sums only location-tagged
+  rows. So the Stock tab's total for a QR-tracked item does not fall when its bottles are
+  used, and does not follow bottles into houses. Fixing it means `relocate` writing a
+  ledger transfer (the `stock_transfer_id` grouping in §4) and the draw being charged to
+  the unit's house.
