@@ -281,3 +281,14 @@ link — a **Bottle size** field (`codesNeeded` in `lib/lot-split.ts`: 10 L ÷ 1
 Lots never split stay uncapped, which keeps the web bind dialog working.
 
 `GET /purchase-items` now includes `_count.stockUnits` for the progress figure.
+
+### Mark lot complete (2026-10-12)
+
+Once any code is linked the split is settled — the bottle-size field only
+exists while a lot has **zero** linked codes, so a lot can't be resized to make
+room for more. **Mark lot complete** (secondary button, confirm dialog) calls
+`POST /purchase-items/:id/complete`, which sets `unit_count` to the linked
+count: no more binds (409 "lot is full"), no different split. It also covers a
+short delivery (9 of an expected 10) and lots linked before caps existed (null
+split, uncapped until marked). Complete lots leave the list for the greyed
+"Complete" card. Manager-only, like bind.
