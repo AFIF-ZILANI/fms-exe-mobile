@@ -262,3 +262,22 @@ scan it was reporting on.
   409 and reads "Already linked · in stock" in red. The operator needs to tell
   those apart: the first is their own double-scan, the second means the unit
   belongs to another delivery.
+
+---
+
+## Update — bottle split and lot list (2026-10-12)
+
+The dropdown picker is gone. With no lot chosen the screen lists **open lots**
+as cards (name, quantity · date, a `BottleStrip` of one segment per bottle,
+"3 of 10 linked · 7 left"). A lot with no saved split reads "Not split yet".
+**Complete lots** (`unit_count` set and linked ≥ it) leave that list and sit in
+a greyed "Complete" card below — not tappable, so a finished delivery can't be
+reopened.
+
+Opening a lot shows the strip large, `linked / total`, and — until the first
+link — a **Bottle size** field (`codesNeeded` in `lib/lot-split.ts`: 10 L ÷ 1 L
+= 10). The first bind sends `unit_count`; the server stores it on the
+`PurchaseItem`, then refuses any bind past it (409 "This lot is full").
+Lots never split stay uncapped, which keeps the web bind dialog working.
+
+`GET /purchase-items` now includes `_count.stockUnits` for the progress figure.

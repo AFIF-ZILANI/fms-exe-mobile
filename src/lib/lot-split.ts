@@ -5,3 +5,8 @@ export function codesNeeded(total: number, size: number): number | null {
   const whole = Math.round(n);
   return whole >= 1 && Math.abs(n - whole) < 1e-9 ? whole : null;
 }
+
+/** A lot is complete once every bottle in its saved split has a code. Over-linked legacy lots count too. */
+export function isLotComplete(unitCount: number | null, linked: number): boolean {
+  return unitCount !== null && linked >= unitCount;
+}
