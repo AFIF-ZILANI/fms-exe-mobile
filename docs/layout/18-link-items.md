@@ -336,7 +336,7 @@ round trips and tells the operator before it happens.
 
 With no lot chosen, the screen is three sections:
 
-1. **KPIs** — a 2 × 2 grid of `StatCard`s: **Pending lots** (note: how many still
+1. **KPIs** — a horizontally scrolling row of 156 dp `StatCard`s that bleeds to the screen edges (the third tile peeks in to show there is more): **Pending lots** (note: how many still
    need a bottle size), **Codes to link** (bottles left on lots whose count is
    known), **Linked today** (units linked since the phone's midnight, across how
    many lots), **Completed** (of all lots).

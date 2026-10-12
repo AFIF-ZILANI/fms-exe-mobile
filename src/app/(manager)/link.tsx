@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, TextInput, View, StyleSheet } from 'react-native';
+import { Alert, Pressable, ScrollView, TextInput, View, StyleSheet } from 'react-native';
 import { useNetworkState } from 'expo-network';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -210,38 +210,49 @@ export default function LinkItemsScreen() {
           </View>
         ) : (
           <>
-            <View style={styles.kpiRow}>
-              <StatCard
-                value={String(kpis.pendingCount)}
-                eyebrow="Pending lots"
-                tint="tintAmber"
-                note={
-                  kpis.notSplit === 0
-                    ? 'all split'
-                    : `${kpis.notSplit} ${kpis.notSplit === 1 ? 'needs' : 'need'} a bottle size`
-                }
-              />
-              <StatCard
-                value={String(kpis.codesToLink)}
-                eyebrow="Codes to link"
-                tint="tintBlue"
-                note="on split lots"
-              />
-            </View>
-            <View style={styles.kpiRow}>
-              <StatCard
-                value={String(kpis.linkedToday)}
-                eyebrow="Linked today"
-                tint="tintGreen"
-                note={`across ${kpis.lotsTouchedToday} ${kpis.lotsTouchedToday === 1 ? 'lot' : 'lots'}`}
-              />
-              <StatCard
-                value={String(kpis.completedCount)}
-                eyebrow="Completed"
-                tint="tintGreen"
-                note={`of ${kpis.totalLots} lots`}
-              />
-            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.kpiScroll}
+              contentContainerStyle={styles.kpiRow}
+            >
+              <View style={styles.kpiCard}>
+                <StatCard
+                  value={String(kpis.pendingCount)}
+                  eyebrow="Pending lots"
+                  tint="tintAmber"
+                  note={
+                    kpis.notSplit === 0
+                      ? 'all split'
+                      : `${kpis.notSplit} ${kpis.notSplit === 1 ? 'needs' : 'need'} a bottle size`
+                  }
+                />
+              </View>
+              <View style={styles.kpiCard}>
+                <StatCard
+                  value={String(kpis.codesToLink)}
+                  eyebrow="Codes to link"
+                  tint="tintBlue"
+                  note="on split lots"
+                />
+              </View>
+              <View style={styles.kpiCard}>
+                <StatCard
+                  value={String(kpis.linkedToday)}
+                  eyebrow="Linked today"
+                  tint="tintGreen"
+                  note={`across ${kpis.lotsTouchedToday} ${kpis.lotsTouchedToday === 1 ? 'lot' : 'lots'}`}
+                />
+              </View>
+              <View style={styles.kpiCard}>
+                <StatCard
+                  value={String(kpis.completedCount)}
+                  eyebrow="Completed"
+                  tint="tintGreen"
+                  note={`of ${kpis.totalLots} lots`}
+                />
+              </View>
+            </ScrollView>
 
             <View style={styles.sectionHead}>
               <AppText variant="h2">Pending</AppText>
@@ -525,7 +536,10 @@ function LotCard({ lot, linked, onPress }: { lot: PurchaseItem; linked: number; 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   list: { gap: Spacing.md, marginTop: Spacing.lg },
-  kpiRow: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.md },
+  // Bleeds to the screen edges so the tiles slide under the padding instead of stopping at it.
+  kpiScroll: { marginHorizontal: -Spacing.xl, marginTop: Spacing.md },
+  kpiRow: { gap: Spacing.md, paddingHorizontal: Spacing.xl },
+  kpiCard: { width: 156 },
   sectionHead: {
     flexDirection: 'row',
     alignItems: 'baseline',
