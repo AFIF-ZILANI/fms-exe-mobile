@@ -3,6 +3,7 @@ import { RefreshControl, StyleSheet, View, useWindowDimensions } from 'react-nat
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 
 import { HouseHero, LogTile, ShortcutTile } from '@/components/house-detail-parts';
+import { StockPreviewCard, useStockPreview } from '@/components/stock-history';
 import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
 import { Card } from '@/components/ui/card';
@@ -88,6 +89,10 @@ export default function HouseDetailScreen() {
     ['task-assignments', 'house', id],
   );
 
+  // The five latest of each, for the Allocated / Used stock cards.
+  const allocated = useStockPreview('allocated', id);
+  const used = useStockPreview('used', id);
+
   // Wait for BOTH the house and its birds: otherwise a house whose counts have not arrived reads "Empty".
   // `isPending`, not `isLoading`: offline with nothing cached a query is paused and `isLoading` is false.
   const ready = !houseQ.isPending && !balanceQ.isPending;
@@ -101,7 +106,9 @@ export default function HouseDetailScreen() {
     try {
       setNow(new Date());
       // Offline, refetches are paused and never settle: don't wait for them forever.
-      const refetches = [houseQ, balanceQ, mortality, consumption, weight, environment, tasks].map((q) => q.refetch());
+      const refetches = [houseQ, balanceQ, mortality, consumption, weight, environment, tasks, allocated, used].map((q) =>
+        q.refetch(),
+      );
       if (batchId) refetches.push(medications.refetch(), vaccinations.refetch());
       await Promise.race([
         Promise.allSettled(refetches),
@@ -203,7 +210,10 @@ export default function HouseDetailScreen() {
             />
           </View>
 
-          {/* Omitted entirely when empty, rather than shown empty. */}
+          {/* Each omitted entirely until there is something to show. */}
+          <StockPreviewCard kind="allocated" houseId={id} results={allocated.data?.results} />
+          <StockPreviewCard kind="used" houseId={id} results={used.data?.results} />
+
           {openTasks.length > 0 ? (
             <Card rows eyebrow="Open tasks" note={String(openTasks.length)} style={styles.card}>
               {openTasks.map((task, i) => (

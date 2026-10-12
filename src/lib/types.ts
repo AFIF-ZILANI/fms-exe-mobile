@@ -252,3 +252,31 @@ export type AppNotification = {
   read_at: string | null;
   created_at: string;
 };
+
+/** One coded unit moved into a house — GET /stock-house-allocations?house_id=. */
+export type HouseAllocation = {
+  id: string;
+  type: 'ALLOCATION' | 'REALLOCATION' | 'RETURN';
+  occurred_at: string;
+  stock_unit: { id: string; purchase_item?: { item: Item } | null };
+};
+
+/** One draw of stock in a house — GET /consumptions?house_id=. */
+export type HouseConsumption = {
+  id: string;
+  item: Item;
+  /** Decimal as a string. */
+  quantity: string;
+  unit: string;
+  date: string;
+  recorded_by?: { id: string; name: string } | null;
+};
+
+/** GET /stock-house-allocations/summary and /consumptions/summary. */
+export type StockActivitySummary = {
+  total: number;
+  today: number;
+  week: number;
+  items: number;
+  last_at: string | null;
+};

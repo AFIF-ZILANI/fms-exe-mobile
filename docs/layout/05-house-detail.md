@@ -183,3 +183,27 @@ the hero card must never wait on the activity queries.
   chronological feed of the last ten writes sounds better and is worse: it
   answers "what happened recently" when the actual question is "has today's
   environment reading been done yet".
+
+---
+
+## Update — Allocated stock and Used stock (2026-10-12)
+
+Two cards sit between **Stock** and **Open tasks**: **Allocated stock** (the five
+latest coded units moved into this house) and **Used stock** (the five latest
+draws). Each has a *See all* link and is omitted until it has a row.
+
+*See all* opens a full page, `houses/:id/allocated-stocks` or
+`houses/:id/used-stocks`. Both are one component (`components/stock-history.tsx`):
+
+1. **KPIs** — a horizontal row of `KpiTile`s: total (with when the last one was),
+   today, the last 7 days (today and six back), and distinct items. Counts, not
+   summed quantities: litres, kilos and bottles don't add.
+2. **Filters** — range chips (Today / 7 days / 30 days / All), an item picker, and on
+   Allocated a type chip (All / Allocated / Moved in).
+3. **List** — newest first, 20 at a time with *Show more* up to the server's 100.
+
+Data: `GET /stock-house-allocations` and `GET /consumptions` (both now take
+`item_id` and a date range), plus `GET /…/summary?house_id&today_from&week_from`
+for the KPIs. Returns to the warehouse aren't tied to a house in the data, so they
+aren't listed.
+
