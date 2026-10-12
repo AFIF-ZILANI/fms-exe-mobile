@@ -5,7 +5,8 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
-import { Card, StatCard } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
+import { KpiTile } from '@/components/ui/kpi-tile';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { LedgerRow } from '@/components/ui/ledger-row';
@@ -217,39 +218,48 @@ export default function LinkItemsScreen() {
               contentContainerStyle={styles.kpiRow}
             >
               <View style={styles.kpiCard}>
-                <StatCard
-                  value={String(kpis.pendingCount)}
-                  eyebrow="Pending lots"
+                <KpiTile
+                  icon="clock"
                   tint="tintAmber"
+                  tone="warning"
+                  label="Pending lots"
+                  value={String(kpis.pendingCount)}
                   note={
                     kpis.notSplit === 0
-                      ? 'all split'
-                      : `${kpis.notSplit} ${kpis.notSplit === 1 ? 'needs' : 'need'} a bottle size`
+                      ? 'All sized'
+                      : `${kpis.notSplit} ${kpis.notSplit === 1 ? 'needs' : 'need'} a size`
                   }
                 />
               </View>
               <View style={styles.kpiCard}>
-                <StatCard
-                  value={String(kpis.codesToLink)}
-                  eyebrow="Codes to link"
+                <KpiTile
+                  icon="grid"
                   tint="tintBlue"
-                  note="on split lots"
+                  tone="info"
+                  label="Codes to link"
+                  value={String(kpis.codesToLink)}
+                  note="On sized lots"
                 />
               </View>
               <View style={styles.kpiCard}>
-                <StatCard
+                <KpiTile
+                  icon="trending-up"
+                  tint="tintGreen"
+                  tone="success"
+                  label="Linked today"
                   value={String(kpis.linkedToday)}
-                  eyebrow="Linked today"
-                  tint="tintGreen"
-                  note={`across ${kpis.lotsTouchedToday} ${kpis.lotsTouchedToday === 1 ? 'lot' : 'lots'}`}
+                  note={`Across ${kpis.lotsTouchedToday} ${kpis.lotsTouchedToday === 1 ? 'lot' : 'lots'}`}
                 />
               </View>
               <View style={styles.kpiCard}>
-                <StatCard
-                  value={String(kpis.completedCount)}
-                  eyebrow="Completed"
+                <KpiTile
+                  icon="check-circle"
                   tint="tintGreen"
-                  note={`of ${kpis.totalLots} lots`}
+                  tone="success"
+                  label="Completed"
+                  value={String(kpis.completedCount)}
+                  note={`${kpis.completedCount} of ${kpis.totalLots} lots`}
+                  progress={kpis.totalLots === 0 ? 0 : kpis.completedCount / kpis.totalLots}
                 />
               </View>
             </ScrollView>
@@ -552,7 +562,7 @@ const styles = StyleSheet.create({
   // Bleeds to the screen edges so the tiles slide under the padding instead of stopping at it.
   kpiScroll: { marginHorizontal: -Spacing.xl, marginTop: Spacing.md },
   kpiRow: { gap: Spacing.md, paddingHorizontal: Spacing.xl },
-  kpiCard: { width: 156 },
+  kpiCard: { width: 168 },
   sectionHead: {
     flexDirection: 'row',
     alignItems: 'baseline',

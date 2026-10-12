@@ -336,7 +336,7 @@ round trips and tells the operator before it happens.
 
 With no lot chosen, the screen is three sections:
 
-1. **KPIs** — a horizontally scrolling row of 156 dp `StatCard`s that bleeds to the screen edges (the third tile peeks in to show there is more): **Pending lots** (note: how many still
+1. **KPIs** — a horizontally scrolling row of 168 dp `KpiTile`s (`components/ui/kpi-tile.tsx`) that bleeds to the screen edges (the third tile peeks in to show there is more). Each is a white card: a 32 dp icon tile plus the label on top, the `stat` figure beneath, a muted one-line footer, and — on Completed — a thin progress bar. Colour lives only in the icon and the bar: **Pending lots** (note: how many still
    need a bottle size), **Codes to link** (bottles left on lots whose count is
    known), **Linked today** (units linked since the phone's midnight, across how
    many lots), **Completed** (of all lots).
