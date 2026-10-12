@@ -178,6 +178,15 @@ released, an already-bound label left in frame would re-POST and re-vibrate on
 every cooldown, forever. Instead it falls through to the duplicate path and
 goes quiet after one report.
 
+### Sound (2026-10-12)
+
+`buzz()` also plays a sound through `expo-audio` (`assets/sounds/`): a short
+high **beep** for a successful link, and a lower **double buzz** for anything
+that didn't go through — already linked (this session or earlier), unknown or
+foreign code, lot full, server error. A duplicate and a rejection sound the same
+on purpose. It plays in silent mode and mixes with other audio. Like the
+vibration it never throws: if audio fails to load the scan carries on silently.
+
 ### Vibration
 
 `expo-haptics`, via `lib/haptics.ts`. On a noisy farm gate with the phone at
