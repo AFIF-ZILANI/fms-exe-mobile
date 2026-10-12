@@ -178,10 +178,20 @@ released, an already-bound label left in frame would re-POST and re-vibrate on
 every cooldown, forever. Instead it falls through to the duplicate path and
 goes quiet after one report.
 
+### Scan area (2026-10-12)
+
+Only a code whose **centre sits inside the square** counts (`lib/scan-area.ts`).
+expo-camera has no scan-region prop, so each detected code's position (corner
+points, else bounds) is checked against the 220 dp square centred in the camera
+view. A code outside it is ignored, and every couple of seconds a nudge reads
+"Move the code inside the square" so a held-up code that isn't being read
+doesn't look like a dead camera. If the camera reports no position the code
+passes: better to scan than to go dead.
+
 ### Sound (2026-10-12)
 
 `buzz()` also plays a sound through `expo-audio` (`assets/sounds/`): a short
-high **beep** for a successful link, and a lower **double buzz** for anything
+rising two-note **chime** for a successful link, and a lower **double buzz** for anything
 that didn't go through — already linked (this session or earlier), unknown or
 foreign code, lot full, server error. A duplicate and a rejection sound the same
 on purpose. It plays in silent mode and mixes with other audio. Like the

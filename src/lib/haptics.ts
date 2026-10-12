@@ -12,16 +12,31 @@ const SOUND_FILES = {
 const players: Partial<Record<keyof typeof SOUND_FILES, AudioPlayer>> = {};
 let audioReady = false;
 
-function play(kind: keyof typeof SOUND_FILES) {
+function player(kind: keyof typeof SOUND_FILES) {
   if (!audioReady) {
     audioReady = true;
     // Ring through silent mode (a noisy gate, a phone left on mute) without
     // pausing whatever else is playing.
     void setAudioModeAsync({ playsInSilentMode: true, interruptionMode: 'mixWithOthers' }).catch(() => {});
   }
-  const player = (players[kind] ??= createAudioPlayer(SOUND_FILES[kind]));
-  void player.seekTo(0).catch(() => {});
-  player.play();
+  return (players[kind] ??= createAudioPlayer(SOUND_FILES[kind]));
+}
+
+/** Loads both sounds ahead of the first scan, so the first beep isn't the one that gets dropped. */
+export function primeFeedback(): void {
+  try {
+    player('ok');
+    player('error');
+  } catch {
+    // no sound is not a reason to lose the scan
+  }
+}
+
+function play(kind: keyof typeof SOUND_FILES) {
+  const p = player(kind);
+  // Wait for the rewind: a short clip that has already finished is still at its end, and a
+  // play() that lands before the seek does has nothing left to play.
+  p.seekTo(0).then(() => p.play(), () => p.play());
 }
 
 /**

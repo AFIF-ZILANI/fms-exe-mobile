@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -10,7 +10,8 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { classifyScan, markSent, newScanState, releaseScan } from '@/lib/scan';
 import type { ScanResult, Settled } from '@/lib/scan';
-import { buzz } from '@/lib/haptics';
+import { buzz, primeFeedback } from '@/lib/haptics';
+import { inFrame, type Detected } from '@/lib/scan-area';
 
 export type ScanRow = {
   id: string;
@@ -103,6 +104,14 @@ export function QrScanner({
   // The code behind the card, and a guard so a fast double-tap on Confirm sends one write.
   const heldId = useRef<string | null>(null);
   const confirming = useRef(false);
+  // The camera view's size, to place the square in it; and when the "move it inside" nudge last showed.
+  const view = useRef({ width: 0, height: 0 });
+  const lastNudgeAt = useRef(0);
+
+  // Load the sounds before the first scan so the first beep isn't the one that gets dropped.
+  useEffect(() => {
+    if (open) primeFeedback();
+  }, [open]);
 
   const show = useCallback((state: 'ok' | 'warn' | 'error', text: string) => {
     setFlash({ state, text });
@@ -208,6 +217,23 @@ export function QrScanner({
     [offline, pending, labels, onScan, settle, show],
   );
 
+  // Only a code sitting inside the square counts. One outside it is ignored, with a nudge every
+  // couple of seconds so a held-up code that isn't being read doesn't look like a dead camera.
+  const onDetected = useCallback(
+    (result: Detected & { data: string }) => {
+      if (!inFrame(result, view.current)) {
+        const now = Date.now();
+        if (now - lastNudgeAt.current > 2500) {
+          lastNudgeAt.current = now;
+          show('warn', 'Move the code inside the square');
+        }
+        return;
+      }
+      void handle(result.data);
+    },
+    [handle, show],
+  );
+
   const linked = rows.filter((r) => r.state === 'ok').length;
 
   return (
@@ -233,7 +259,12 @@ export function QrScanner({
             </View>
           </View>
 
-          <View style={styles.viewport}>
+          <View
+            style={styles.viewport}
+            onLayout={(e) => {
+              view.current = e.nativeEvent.layout;
+            }}
+          >
             {offline ? (
               <Blocked
                 icon="wifi-off"
@@ -255,7 +286,7 @@ export function QrScanner({
                   style={StyleSheet.absoluteFill}
                   facing="back"
                   barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-                  onBarcodeScanned={({ data }) => void handle(data)}
+                  onBarcodeScanned={onDetected}
                 />
                 <View style={styles.reticle} pointerEvents="none">
                   <View style={[styles.frame, { borderColor: flashColor(flash, theme) }]} />
