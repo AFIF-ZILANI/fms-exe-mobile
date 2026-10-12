@@ -292,3 +292,12 @@ count: no more binds (409 "lot is full"), no different split. It also covers a
 short delivery (9 of an expected 10) and lots linked before caps existed (null
 split, uncapped until marked). Complete lots leave the list for the greyed
 "Complete" card. Manager-only, like bind.
+
+### Completing needs every unit linked (2026-10-12)
+
+A lot with a saved bottle count completes **by itself** when its last code
+links; there is no manual button for it. **Mark lot complete** exists only for
+a lot that predates splits (null `unit_count`): enter the bottle size, and the
+button appears once the linked count has reached the count that size implies.
+`POST /purchase-items/:id/complete {unit_count}` re-checks that server-side
+(400 "Only X of Y units are linked") and 409s on a lot that already has a count.

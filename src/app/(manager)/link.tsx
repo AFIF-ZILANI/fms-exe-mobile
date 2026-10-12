@@ -81,10 +81,11 @@ export default function LinkItemsScreen() {
   const linkedTotal = lot ? linkedOf(lot) : 0;
   const full = cap !== null && linkedTotal >= cap;
   const unitName = lot?.item.unit.toLowerCase() ?? '';
-  // Once a code is linked the split is settled: no resizing to make room for more. A lot linked
-  // before splits existed has no cap, so it can carry on linking until someone marks it complete.
-  const canResize = lot?.unit_count == null && linkedTotal === 0;
-  const canLink = !full && (cap !== null || linkedTotal > 0);
+  // A saved bottle count settles the lot: no resizing, and it completes by itself when the last code
+  // links. A lot without one (it predates splits) takes a size here, and is only lockable by hand once
+  // every one of those bottles has a code.
+  const settled = lot?.unit_count != null;
+  const canLink = !full && cap !== null;
   const [completing, setCompleting] = useState(false);
 
   const trimmed = query.trim();
@@ -118,10 +119,10 @@ export default function LinkItemsScreen() {
   });
 
   const markComplete = () => {
-    if (!lot) return;
+    if (!lot || cap === null) return;
     Alert.alert(
       'Mark lot complete?',
-      `Locks ${lot.item.name} at ${linkedTotal} linked. You won't be able to link more codes or change the split.`,
+      `Locks ${lot.item.name} at ${cap} units. You won't be able to link more codes or change the split.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -129,7 +130,10 @@ export default function LinkItemsScreen() {
           onPress: async () => {
             setCompleting(true);
             try {
-              await apiFetch(`/purchase-items/${lot.id}/complete`, { method: 'POST' });
+              await apiFetch(`/purchase-items/${lot.id}/complete`, {
+                method: 'POST',
+                body: JSON.stringify({ unit_count: cap }),
+              });
             } catch (e) {
               // 409 = someone (or a double tap) already locked it; the refresh below shows that.
               if (!(e instanceof ApiError && e.status === 409)) {
@@ -254,28 +258,24 @@ export default function LinkItemsScreen() {
       <Card style={styles.card}>
         <View style={styles.countRow}>
           <AppText variant="stat" color={full ? 'success' : 'ink'}>
-            {cap === null && linkedTotal > 0 ? linkedTotal : `${linkedTotal} / ${cap ?? '—'}`}
+            {linkedTotal} / {cap ?? '—'}
           </AppText>
           <AppText variant="caption" color="muted">
-            {full
-              ? 'complete'
-              : cap === null
-                ? linkedTotal > 0
-                  ? 'linked so far'
-                  : 'bottles — set the size'
-                : `${cap - linkedTotal} left`}
+            {full ? 'all linked' : cap === null ? 'bottles — set the size' : `${cap - linkedTotal} left`}
           </AppText>
         </View>
-        {(cap !== null || linkedTotal === 0) && <BottleStrip linked={linkedTotal} total={cap} height={12} />}
+        <BottleStrip linked={linkedTotal} total={cap} height={12} />
 
-        {canResize ? (
+        {!settled ? (
           <View style={styles.sizeRow}>
             <View style={styles.flex}>
               <AppText variant="bodyStrong">Bottle size</AppText>
               <AppText variant="caption" color={size.trim() && cap === null ? 'critical' : 'muted'}>
                 {size.trim() && cap === null
                   ? `${size} ${unitName} doesn't divide ${Number(lot.base_quantity)} ${unitName} evenly.`
-                  : `How much one bottle holds. Fixes the split at the first link.`}
+                  : linkedTotal > 0
+                    ? `${linkedTotal} already linked. How much does one bottle hold?`
+                    : `How much one bottle holds. Fixes the split at the first link.`}
               </AppText>
             </View>
             <View style={[styles.sizeField, { backgroundColor: theme.surfaceAlt, borderColor: theme.line }]}>
@@ -292,13 +292,9 @@ export default function LinkItemsScreen() {
               </AppText>
             </View>
           </View>
-        ) : lot.unit_count != null ? (
-          <AppText variant="caption" color="muted" style={styles.split}>
-            Split into {lot.unit_count} × {Number((Number(lot.base_quantity) / lot.unit_count).toFixed(2))} {unitName}
-          </AppText>
         ) : (
           <AppText variant="caption" color="muted" style={styles.split}>
-            Linked before bottle counts existed. Keep linking, then mark the lot complete.
+            Split into {lot.unit_count} × {Number((Number(lot.base_quantity) / lot.unit_count!).toFixed(2))} {unitName}
           </AppText>
         )}
       </Card>
@@ -313,6 +309,21 @@ export default function LinkItemsScreen() {
               else in the app still works offline.
             </AppText>
           </View>
+        </View>
+      ) : full && !settled ? (
+        <View style={styles.actions}>
+          <View style={[styles.offline, styles.noTopMargin, { backgroundColor: theme.tintGreen }]}>
+            <Icon name="check-circle" size={20} color="success" />
+            <View style={styles.flex}>
+              <AppText variant="bodyStrong">
+                {cap === 1 ? 'The only unit is linked.' : `All ${cap} units are linked.`}
+              </AppText>
+              <AppText variant="caption" color="muted">
+                Mark the lot complete to lock it: no more codes, no resizing.
+              </AppText>
+            </View>
+          </View>
+          <Button label="Mark lot complete" icon="lock" onPress={markComplete} loading={completing} />
         </View>
       ) : full ? (
         <View style={[styles.offline, { backgroundColor: theme.tintGreen }]}>
@@ -336,16 +347,6 @@ export default function LinkItemsScreen() {
             onPress={() => setManual((m) => !m)}
             block
           />
-          {linkedTotal > 0 && (
-            <Button
-              variant="secondary"
-              label="Mark lot complete"
-              icon="lock"
-              onPress={markComplete}
-              loading={completing}
-              block
-            />
-          )}
         </View>
       )}
 
@@ -444,7 +445,7 @@ function LotCard({ lot, linked, onPress }: { lot: PurchaseItem; linked: number; 
         <AppText variant="caption" color="muted" style={styles.lotCardNote}>
           {total === null
             ? linked > 0
-              ? `${linked} linked · not marked complete`
+              ? `${linked} linked · set the bottle size to check it`
               : 'Not split yet · set the bottle size to start'
             : `${linked} of ${total} linked · ${total - linked} left`}
         </AppText>
@@ -477,6 +478,7 @@ const styles = StyleSheet.create({
   sizeInput: { flex: 1, fontFamily: FontFamily.mono, fontSize: 17 },
   modeField: { marginBottom: Spacing.md },
   actions: { gap: Spacing.xs, marginTop: Spacing.md },
+  noTopMargin: { marginTop: 0, marginBottom: Spacing.sm },
   offline: {
     flexDirection: 'row',
     gap: Spacing.md,
