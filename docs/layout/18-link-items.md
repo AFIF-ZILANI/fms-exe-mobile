@@ -342,7 +342,9 @@ With no lot chosen, the screen is three sections:
    many lots), **Completed** (of all lots).
 2. **Pending** — every lot not yet complete, as tappable cards with the bottle strip.
 3. **Completed** — the latest five completed lots, newest finish first, not tappable
-   ("latest 5 of 12" when there are more).
+   ("latest 5 of 12" when there are more, "4 so far" otherwise). Each row: a green
+   check tile, item name, `size · N bottles`, and on the right when its last code
+   went in (Today / Yesterday / 12 Oct).
 
 Figures come from `lib/link-summary.ts` (tested). `GET /purchase-items` takes
 `?since=<ISO>` and returns per line `last_linked_at` and `linked_since`.

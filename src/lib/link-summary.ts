@@ -38,3 +38,17 @@ export function summarizeLots<T extends SummaryLot>(lots: T[], recentLimit = 5) 
     },
   };
 }
+
+/** "Today", "Yesterday", else "12 Oct" (with the year once it isn't this one). For when a lot finished. */
+export function dayLabel(iso: string, now: Date = new Date()): string {
+  const d = new Date(iso);
+  const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((startOf(now) - startOf(d)) / 86_400_000);
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  return d.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    ...(d.getFullYear() !== now.getFullYear() && { year: 'numeric' }),
+  });
+}

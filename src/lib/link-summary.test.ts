@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 
-import { summarizeLots } from './link-summary';
+import { dayLabel, summarizeLots } from './link-summary';
 
 const lot = (unit_count: number | null, linked: number, last: string | null, since = 0) => ({
   unit_count,
@@ -36,5 +36,13 @@ assert.equal(kpis.totalLots, 6);
 const none = summarizeLots([]);
 assert.deepEqual(none.pending, []);
 assert.equal(none.kpis.codesToLink, 0);
+
+// dayLabel: local-calendar days, so late evening is still "Today"
+const now = new Date(2026, 9, 12, 23, 30); // 12 Oct 2026, 23:30 local
+assert.equal(dayLabel(new Date(2026, 9, 12, 0, 5).toISOString(), now), 'Today');
+assert.equal(dayLabel(new Date(2026, 9, 11, 23, 59).toISOString(), now), 'Yesterday');
+assert.match(dayLabel(new Date(2026, 8, 7, 12).toISOString(), now), /7/);
+assert.doesNotMatch(dayLabel(new Date(2026, 8, 7, 12).toISOString(), now), /2026/);
+assert.match(dayLabel(new Date(2025, 8, 7, 12).toISOString(), now), /2025/);
 
 console.log('link-summary ok');

@@ -19,7 +19,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { ScanModeField, ScanResults } from '@/components/scan-parts';
 import { ApiError, apiFetch, useGetData, type Paginated } from '@/lib/api';
 import { codesNeeded } from '@/lib/lot-split';
-import { summarizeLots } from '@/lib/link-summary';
+import { dayLabel, summarizeLots } from '@/lib/link-summary';
 import type { Mode } from '@/lib/scan-actions';
 import { useScanSession } from '@/lib/use-scan-session';
 import type { PurchaseItem, StockUnit } from '@/lib/types';
@@ -282,22 +282,12 @@ export default function LinkItemsScreen() {
                   <AppText variant="caption" color="muted">
                     {kpis.completedCount > recent.length
                       ? `latest ${recent.length} of ${kpis.completedCount}`
-                      : `${kpis.completedCount}`}
+                      : `${kpis.completedCount} so far`}
                   </AppText>
                 </View>
                 <Card rows>
                   {recent.map((p, i) => (
-                    <LedgerRow
-                      key={p.id}
-                      gutterNode={<IconTile name="check" tint="tintGreen" color="success" size={32} />}
-                      last={i === recent.length - 1}
-                    >
-                      <AppText variant="bodyStrong">{p.item.name}</AppText>
-                      <AppText variant="caption" color="muted">
-                        {quantityLabel(p)} · {linkedOf(p)} / {p.unit_count} linked
-                        {p.last_linked_at ? ` · ${formatDate(p.last_linked_at)}` : ''}
-                      </AppText>
-                    </LedgerRow>
+                    <DoneRow key={p.id} lot={p} first={i === 0} />
                   ))}
                 </Card>
               </>
@@ -498,6 +488,29 @@ export default function LinkItemsScreen() {
   );
 }
 
+/** A finished lot: what it was, how it split, and when its last code went in. */
+function DoneRow({ lot, first }: { lot: PurchaseItem; first: boolean }) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.doneRow, !first && { borderTopWidth: 1, borderTopColor: theme.line }]}>
+      <IconTile name="check" tint="tintGreen" color="success" size={32} />
+      <View style={styles.flex}>
+        <AppText variant="bodyStrong" numberOfLines={1}>
+          {lot.item.name}
+        </AppText>
+        <AppText variant="caption" color="muted" numberOfLines={1}>
+          {quantityLabel(lot)} · {lot.unit_count} bottles
+        </AppText>
+      </View>
+      {lot.last_linked_at ? (
+        <AppText variant="caption" color="muted">
+          {dayLabel(lot.last_linked_at)}
+        </AppText>
+      ) : null}
+    </View>
+  );
+}
+
 /** An open lot in the list: what it is, and how far along its bottles are. */
 function LotCard({ lot, linked, onPress }: { lot: PurchaseItem; linked: number; onPress: () => void }) {
   const total = lot.unit_count;
@@ -548,6 +561,13 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   pendingList: { gap: Spacing.md },
+  doneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
   card: { marginTop: Spacing.md, gap: Spacing.md },
   lotCardHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginBottom: Spacing.md },
   lotCardNote: { marginTop: Spacing.sm },
