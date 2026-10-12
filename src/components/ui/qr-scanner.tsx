@@ -31,6 +31,8 @@ export type ScanLabels = {
   offlineBody: string;
   /** Shown while the list is empty. */
   hint: string;
+  /** Flashed when a scan arrives with nothing left to take. */
+  full: string;
 };
 
 export const DEFAULT_LABELS: ScanLabels = {
@@ -40,6 +42,7 @@ export const DEFAULT_LABELS: ScanLabels = {
   offlineBody:
     "Each code is checked against the server as you scan, so this screen can't work offline. Everything else in the app can.",
   hint: 'Point the camera at a code. The camera stays open — scan the whole pallet without stopping.',
+  full: 'This lot is full — no more codes needed',
 };
 
 /** A scanned unit waiting for the operator's Confirm or Cancel (manual mode). */
@@ -184,7 +187,7 @@ export function QrScanner({
         if (now - lastNudgeAt.current > 2500) {
           lastNudgeAt.current = now;
           buzz('error');
-          show('error', 'This lot is full — no more codes needed');
+          show('error', labels.full);
         }
         return;
       }

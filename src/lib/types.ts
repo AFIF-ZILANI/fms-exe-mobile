@@ -280,3 +280,17 @@ export type StockActivitySummary = {
   items: number;
   last_at: string | null;
 };
+
+/** One item's coded units sitting in a house, unused — GET /houses/:id/coded-stock. */
+export type HouseCodedStock = {
+  item_id: string;
+  item_name: string;
+  /** The item's own unit, which `quantity` is in. */
+  unit: string;
+  /** What one coded unit is (BOTTLE) when they are all the same; null when mixed. */
+  pack_unit: string | null;
+  units: number;
+  /** Null when a lot's bottle count isn't set, so its size is unknown. */
+  quantity: number | null;
+};
+

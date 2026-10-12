@@ -59,7 +59,7 @@ UNASSIGNED --bind--> IN_STOCK --first consumption--> IN_USE --manual--> CONSUMED
 | Action | Request | Checks before confirm |
 | --- | --- | --- |
 | Allocate | `POST /stock-units/:id/relocate { house_id, idempotency_key }` | Not already at that house; matches item filter |
-| Consume | `POST /consumptions { house_id, item_id, stock_unit_id, quantity, unit, date, batch_id }` | Status is `IN_STOCK` or `IN_USE`; unit's item equals the item |
+| Consume | `POST /consumptions { house_id, item_id, stock_unit_id, quantity, unit, date, batch_id }` | Status is `IN_STOCK` (an `IN_USE` unit is *Already used* — whole-unit rule); unit is **in this house** (latest allocation = this house, else *"It's at Warehouse, not House 2 — move it here first."*); unit's item equals the item |
 | Bind | `POST /stock-units/:id/bind { purchase_item_id }` (exists) | Status is `UNASSIGNED` |
 
 - Several allocations into one house in one session can share a `stock_transfer_id`
@@ -114,3 +114,22 @@ UNASSIGNED --bind--> IN_STOCK --first consumption--> IN_USE --manual--> CONSUMED
   used, and does not follow bottles into houses. Fixing it means `relocate` writing a
   ledger transfer (the `stock_transfer_id` grouping in §4) and the draw being charged to
   the unit's house.
+
+## 9. Use an item works from what is in the house (2026-10-13)
+
+A coded unit is used where it is. The server refuses a coded draw for a unit whose latest
+move isn't into the chosen house (409 "That unit is at Warehouse, not House 2 — move it
+there first"), and the scan screen says the same before any request. Earlier draws made
+without a move are left as they were.
+
+`GET /houses/:id/coded-stock` lists, per item, the unused coded units in a house (latest
+move = this house, status `IN_STOCK`): `units`, `pack_unit`, and `quantity` (null when a
+lot has no bottle count, so its size isn't guessed). Use an item's item list is exactly
+that — only items with stock there, each with its amount ("3 units · 2 liter"). It
+resets when the house changes. A house with nothing in it shows *Nothing to use in X
+yet* with a *Move items here* shortcut instead of a Scan button. The scanner header
+counts down the units left (the chosen item's, or all in the house), stops at zero with
+"Nothing left in this house to use", and closes itself a beat after the last unit.
+
+Bulk (non-coded) items are unchanged: they are used through the log forms, and the server
+already refuses a draw larger than the house's balance.

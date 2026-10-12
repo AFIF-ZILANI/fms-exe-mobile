@@ -14,6 +14,8 @@ export type ScanPlan = {
   action: ScanAction;
   /** allocate: the house units move into. consume: the house they're used in. */
   houseId?: string;
+  /** For the "move it here first" message. */
+  houseName?: string;
   /** Only units of this item pass (allocate, consume). */
   itemId?: string;
   itemName?: string;
@@ -65,6 +67,15 @@ export function checkUnit(plan: ScanPlan, unit: StockUnit): Check {
 
   if (plan.action === 'allocate' && plan.houseId && currentHouseId(unit) === plan.houseId) {
     return fail(`Already in ${currentHouseName(unit)}.`);
+  }
+
+  if (plan.action === 'consume') {
+    // Whole-unit rule: a unit that has been drawn on is used up as far as the app is concerned.
+    if (unit.status === 'IN_USE') return fail('Already used.');
+    // A unit is used where it is, so it has to have been moved into this house first.
+    if (plan.houseId && currentHouseId(unit) !== plan.houseId) {
+      return fail(`It's at ${currentHouseName(unit)}, not ${plan.houseName ?? 'this house'} — move it here first.`);
+    }
   }
 
   return OK;

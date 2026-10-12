@@ -26,6 +26,7 @@ const LABELS: ScanLabels = {
   offlineBody:
     "Each code is checked against the server as you scan, so this screen can't work offline. Everything else in the app can.",
   hint: 'Point the camera at a code. The camera stays open — scan every unit going into this house.',
+  full: '',
 };
 
 /** docs/scan-flows-design.md — plan first (which house), then scan units into it. */

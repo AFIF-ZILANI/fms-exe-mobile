@@ -33,7 +33,8 @@ function unit(over: Partial<StockUnit> = {}): StockUnit {
 }
 
 const allocate: ScanPlan = { action: 'allocate', houseId: 'h-2' };
-const consume: ScanPlan = { action: 'consume', houseId: 'h-2' };
+const consume: ScanPlan = { action: 'consume', houseId: 'h-2', houseName: 'House 2' };
+const inH2 = unit({ houseAllocations: [{ house_id: 'h-2', house: { id: 'h-2', name: 'House 2' } }] });
 const bind: ScanPlan = { action: 'bind', purchaseItemId: 'pi-1' };
 
 // --- location -----------------------------------------------------------------
@@ -69,14 +70,47 @@ assert.deepEqual(checkUnit(filtered, unit()), {
 assert.deepEqual(checkUnit({ ...filtered, itemId: ITEM.id }, unit()), { ok: true });
 
 // --- consume ------------------------------------------------------------------
-assert.deepEqual(checkUnit(consume, unit()), { ok: true });
-assert.deepEqual(checkUnit(consume, unit({ status: 'IN_USE' })), { ok: true }, 'a bottle can be used again');
-assert.equal(checkUnit(consume, unit({ status: 'CONSUMED' })).ok, false);
+assert.deepEqual(checkUnit(consume, inH2), { ok: true }, 'a unit in this house can be used');
+assert.deepEqual(
+  checkUnit(consume, unit()),
+  { ok: false, reason: "It's at Warehouse, not House 2 — move it here first." },
+  'never moved = still in the warehouse',
+);
+assert.deepEqual(
+  checkUnit(consume, inH1),
+  { ok: false, reason: "It's at House 1, not House 2 — move it here first." },
+  'in another house',
+);
+assert.deepEqual(
+  checkUnit(consume, unit({ houseAllocations: [{ house_id: null, house: null }] })),
+  { ok: false, reason: "It's at Warehouse, not House 2 — move it here first." },
+  'returned to the warehouse',
+);
+assert.deepEqual(
+  checkUnit({ ...consume, houseName: undefined }, unit()),
+  { ok: false, reason: "It's at Warehouse, not this house — move it here first." },
+);
+assert.deepEqual(
+  checkUnit(consume, { ...inH2, status: 'IN_USE' }),
+  { ok: false, reason: 'Already used.' },
+  'whole-unit rule: a unit already drawn on is used up',
+);
+assert.deepEqual(
+  checkUnit(consume, { ...inH1, status: 'IN_USE' }),
+  { ok: false, reason: 'Already used.' },
+  'used-up wins over the wrong-house message',
+);
+assert.equal(checkUnit(consume, { ...inH2, status: 'CONSUMED' }).ok, false);
 assert.equal(checkUnit(consume, unit({ status: 'UNASSIGNED', purchase_item: null })).ok, false);
 assert.equal(
   checkUnit(consume, unit({ purchase_item: null })).ok,
   false,
   'a unit with no purchase record cannot be consumed (no item to draw)',
+);
+assert.deepEqual(
+  checkUnit({ ...consume, itemId: 'item-2', itemName: 'Antibiotic' }, inH2),
+  { ok: false, reason: 'Not Antibiotic — this is Newcastle vaccine.' },
+  'the item filter still applies to a unit that is in the house',
 );
 
 // --- bind ---------------------------------------------------------------------
