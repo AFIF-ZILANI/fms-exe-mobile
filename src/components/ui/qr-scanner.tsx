@@ -126,6 +126,11 @@ export function QrScanner({
   const [side, setSide] = useState(frameSide({ width: 0, height: 0 }));
   const lastNudgeAt = useRef(0);
   const [zoom, setZoom] = useState(ZOOM_DEFAULT);
+  // Off each time the scanner opens -- a torch left on drains the battery between pallets.
+  const [torch, setTorch] = useState(false);
+  useEffect(() => {
+    if (!open) setTorch(false);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -335,6 +340,7 @@ export function QrScanner({
                   style={StyleSheet.absoluteFill}
                   facing="back"
                   zoom={zoom}
+                  enableTorch={torch}
                   barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
                   onBarcodeScanned={onDetected}
                 />
@@ -344,6 +350,15 @@ export function QrScanner({
                   />
                 </View>
                 <View style={styles.zoom}>
+                  <Pressable
+                    onPress={() => setTorch((t) => !t)}
+                    accessibilityRole="switch"
+                    accessibilityState={{ checked: torch }}
+                    accessibilityLabel="Torch"
+                    style={[styles.zoomButton, torch && { backgroundColor: theme.warning }]}
+                  >
+                    <Icon name={torch ? 'zap' : 'zap-off'} size={22} color="onPrimary" />
+                  </Pressable>
                   <Pressable
                     onPress={() => stepZoom(-ZOOM_STEP)}
                     disabled={zoom <= 0}
@@ -523,7 +538,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   frame: { borderWidth: 3, borderRadius: Radius.card },
-  // Top-right, clear of the flash banner along the bottom.
+  // Torch and zoom, top-right, clear of the flash banner along the bottom.
   zoom: { position: 'absolute', top: Spacing.md, right: Spacing.md, gap: Spacing.sm },
   zoomButton: {
     width: 48,
