@@ -31,6 +31,9 @@ const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 
 const quantityLabel = (p: PurchaseItem) => `${Number(p.base_quantity)} ${p.item.unit.toLowerCase()}`;
+// Opening lots have no supplier or invoice -- say what they are instead of just a date.
+const lotDate = (p: PurchaseItem) =>
+  `${p.purchase.is_opening ? 'Opening stock, ' : ''}${formatDate(p.purchase.purchase_date)}`;
 
 /**
  * docs/layout/18-link-items.md — bind pre-printed QR codes to the delivery lot
@@ -319,7 +322,7 @@ export default function LinkItemsScreen() {
             {lot.item.name}
           </AppText>
           <AppText variant="caption" color="muted">
-            {quantityLabel(lot)} · {formatDate(lot.purchase.purchase_date)} · …{lot.id.slice(-7)}
+            {quantityLabel(lot)} · {lotDate(lot)} · …{lot.id.slice(-7)}
           </AppText>
         </View>
         <Button variant="ghost" label="Change" onPress={() => choose(null)} />
@@ -538,7 +541,7 @@ function LotCard({ lot, linked, onPress }: { lot: PurchaseItem; linked: number; 
               {lot.item.name}
             </AppText>
             <AppText variant="caption" color="muted">
-              {quantityLabel(lot)} · {formatDate(lot.purchase.purchase_date)}
+              {quantityLabel(lot)} · {lotDate(lot)}
             </AppText>
           </View>
           <Icon name="chevron-right" size={20} color="muted" />
