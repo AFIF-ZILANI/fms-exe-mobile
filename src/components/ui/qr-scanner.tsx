@@ -128,9 +128,11 @@ export function QrScanner({
   const [zoom, setZoom] = useState(ZOOM_DEFAULT);
   // Off each time the scanner opens -- a torch left on drains the battery between pallets.
   const [torch, setTorch] = useState(false);
-  useEffect(() => {
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (!open) setTorch(false);
-  }, [open]);
+  }
 
   useEffect(() => {
     if (!open) return;
