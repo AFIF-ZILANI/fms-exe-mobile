@@ -22,9 +22,12 @@ export default function TabsLayout() {
         <Tabs.Screen name="tasks" />
         <Tabs.Screen name="performance" />
         <Tabs.Screen name="profile" />
-        <Tabs.Screen name="houses" options={{ href: null }} />
-        <Tabs.Screen name="stock" options={{ href: null }} />
-        <Tabs.Screen name="team" options={{ href: null }} />
+        {/* No `href: null` here: since expo-router 58 that marks a tab hidden, and a focused hidden
+            tab is redirected straight back to Home -- so these screens could never open. TabBar only
+            draws its own four SLOTS, so declaring them plainly still keeps them out of the bar. */}
+        <Tabs.Screen name="houses" />
+        <Tabs.Screen name="stock" />
+        <Tabs.Screen name="team" />
       </Tabs>
 
       <LogSheet open={logOpen} onClose={() => setLogOpen(false)} />
