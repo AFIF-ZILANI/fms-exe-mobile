@@ -49,7 +49,12 @@
           "cameraPermission": "ZeroD Farms uses the camera to scan the QR code on a stock unit and link it to the delivery it arrived on.",
           "recordAudioAndroid": false
         }
-      ]
+      ],
+      "expo-audio",
+      "expo-image",
+      "expo-status-bar",
+      "expo-web-browser",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,

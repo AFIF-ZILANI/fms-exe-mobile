@@ -92,7 +92,7 @@ type TabBarProps = BottomTabBarProps & {
   onLogPress: () => void;
 };
 
-export function TabBar({ state, navigation, onLogPress }: TabBarProps) {
+export function TabBar({ state, emitter, navigateToTab, onLogPress }: TabBarProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [width, setWidth] = useState(0);
@@ -116,11 +116,11 @@ export function TabBar({ state, navigation, onLogPress }: TabBarProps) {
     if (!route) return <View key={slot.route} style={styles.cell} />;
 
     const onPress = () => {
-      const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+      const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
       if (event.defaultPrevented) return;
       if (activeRoute !== slot.route) tick();
       // Pressing the focused tab pops its stack to the root; from a hidden tab (Team) it goes home.
-      navigation.navigate(route.name as never);
+      navigateToTab(route.key);
     };
 
     return <TabButton key={slot.route} slot={slot} focused={activeRoute === slot.route} onPress={onPress} />;
