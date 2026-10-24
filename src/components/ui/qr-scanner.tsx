@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { AppText } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,17 @@ import { useTheme } from '@/hooks/use-theme';
 import { classifyScan, markSent, newScanState, releaseScan } from '@/lib/scan';
 import type { ScanResult, Settled } from '@/lib/scan';
 import { buzz, primeFeedback } from '@/lib/haptics';
-import { inFrame, type Detected } from '@/lib/scan-area';
+import { frameSide, inFrame, type Detected } from '@/lib/scan-area';
+
+// expo-camera's zoom is a share of the phone's max zoom, which differs per phone (and iOS maps it
+// differently from Android) -- so there's no true "2x" to ask for. The default lands around 2x on
+// common phones, enough to read a 25 mm label from where the camera can focus; the operator steps it
+// with -/+ and the choice is kept per phone.
+const ZOOM_KEY = 'fms:scan-zoom';
+const ZOOM_DEFAULT = 0.2;
+const ZOOM_STEP = 0.05;
+const ZOOM_MAX = 0.6;
+const clampZoom = (z: number) => Math.round(Math.min(ZOOM_MAX, Math.max(0, z)) * 100) / 100;
 
 export type ScanRow = {
   id: string;
@@ -112,7 +123,32 @@ export function QrScanner({
   const confirming = useRef(false);
   // The camera view's size, to place the square in it; and when the "move it inside" nudge last showed.
   const view = useRef({ width: 0, height: 0 });
+  const [side, setSide] = useState(frameSide({ width: 0, height: 0 }));
   const lastNudgeAt = useRef(0);
+  const [zoom, setZoom] = useState(ZOOM_DEFAULT);
+  // Off each time the scanner opens -- a torch left on drains the battery between pallets.
+  const [torch, setTorch] = useState(false);
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (!open) setTorch(false);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    AsyncStorage.getItem(ZOOM_KEY)
+      .then((saved) => {
+        const z = saved === null ? NaN : Number(saved);
+        if (Number.isFinite(z)) setZoom(clampZoom(z));
+      })
+      .catch(() => {});
+  }, [open]);
+
+  const stepZoom = (delta: number) => {
+    const next = clampZoom(zoom + delta);
+    setZoom(next);
+    AsyncStorage.setItem(ZOOM_KEY, String(next)).catch(() => {});
+  };
 
   // Load the sounds before the first scan so the first beep isn't the one that gets dropped.
   useEffect(() => {
@@ -282,6 +318,7 @@ export function QrScanner({
             style={styles.viewport}
             onLayout={(e) => {
               view.current = e.nativeEvent.layout;
+              setSide(frameSide(e.nativeEvent.layout));
             }}
           >
             {offline ? (
@@ -304,11 +341,44 @@ export function QrScanner({
                 <CameraView
                   style={StyleSheet.absoluteFill}
                   facing="back"
+                  zoom={zoom}
+                  enableTorch={torch}
                   barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
                   onBarcodeScanned={onDetected}
                 />
                 <View style={styles.reticle} pointerEvents="none">
-                  <View style={[styles.frame, { borderColor: flashColor(flash, theme) }]} />
+                  <View
+                    style={[styles.frame, { width: side, height: side, borderColor: flashColor(flash, theme) }]}
+                  />
+                </View>
+                <View style={styles.zoom}>
+                  <Pressable
+                    onPress={() => setTorch((t) => !t)}
+                    accessibilityRole="switch"
+                    accessibilityState={{ checked: torch }}
+                    accessibilityLabel="Torch"
+                    style={[styles.zoomButton, torch && { backgroundColor: theme.warning }]}
+                  >
+                    <Icon name={torch ? 'zap' : 'zap-off'} size={22} color="onPrimary" />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => stepZoom(-ZOOM_STEP)}
+                    disabled={zoom <= 0}
+                    accessibilityRole="button"
+                    accessibilityLabel="Zoom out"
+                    style={[styles.zoomButton, zoom <= 0 && styles.zoomDisabled]}
+                  >
+                    <Icon name="zoom-out" size={22} color="onPrimary" />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => stepZoom(ZOOM_STEP)}
+                    disabled={zoom >= ZOOM_MAX}
+                    accessibilityRole="button"
+                    accessibilityLabel="Zoom in"
+                    style={[styles.zoomButton, zoom >= ZOOM_MAX && styles.zoomDisabled]}
+                  >
+                    <Icon name="zoom-in" size={22} color="onPrimary" />
+                  </Pressable>
                 </View>
               </>
             )}
@@ -469,7 +539,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  frame: { width: 220, height: 220, borderWidth: 3, borderRadius: Radius.card },
+  frame: { borderWidth: 3, borderRadius: Radius.card },
+  // Torch and zoom, top-right, clear of the flash banner along the bottom.
+  zoom: { position: 'absolute', top: Spacing.md, right: Spacing.md, gap: Spacing.sm },
+  zoomButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  zoomDisabled: { opacity: 0.4 },
   flash: {
     position: 'absolute',
     left: Spacing.lg,

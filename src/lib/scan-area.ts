@@ -4,7 +4,13 @@
  * detected code is checked here. Coordinates are in the camera view's space.
  */
 
-export const FRAME_SIDE = 220;
+/** The square is most of the camera view (its shorter side), so a code anywhere near the middle
+ *  counts -- a small fixed square made people line labels up exactly or hold them right at the lens.
+ *  Falls back to 220 before the view is measured. */
+export function frameSide(view: { width: number; height: number }): number {
+  const short = Math.min(view.width, view.height);
+  return short > 0 ? Math.round(short * 0.75) : 220;
+}
 
 type Point = { x: number; y: number };
 export type Detected = {
@@ -35,7 +41,7 @@ export function codeCentre({ bounds, cornerPoints }: Detected): Point | null {
 export function inFrame(
   detected: Detected,
   view: { width: number; height: number },
-  side = FRAME_SIDE,
+  side = frameSide(view),
 ): boolean {
   const c = codeCentre(detected);
   if (!c || view.width <= 0 || view.height <= 0) return true;

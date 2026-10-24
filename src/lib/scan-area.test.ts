@@ -2,9 +2,9 @@
 
 import assert from 'node:assert/strict';
 
-import { codeCentre, inFrame } from './scan-area';
+import { codeCentre, frameSide, inFrame } from './scan-area';
 
-const view = { width: 400, height: 600 }; // square spans x 90..310, y 190..410
+const view = { width: 400, height: 600 }; // square is 300: spans x 50..350, y 150..450
 
 const square = (cx: number, cy: number, half = 30) => ({
   cornerPoints: [
@@ -16,9 +16,11 @@ const square = (cx: number, cy: number, half = 30) => ({
 });
 
 assert.deepEqual(codeCentre(square(200, 300)), { x: 200, y: 300 });
+assert.equal(frameSide(view), 300); // 75% of the shorter side
+assert.equal(frameSide({ width: 0, height: 0 }), 220); // not measured yet
 assert.equal(inFrame(square(200, 300), view), true); // dead centre
 assert.equal(inFrame(square(300, 400), view), true); // inside, near the corner
-assert.equal(inFrame(square(50, 300), view), false); // left of the square
+assert.equal(inFrame(square(40, 300), view), false); // left of the square
 assert.equal(inFrame(square(200, 100), view), false); // above it
 assert.equal(inFrame(square(200, 520), view), false); // below it
 
