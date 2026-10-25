@@ -7,7 +7,7 @@ import type { House } from '@/lib/types';
 const HOUSES_KEY = ['houses', 'active'];
 
 export function useHouseOptions() {
-  return useGetData<Paginated<House>>('/houses?active=true&limit=100', HOUSES_KEY);
+  return useGetData<Paginated<House>>('/houses?is_active=true&limit=100', HOUSES_KEY);
 }
 
 /**
