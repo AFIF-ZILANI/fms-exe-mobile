@@ -98,8 +98,8 @@ function unwrap<T>(raw: Envelope<unknown>): T {
 
 export async function apiFetch<T>(endpoint: string, init?: RequestInit): Promise<T> {
   let res: Response;
+  const token = getToken();
   try {
-    const token = getToken();
     res = await fetch(`${BASE_URL}${endpoint}`, {
       ...init,
       headers: {
@@ -129,7 +129,9 @@ export async function apiFetch<T>(endpoint: string, init?: RequestInit): Promise
   const body = await res.json().catch(() => null);
   if (!res.ok) {
     // Not for /auth/*: a wrong password is a 401 too, and the login screen shows that itself.
-    if (res.status === 401 && !endpoint.startsWith('/auth/')) notifyUnauthorized();
+    // Only when the token it was sent with is still this phone's token: a request that was in flight
+    // (or refetched) as the person logged out would otherwise turn their logout into "session ended".
+    if (res.status === 401 && !endpoint.startsWith('/auth/') && token && token === getToken()) notifyUnauthorized();
     throw new ApiError(res.status, body);
   }
   return unwrap<T>(body as Envelope<unknown>);
