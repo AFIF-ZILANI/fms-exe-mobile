@@ -132,11 +132,12 @@ The native `android/` project is generated (Continuous Native Generation) and
 gitignored — configure native behaviour in `app.json`, never by hand.
 
 ```bash
-npx expo prebuild --platform android --no-install
-cd android
-EXPO_PUBLIC_API_BASE_URL=https://api.zfarms.zerod.bd/api NODE_ENV=production ./gradlew assembleRelease
-# -> android/app/build/outputs/apk/release/app-release.apk
+bun run build:apk
+# -> dist/ZFarm-v<version>.apk  (version from app.json)
 ```
+
+That runs `expo prebuild` and `./gradlew assembleRelease` against the production
+API, then copies the APK to `dist/` under the release name.
 
 `EXPO_PUBLIC_API_BASE_URL` is inlined at build time: a release build has no dev
 server to derive the API host from, so without it the app calls itself. The
