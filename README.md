@@ -1,6 +1,24 @@
-# ZeroD Farms — Employee Field App
+<div align="center">
 
-The phone client for farm staff, part of the ZeroD Farms Management System.
+<img src="assets/images/icon.png" width="96" alt="ZFarm icon" />
+
+# ZFarm
+
+**The field app for ZeroD Farms staff — log the day, scan the stock, get paid for good work.**
+
+[![Latest release](https://img.shields.io/github/v/release/AFIF-ZILANI/fms-exe-mobile?label=release)](https://github.com/AFIF-ZILANI/fms-exe-mobile/releases/latest)
+![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-3DDC84)
+![Expo SDK](https://img.shields.io/badge/Expo%20SDK-58-000020?logo=expo)
+![React Native](https://img.shields.io/badge/React%20Native-0.88-61DAFB?logo=react)
+
+[**Download the Android APK**](https://github.com/AFIF-ZILANI/fms-exe-mobile/releases/latest)
+
+</div>
+
+---
+
+ZFarm is the phone client of the ZeroD Farms Management System, built for the
+people working in the barns.
 
 A **Worker** logs the day's mortality, feed, weights, environment readings and
 treatments against the right house and batch — offline, in a barn, with one
@@ -9,6 +27,34 @@ assigns that work, scores the people doing it, moves birds between houses, and
 reconciles stock at the farm gate.
 
 Every write queues locally first and lands exactly once when signal comes back.
+
+## Features
+
+| | Worker | Manager |
+| --- | :---: | :---: |
+| Daily logs — mortality, feed, weight, environment, treatment | ✓ | ✓ |
+| Offline write queue, synced exactly once on reconnect | ✓ | ✓ |
+| Tasks assigned to me, with due dates | ✓ | ✓ |
+| Performance points and what they're worth in pay | ✓ | ✓ |
+| QR stock: move to a house, **start using** / **consumed** | ✓ | ✓ |
+| Link printed QR codes to a purchase lot | | ✓ |
+| Assign tasks, give points, see the team | | ✓ |
+| Move birds between houses, report discrepancies, flag low stock | | ✓ |
+
+## Install
+
+1. Download `ZFarm-v<version>.apk` from the [latest release](https://github.com/AFIF-ZILANI/fms-exe-mobile/releases/latest) on the phone.
+2. Open it and allow installs from this source when Android asks.
+3. Sign in with the email and temporary password your manager gives you.
+
+Android 7.0 or newer. The release APK talks to the production API.
+
+## Tech stack
+
+- **Expo SDK 58 / React Native 0.88**, with **Expo Router** for navigation
+- **TanStack Query** for server state; **expo-sqlite** for the offline write queue
+- **expo-camera** QR scanning with per-unit idempotency keys
+- API: Hono + Prisma + Postgres ([`fms-backend`](https://github.com/AFIF-ZILANI/fms-backend))
 
 ## The system
 
@@ -79,6 +125,23 @@ tunnel — never for a LAN IP. Two traps make a hardcoded IP worse than useless:
 
 If screens hang with no data and no console error, that pair is the first thing
 to check: `curl` the URL the app is using, then restart the dev server.
+
+## Building a release APK
+
+The native `android/` project is generated (Continuous Native Generation) and
+gitignored — configure native behaviour in `app.json`, never by hand.
+
+```bash
+npx expo prebuild --platform android --no-install
+cd android
+EXPO_PUBLIC_API_BASE_URL=https://api.zfarm.zerod.bd/api NODE_ENV=production ./gradlew assembleRelease
+# -> android/app/build/outputs/apk/release/app-release.apk
+```
+
+`EXPO_PUBLIC_API_BASE_URL` is inlined at build time: a release build has no dev
+server to derive the API host from, so without it the app calls itself. The
+release is currently signed with the debug keystore — fine for sideloading;
+the Play Store needs a dedicated upload key.
 
 See [`AGENTS.md`](AGENTS.md) for Expo conventions — in particular, check the
 versioned docs before writing against any Expo API rather than working from
