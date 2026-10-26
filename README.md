@@ -134,7 +134,7 @@ gitignored — configure native behaviour in `app.json`, never by hand.
 ```bash
 npx expo prebuild --platform android --no-install
 cd android
-EXPO_PUBLIC_API_BASE_URL=https://api.zfarm.zerod.bd/api NODE_ENV=production ./gradlew assembleRelease
+EXPO_PUBLIC_API_BASE_URL=https://api.zfarms.zerod.bd/api NODE_ENV=production ./gradlew assembleRelease
 # -> android/app/build/outputs/apk/release/app-release.apk
 ```
 
