@@ -55,7 +55,15 @@
       "expo-image",
       "expo-status-bar",
       "expo-web-browser",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraProguardRules": "# ML Kit builds its *Registrar classes by reflection; R8 strips their no-arg constructors and the barcode scanner never registers.\n-keep class com.google.mlkit.**.*Registrar { <init>(); }"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
