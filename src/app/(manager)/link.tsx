@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, TextInput, View, StyleSheet } from 'react-native';
 import { useNetworkState } from 'expo-network';
 import { useQueryClient } from '@tanstack/react-query';
+import { usePreventRemove } from 'expo-router';
 
 import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
@@ -193,6 +194,10 @@ export default function LinkItemsScreen() {
     session.reset();
   };
 
+  // Picking a lot is a step inside this screen, not a new route -- so while one is open, every
+  // "back" (header chevron, Android back, iOS swipe) returns to the lot list instead of leaving.
+  usePreventRemove(lot !== null, () => choose(null));
+
   if (!lot) {
     return (
       <Screen>
@@ -325,7 +330,6 @@ export default function LinkItemsScreen() {
             {quantityLabel(lot)} · {lotDate(lot)} · …{lot.id.slice(-7)}
           </AppText>
         </View>
-        <Button variant="ghost" label="Change" onPress={() => choose(null)} />
       </View>
 
       <Card style={styles.card}>
@@ -404,7 +408,7 @@ export default function LinkItemsScreen() {
           <View style={styles.flex}>
             <AppText variant="bodyStrong">This lot is complete — {linkedTotal} linked.</AppText>
             <AppText variant="caption" color="muted">
-              It is locked: no more codes, no resizing. Change lot to link another delivery.
+              It is locked: no more codes, no resizing. Go back to link another delivery.
             </AppText>
           </View>
         </View>
