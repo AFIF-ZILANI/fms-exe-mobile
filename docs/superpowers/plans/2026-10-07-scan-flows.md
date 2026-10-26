@@ -204,7 +204,7 @@ function unit(over: Partial<StockUnit> = {}): StockUnit {
   return {
     id: 'u-1',
     purchase_item_id: 'pi-1',
-    status: 'IN_STOCK',
+    status: 'BOUND',
     bound_at: null,
     bound_by_id: null,
     purchase_item: { id: 'pi-1', item_id: ITEM.id, unit: 'BOTTLE', item: ITEM },
@@ -1407,10 +1407,10 @@ Expected: three "checks passed" lines; no type or lint output.
 - [ ] **Step 2: API smoke with the test accounts** (proves the server accepts what the app sends)
 
 Using the test worker (credentials are in `server/.env.local`, do not print them): sign in at `POST /api/auth/login`, then with the bearer token:
-1. `GET /api/stock-units?status=IN_STOCK&limit=1` — take one unit.
+1. `GET /api/stock-units?status=BOUND&limit=1` — take one unit.
 2. `POST /api/stock-units/<id>/relocate` with `{ "house_id": "<an active house id>" }` — expect 200 (this proves Task 1).
 3. `POST /api/consumptions` with the body shape from `consumptionBody` (`quantity: 1`, `unit` = the unit's purchase line unit) — expect 201, **or** the plain 400 `"X" is not a valid unit for using this item`, which means that item still needs an `ItemUnit` row with `is_usable` (a data setup step in the admin dashboard, not an app bug).
-If no IN_STOCK unit exists, provision and bind one from the admin dashboard first.
+If no BOUND unit exists, provision and bind one from the admin dashboard first.
 
 - [ ] **Step 3: Device checks** (the web build cannot run the camera; do these on a phone or simulator with a real printed or on-screen QR)
 

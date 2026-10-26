@@ -43,15 +43,17 @@ export function currentHouseName(unit: StockUnit): string {
 
 const BLOCKED: Partial<Record<StockUnitStatus, string>> = {
   UNASSIGNED: 'Not linked to a purchase yet.',
+  PRINTED: 'Not linked to a purchase yet.',
   CONSUMED: 'Already used up.',
   DISPOSED: 'Already disposed.',
 };
 
 export function checkUnit(plan: ScanPlan, unit: StockUnit): Check {
   if (plan.action === 'bind') {
-    return unit.status === 'UNASSIGNED'
-      ? OK
-      : fail(`Already linked · ${unit.status.toLowerCase().replace('_', ' ')}`);
+    // Only a confirmed-printed label can be linked; the server enforces the same rule.
+    if (unit.status === 'PRINTED') return OK;
+    if (unit.status === 'UNASSIGNED') return fail('Not printed yet — confirm its print on the dashboard first.');
+    return fail(`Already linked · ${unit.status.toLowerCase().replace('_', ' ')}`);
   }
 
   // allocate / consume: only a live, bound unit makes sense.

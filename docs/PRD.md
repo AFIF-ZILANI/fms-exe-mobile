@@ -588,7 +588,7 @@ exception to §3's "every write queues first": each bind is validated by the
 server as it happens, because linking the wrong unit to a lot is expensive and
 silent, and every check that catches it lives server-side.
 
-**Endpoints.** `GET /purchase-items`, `GET /stock-units?q=&status=UNASSIGNED`
+**Endpoints.** `GET /purchase-items`, `GET /stock-units?q=&status=PRINTED`
 (fallback only), `POST /stock-units/:id/bind` with `bound_by_id`.
 
 **Notes.** This replaced the v1 unit-first **Receive stock** screen. Downstream

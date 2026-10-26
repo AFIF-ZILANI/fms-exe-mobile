@@ -23,7 +23,7 @@ function unit(over: Partial<StockUnit> = {}): StockUnit {
   return {
     id: 'u-1',
     purchase_item_id: 'pi-1',
-    status: 'IN_STOCK',
+    status: 'BOUND',
     bound_at: null,
     bound_by_id: null,
     purchase_item: { id: 'pi-1', item_id: ITEM.id, unit: 'BOTTLE', item: ITEM },
@@ -55,6 +55,10 @@ assert.deepEqual(
   'already in the chosen house is rejected before any request',
 );
 assert.deepEqual(checkUnit(allocate, unit({ status: 'UNASSIGNED', purchase_item: null })), {
+  ok: false,
+  reason: 'Not linked to a purchase yet.',
+});
+assert.deepEqual(checkUnit(allocate, unit({ status: 'PRINTED', purchase_item: null })), {
   ok: false,
   reason: 'Not linked to a purchase yet.',
 });
@@ -114,8 +118,12 @@ assert.deepEqual(
 );
 
 // --- bind ---------------------------------------------------------------------
-assert.deepEqual(checkUnit(bind, unit({ status: 'UNASSIGNED', purchase_item: null })), { ok: true });
-assert.deepEqual(checkUnit(bind, unit()), { ok: false, reason: 'Already linked · in stock' });
+assert.deepEqual(checkUnit(bind, unit({ status: 'PRINTED', purchase_item: null })), { ok: true });
+assert.deepEqual(checkUnit(bind, unit({ status: 'UNASSIGNED', purchase_item: null })), {
+  ok: false,
+  reason: 'Not printed yet — confirm its print on the dashboard first.',
+});
+assert.deepEqual(checkUnit(bind, unit()), { ok: false, reason: 'Already linked · bound' });
 assert.deepEqual(checkUnit(bind, unit({ status: 'IN_USE' })), { ok: false, reason: 'Already linked · in use' });
 
 // --- decisions ----------------------------------------------------------------

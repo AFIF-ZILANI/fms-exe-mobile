@@ -171,7 +171,7 @@ export type PurchaseItem = {
   purchase: Purchase;
 };
 
-export type StockUnitStatus = 'UNASSIGNED' | 'IN_STOCK' | 'IN_USE' | 'CONSUMED' | 'DISPOSED';
+export type StockUnitStatus = 'UNASSIGNED' | 'PRINTED' | 'BOUND' | 'IN_USE' | 'CONSUMED' | 'DISPOSED';
 
 export type StockUnit = {
   id: string;

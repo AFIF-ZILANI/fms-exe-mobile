@@ -133,7 +133,7 @@ mono), another rule, and the session count as a `stat` figure that goes
 
 The v1 search, kept: a `56h` mono search field (`autoCorrect={false}` —
 autocorrect on a hex fragment is actively harmful), querying
-`?q=&status=UNASSIGNED` at 3+ characters. Result rows bind on tap, then the
+`?q=&status=PRINTED` at 3+ characters. Result rows bind on tap, then the
 block collapses. Its helper reads "For a torn or unreadable label. Partial
 codes work."
 
@@ -252,7 +252,7 @@ scan it was reporting on.
 | Endpoint | Use |
 | --- | --- |
 | `GET /purchase-items?limit=100` | Lot picker, filtered client-side to `is_unit_tracked` |
-| `GET /stock-units?q=&status=UNASSIGNED&limit=25` | Manual fallback search |
+| `GET /stock-units?q=&status=PRINTED&limit=25` | Manual fallback search |
 | `POST /stock-units/:id/bind` | The write — `{ purchase_item_id, bound_by_id }` |
 
 `bound_by_id` comes from the session. A successful bind invalidates the

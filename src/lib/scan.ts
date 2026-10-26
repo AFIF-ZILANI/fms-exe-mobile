@@ -96,9 +96,11 @@ export function isRetryable(status: number): boolean {
 export function bindErrorMessage(status: number, detail: string | undefined): string {
   if (status === 404) return 'Unknown code — not a ZeroD stock unit.';
   if (status === 409) {
-    // "StockUnit is already in_stock" -> "Already linked · in stock"
+    // "StockUnit is already bound" -> "Already linked · bound"; any other 409 (e.g. "print this
+    // code first") is already plain, so it passes through.
     const state = detail?.match(/already (\w+)/i)?.[1];
-    return state ? `Already linked · ${state.replace('_', ' ')}` : 'Already linked.';
+    if (state) return `Already linked · ${state.replace('_', ' ')}`;
+    return detail?.trim() || 'Already linked.';
   }
   if (status === 0) return "Couldn't reach the server.";
   return detail?.trim() || `Failed with ${status}.`;

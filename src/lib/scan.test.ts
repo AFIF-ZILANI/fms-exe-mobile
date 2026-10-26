@@ -123,7 +123,12 @@ assert.equal(isRetryable(400), false, 'wrong item for this lot is settled');
 
 // --- error copy -------------------------------------------------------------
 assert.equal(bindErrorMessage(404, 'StockUnit not found'), 'Unknown code — not a ZeroD stock unit.');
-assert.equal(bindErrorMessage(409, 'StockUnit is already in_stock'), 'Already linked · in stock');
+assert.equal(bindErrorMessage(409, 'StockUnit is already bound'), 'Already linked · bound');
+assert.equal(bindErrorMessage(409, 'StockUnit is already in_use'), 'Already linked · in use');
+assert.equal(
+  bindErrorMessage(409, 'Print this code and confirm it printed before binding it'),
+  'Print this code and confirm it printed before binding it',
+);
 assert.equal(bindErrorMessage(409, undefined), 'Already linked.');
 assert.equal(bindErrorMessage(0, undefined), "Couldn't reach the server.");
 assert.equal(

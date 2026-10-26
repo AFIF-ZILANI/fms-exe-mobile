@@ -22,14 +22,14 @@ supports the whole lifecycle, but on mobile only the first step exists:
 ## 2. Unit lifecycle (as the code behaves today)
 
 ```
-UNASSIGNED --bind--> IN_STOCK --first consumption--> IN_USE --manual--> CONSUMED
+UNASSIGNED --bind--> BOUND --first consumption--> IN_USE --manual--> CONSUMED
                          \______________ dispose ______________/--> DISPOSED
 ```
 
 - Allocation (warehouse → house → house → warehouse) is a **separate event**
   (`StockHouseAllocation`: `ALLOCATION`, `REALLOCATION`, `RETURN`). It does **not**
   change status and does **not** create a Consumption.
-- The first Consumption flips `IN_STOCK → IN_USE`. Later ones keep it `IN_USE`.
+- The first Consumption flips `BOUND → IN_USE`. Later ones keep it `IN_USE`.
 - `CONSUMED` is never set automatically any more (the quantity columns were removed
   from `StockUnit`). It is set by hand.
 - **Whole-unit rule (decided 2026-10-07):** we do not track partial amounts. Using a
@@ -59,7 +59,7 @@ UNASSIGNED --bind--> IN_STOCK --first consumption--> IN_USE --manual--> CONSUMED
 | Action | Request | Checks before confirm |
 | --- | --- | --- |
 | Allocate | `POST /stock-units/:id/relocate { house_id, idempotency_key }` | Not already at that house; matches item filter |
-| Consume | `POST /consumptions { house_id, item_id, stock_unit_id, quantity, unit, date, batch_id }` | Status is `IN_STOCK` (an `IN_USE` unit is *Already used* — whole-unit rule); unit is **in this house** (latest allocation = this house, else *"It's at Warehouse, not House 2 — move it here first."*); unit's item equals the item |
+| Consume | `POST /consumptions { house_id, item_id, stock_unit_id, quantity, unit, date, batch_id }` | Status is `BOUND` (an `IN_USE` unit is *Already used* — whole-unit rule); unit is **in this house** (latest allocation = this house, else *"It's at Warehouse, not House 2 — move it here first."*); unit's item equals the item |
 | Bind | `POST /stock-units/:id/bind { purchase_item_id }` (exists) | Status is `UNASSIGNED` |
 
 - Several allocations into one house in one session can share a `stock_transfer_id`
@@ -123,7 +123,7 @@ there first"), and the scan screen says the same before any request. Earlier dra
 without a move are left as they were.
 
 `GET /houses/:id/coded-stock` lists, per item, the unused coded units in a house (latest
-move = this house, status `IN_STOCK`): `units`, `pack_unit`, and `quantity` (null when a
+move = this house, status `BOUND`): `units`, `pack_unit`, and `quantity` (null when a
 lot has no bottle count, so its size isn't guessed). Use an item's item list is exactly
 that — only items with stock there, each with its amount ("3 units · 2 liter"). It
 resets when the house changes. A house with nothing in it shows *Nothing to use in X

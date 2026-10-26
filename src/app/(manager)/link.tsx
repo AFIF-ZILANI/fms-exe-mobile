@@ -100,7 +100,7 @@ export default function LinkItemsScreen() {
   const trimmed = query.trim();
   const { data: units, isLoading: unitsLoading } = useGetData<Paginated<StockUnit>>(
     manual && trimmed.length >= MIN_QUERY
-      ? `/stock-units?q=${encodeURIComponent(trimmed)}&status=UNASSIGNED&limit=25`
+      ? `/stock-units?q=${encodeURIComponent(trimmed)}&status=PRINTED&limit=25`
       : '',
     ['stock-units', 'search', trimmed],
     { enabled: manual && trimmed.length >= MIN_QUERY },
@@ -460,7 +460,7 @@ export default function LinkItemsScreen() {
               <Skeleton height={36} />
             ) : (units?.results.length ?? 0) === 0 ? (
               <AppText variant="caption" color="muted">
-                No unassigned unit matches that — try fewer characters.
+                No printed, unlinked code matches that — try fewer characters.
               </AppText>
             ) : (
               units?.results.map((u, i) => (
