@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 
 import {
   checkUnit,
-  consumptionBody,
+  unitUseBody,
   currentHouseId,
   currentHouseName,
   decideScan,
@@ -33,7 +33,8 @@ function unit(over: Partial<StockUnit> = {}): StockUnit {
 }
 
 const allocate: ScanPlan = { action: 'allocate', houseId: 'h-2' };
-const consume: ScanPlan = { action: 'consume', houseId: 'h-2', houseName: 'House 2' };
+const start: ScanPlan = { action: 'start', houseId: 'h-2', houseName: 'House 2' };
+const finish: ScanPlan = { ...start, action: 'finish' };
 const inH2 = unit({ houseAllocations: [{ house_id: 'h-2', house: { id: 'h-2', name: 'House 2' } }] });
 const bind: ScanPlan = { action: 'bind', purchaseItemId: 'pi-1' };
 
@@ -73,49 +74,54 @@ assert.deepEqual(checkUnit(filtered, unit()), {
 });
 assert.deepEqual(checkUnit({ ...filtered, itemId: ITEM.id }, unit()), { ok: true });
 
-// --- consume ------------------------------------------------------------------
-assert.deepEqual(checkUnit(consume, inH2), { ok: true }, 'a unit in this house can be used');
+// --- start / finish ("Use an item") -------------------------------------------
+for (const plan of [start, finish]) {
+  assert.deepEqual(checkUnit(plan, inH2), { ok: true }, `${plan.action}: a unit in this house`);
+  assert.deepEqual(
+    checkUnit(plan, unit()),
+    { ok: false, reason: "It's at Warehouse, not House 2 — move it here first." },
+    'never moved = still in the warehouse',
+  );
+  assert.deepEqual(
+    checkUnit(plan, inH1),
+    { ok: false, reason: "It's at House 1, not House 2 — move it here first." },
+    'in another house',
+  );
+  assert.deepEqual(
+    checkUnit(plan, unit({ houseAllocations: [{ house_id: null, house: null }] })),
+    { ok: false, reason: "It's at Warehouse, not House 2 — move it here first." },
+    'returned to the warehouse',
+  );
+  assert.deepEqual(
+    checkUnit({ ...plan, houseName: undefined }, unit()),
+    { ok: false, reason: "It's at Warehouse, not this house — move it here first." },
+  );
+  assert.equal(checkUnit(plan, { ...inH2, status: 'CONSUMED' }).ok, false);
+  assert.equal(checkUnit(plan, unit({ status: 'UNASSIGNED', purchase_item: null })).ok, false);
+  assert.equal(checkUnit(plan, unit({ purchase_item: null })).ok, false, 'no purchase record = no item');
+  assert.deepEqual(
+    checkUnit({ ...plan, itemId: 'item-2', itemName: 'Antibiotic' }, inH2),
+    { ok: false, reason: 'Not Antibiotic — this is Newcastle vaccine.' },
+    'a chosen item only accepts that item',
+  );
+  assert.deepEqual(checkUnit({ ...plan, itemId: undefined }, inH2), { ok: true }, 'no item chosen = any item');
+}
 assert.deepEqual(
-  checkUnit(consume, unit()),
-  { ok: false, reason: "It's at Warehouse, not House 2 — move it here first." },
-  'never moved = still in the warehouse',
+  checkUnit(start, { ...inH2, status: 'IN_USE' }),
+  { ok: false, reason: 'Already in use.' },
+  'an opened unit cannot be started again',
 );
 assert.deepEqual(
-  checkUnit(consume, inH1),
-  { ok: false, reason: "It's at House 1, not House 2 — move it here first." },
-  'in another house',
+  checkUnit(start, { ...inH1, status: 'IN_USE' }),
+  { ok: false, reason: 'Already in use.' },
+  'already-in-use wins over the wrong-house message',
 );
-assert.deepEqual(
-  checkUnit(consume, unit({ houseAllocations: [{ house_id: null, house: null }] })),
-  { ok: false, reason: "It's at Warehouse, not House 2 — move it here first." },
-  'returned to the warehouse',
-);
-assert.deepEqual(
-  checkUnit({ ...consume, houseName: undefined }, unit()),
-  { ok: false, reason: "It's at Warehouse, not this house — move it here first." },
-);
-assert.deepEqual(
-  checkUnit(consume, { ...inH2, status: 'IN_USE' }),
-  { ok: false, reason: 'Already used.' },
-  'whole-unit rule: a unit already drawn on is used up',
-);
-assert.deepEqual(
-  checkUnit(consume, { ...inH1, status: 'IN_USE' }),
-  { ok: false, reason: 'Already used.' },
-  'used-up wins over the wrong-house message',
-);
-assert.equal(checkUnit(consume, { ...inH2, status: 'CONSUMED' }).ok, false);
-assert.equal(checkUnit(consume, unit({ status: 'UNASSIGNED', purchase_item: null })).ok, false);
-assert.equal(
-  checkUnit(consume, unit({ purchase_item: null })).ok,
-  false,
-  'a unit with no purchase record cannot be consumed (no item to draw)',
-);
-assert.deepEqual(
-  checkUnit({ ...consume, itemId: 'item-2', itemName: 'Antibiotic' }, inH2),
-  { ok: false, reason: 'Not Antibiotic — this is Newcastle vaccine.' },
-  'the item filter still applies to a unit that is in the house',
-);
+assert.deepEqual(checkUnit(finish, { ...inH2, status: 'IN_USE' }), { ok: true }, 'an opened unit can be finished');
+{
+  const tool = { ...inH2, purchase_item: { ...inH2.purchase_item!, item: { ...ITEM, category: 'EQUIPMENT' } } };
+  assert.deepEqual(checkUnit(start, tool), { ok: true }, 'equipment can be started');
+  assert.deepEqual(checkUnit(finish, tool), { ok: false, reason: "Equipment isn't used up — dispose it instead." });
+}
 
 // --- bind ---------------------------------------------------------------------
 assert.deepEqual(checkUnit(bind, unit({ status: 'PRINTED', purchase_item: null })), { ok: true });
@@ -136,26 +142,19 @@ assert.deepEqual(decideScan('manual', bad, false), { kind: 'reject', reason: 'no
 assert.deepEqual(decideScan('auto', ok, true), { kind: 'duplicate' }, 'already done this session');
 assert.deepEqual(decideScan('manual', bad, true), { kind: 'duplicate' }, 'duplicate wins over a failing check');
 
-// --- whole-unit consume body --------------------------------------------------
+// --- use body ------------------------------------------------------------------
 {
-  const body = consumptionBody(unit(), {
-    houseId: 'h-2',
-    batchId: 'b-1',
-    now: new Date('2026-10-07T08:00:00.000Z'),
-    key: 'k-1',
+  const body = unitUseBody('finish', { houseId: 'h-2', batchId: 'b-1', now: new Date('2026-10-07T08:00:00.000Z'), key: 'k-1' });
+  assert.deepEqual(body, {
+    action: 'FINISH',
+    house_id: 'h-2',
+    date: '2026-10-07T08:00:00.000Z',
+    batch_id: 'b-1',
+    idempotency_key: 'k-1',
   });
-  assert.equal(body.quantity, 1, 'one whole unit');
-  assert.equal(body.unit, 'BOTTLE', "the purchase line's unit, never the item's base unit (ML)");
-  assert.notEqual(body.unit, ITEM.unit);
-  assert.equal(body.item_id, ITEM.id);
-  assert.equal(body.stock_unit_id, 'u-1');
-  assert.equal(body.house_id, 'h-2');
-  assert.equal(body.batch_id, 'b-1');
-  assert.equal(body.date, '2026-10-07T08:00:00.000Z');
-  assert.equal(body.idempotency_key, 'k-1');
-  const noBatch = consumptionBody(unit(), { houseId: 'h-2', now: new Date(0), key: 'k' });
+  const noBatch = unitUseBody('start', { houseId: 'h-2', now: new Date(0), key: 'k' });
+  assert.equal(noBatch.action, 'START');
   assert.equal('batch_id' in noBatch, false, 'batch_id is omitted when the house has no running batch');
-  assert.throws(() => consumptionBody(unit({ purchase_item: null }), { houseId: 'h', now: new Date(0), key: 'k' }));
 }
 
 // --- idempotency keys: a rescan after a lost response reuses the key -----------

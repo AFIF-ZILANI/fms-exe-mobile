@@ -12,44 +12,63 @@ import { AppText } from '@/components/ui/text';
 import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
 import { BatchResolver, useResolvedBatch } from '@/components/ui/batch-resolver';
 import { PickerField } from '@/components/ui/picker-field';
+import { SegmentedToggle } from '@/components/ui/segmented-toggle';
 import { QrScanner, type ScanLabels } from '@/components/ui/qr-scanner';
 import { OfflineNote, ScanModeField, ScanResults } from '@/components/scan-parts';
 import { Spacing } from '@/constants/theme';
 import { apiFetch, useGetData } from '@/lib/api';
 import { stockLabel, unitsAvailable } from '@/lib/coded-stock';
-import { consumptionBody, type Mode } from '@/lib/scan-actions';
+import { unitUseBody, type Mode } from '@/lib/scan-actions';
 import { useScanSession } from '@/lib/use-scan-session';
 import type { HouseCodedStock } from '@/lib/types';
 
-const LABELS: ScanLabels = {
-  done: 'used',
-  flashOk: 'Used',
+/** start: a sealed unit is opened -- no consumption is logged. finish: it's used up -- what was left in it
+ *  is logged as a consumption (the server works out the amount) and it leaves stock. */
+type UseAction = 'start' | 'finish';
+
+const OFFLINE = {
   offlineTitle: 'Recording use needs a connection.',
   offlineBody:
     "Each code is checked against the server as you scan, so this screen can't work offline. Everything else in the app can.",
-  hint: 'Point the camera at a code. The camera stays open — scan every unit you used.',
-  full: 'Nothing left in this house to use',
+};
+const LABELS: Record<UseAction, ScanLabels> = {
+  start: {
+    ...OFFLINE,
+    done: 'started',
+    flashOk: 'Started',
+    hint: 'Point the camera at a code. The camera stays open — scan every unit you opened.',
+    full: 'Nothing sealed left in this house',
+  },
+  finish: {
+    ...OFFLINE,
+    done: 'used up',
+    flashOk: 'Used up',
+    hint: 'Point the camera at a code. The camera stays open — scan every unit that is finished.',
+    full: 'Nothing left in this house to use up',
+  },
 };
 
-/** docs/scan-flows-design.md — a coded unit is used whole, and where it is: it has to be in this house
- *  (moved here first), one scan = one unit used. The item list is what is in the house right now. */
+/** docs/scan-flows-design.md — a coded unit is used where it is: it has to be in this house (moved here
+ *  first), one scan = one unit. "Start using" opens it; "Consumed" logs it used up. Choosing an item
+ *  accepts only that item's codes; no item accepts any. The item list is what is in the house right now. */
 export default function ConsumeScreen() {
   const params = useLocalSearchParams<{ house_id?: string }>();
   const queryClient = useQueryClient();
   const offline = useNetworkState().isConnected === false;
 
   const [house, setHouse] = usePrefillHouse(params.house_id);
+  const [action, setAction] = useState<UseAction>('start');
   const [item, setItem] = useState<HouseCodedStock | null>(null);
   const [mode, setMode] = useState<Mode>('manual');
   const [scanning, setScanning] = useState(false);
 
   const { balance, isLoading: batchLoading } = useResolvedBatch(house?.id);
 
-  // Unused coded units physically in this house, per item. Its key sits under 'house-stock', which every
-  // successful scan invalidates, so the amounts here fall as units are used.
+  // Coded units physically in this house, per item: sealed ones to start, plus opened ones when finishing.
+  // Its key sits under 'house-stock', which every successful scan invalidates, so the amounts fall as you go.
   const stockQ = useGetData<HouseCodedStock[]>(
-    house ? `/houses/${house.id}/coded-stock` : '',
-    ['house-stock', 'available', house?.id ?? 'none'],
+    house ? `/houses/${house.id}/coded-stock${action === 'finish' ? '?include_in_use=true' : ''}` : '',
+    ['house-stock', 'available', house?.id ?? 'none', action],
     { enabled: !!house },
   );
   const stock = stockQ.data ?? [];
@@ -59,27 +78,20 @@ export default function ConsumeScreen() {
 
   const session = useScanSession({
     plan: {
-      action: 'consume',
+      action,
       houseId: house?.id,
       houseName: house?.name,
       itemId: item?.item_id,
       itemName: item?.item_name,
     },
     mode,
-    confirmLabel: 'Record as used',
+    confirmLabel: action === 'start' ? 'Start using' : 'Record as used up',
     treatReplayAsDone: true,
     commit: async (unit, key) => {
       if (!house) throw new Error('No house chosen');
-      await apiFetch('/consumptions', {
+      await apiFetch(`/stock-units/${unit.id}/use`, {
         method: 'POST',
-        body: JSON.stringify(
-          consumptionBody(unit, {
-            houseId: house.id,
-            batchId: balance?.batch_id,
-            now: new Date(),
-            key,
-          }),
-        ),
+        body: JSON.stringify(unitUseBody(action, { houseId: house.id, batchId: balance?.batch_id, now: new Date(), key })),
       });
       void queryClient.invalidateQueries({ queryKey: ['stock-units'] });
       void queryClient.invalidateQueries({ queryKey: ['consumptions'] });
@@ -108,6 +120,28 @@ export default function ConsumeScreen() {
       <Header title="Use an item" leading="back" />
 
       <View style={styles.form}>
+        <FormCard title="What happened">
+          <SegmentedToggle
+            height={48}
+            options={[
+              { value: 'start', label: 'Start using' },
+              { value: 'finish', label: 'Consumed' },
+            ]}
+            value={action}
+            onChange={(a) => {
+              setAction(a);
+              // The two accept different units (sealed vs sealed + opened), so start a fresh list.
+              setItem(null);
+              session.reset();
+            }}
+          />
+          <AppText variant="caption" color="muted">
+            {action === 'start'
+              ? 'Opening a sealed unit. Nothing is logged as used yet.'
+              : 'The unit is finished. What was left in it is logged as used for this house.'}
+          </AppText>
+        </FormCard>
+
         <FormCard>
           <HousePicker
             label="Used in"
@@ -134,7 +168,7 @@ export default function ConsumeScreen() {
             options={stock}
             getKey={(l) => l.item_id}
             getLabel={(l) => l.item_name}
-            getSubLabel={stockLabel}
+            getSubLabel={(l) => (l.in_use ? `${stockLabel(l)} · ${l.in_use} open` : stockLabel(l))}
             placeholder="Any item"
             loading={stockLoading}
             disabled={!house}
@@ -176,7 +210,7 @@ export default function ConsumeScreen() {
               <Button label="Scan codes" icon="camera" disabled={!canScan} onPress={() => setScanning(true)} />
               {!house ? (
                 <AppText variant="caption" color="muted" style={styles.hint}>
-                  Choose the house first, then scan the units you used.
+                  Choose the house first, then scan the units.
                 </AppText>
               ) : null}
             </>
@@ -184,7 +218,7 @@ export default function ConsumeScreen() {
         </View>
       )}
 
-      <ScanResults rows={session.rows} done="used" />
+      <ScanResults rows={session.rows} done={LABELS[action].done} />
 
       <QrScanner
         key={session.generation}
@@ -198,7 +232,7 @@ export default function ConsumeScreen() {
         rows={session.rows}
         onScanned={session.onScanned}
         offline={offline}
-        labels={LABELS}
+        labels={LABELS[action]}
         pending={session.pending}
         remaining={house ? available : null}
       />

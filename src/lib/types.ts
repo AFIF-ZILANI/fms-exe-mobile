@@ -292,6 +292,8 @@ export type HouseCodedStock = {
   /** What one coded unit is (BOTTLE) when they are all the same; null when mixed. */
   pack_unit: string | null;
   units: number;
+  /** Of `units`, how many are already opened (IN_USE) -- only asked for by "Use an item -> Consumed". */
+  in_use?: number;
   /** Null when a lot's bottle count isn't set, so its size is unknown. */
   quantity: number | null;
 };

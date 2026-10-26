@@ -6,17 +6,18 @@
 
 import type { StockUnit, StockUnitStatus } from './types';
 
-export type ScanAction = 'allocate' | 'consume' | 'bind';
+/** start/finish are "Use an item": open a unit (no log) / log it used up. */
+export type ScanAction = 'allocate' | 'start' | 'finish' | 'bind';
 export type Mode = 'manual' | 'auto';
 export type Check = { ok: true } | { ok: false; reason: string };
 
 export type ScanPlan = {
   action: ScanAction;
-  /** allocate: the house units move into. consume: the house they're used in. */
+  /** allocate: the house units move into. start/finish: the house they're used in. */
   houseId?: string;
   /** For the "move it here first" message. */
   houseName?: string;
-  /** Only units of this item pass (allocate, consume). */
+  /** Only units of this item pass (allocate, start, finish). None = any item. */
   itemId?: string;
   itemName?: string;
   /** bind: the purchase line the units are linked to. Unused by the checks (the server validates it). */
@@ -56,7 +57,7 @@ export function checkUnit(plan: ScanPlan, unit: StockUnit): Check {
     return fail(`Already linked · ${unit.status.toLowerCase().replace('_', ' ')}`);
   }
 
-  // allocate / consume: only a live, bound unit makes sense.
+  // allocate / start / finish: only a live, bound unit makes sense.
   const blocked = BLOCKED[unit.status];
   if (blocked) return fail(blocked);
 
@@ -71,9 +72,12 @@ export function checkUnit(plan: ScanPlan, unit: StockUnit): Check {
     return fail(`Already in ${currentHouseName(unit)}.`);
   }
 
-  if (plan.action === 'consume') {
-    // Whole-unit rule: a unit that has been drawn on is used up as far as the app is concerned.
-    if (unit.status === 'IN_USE') return fail('Already used.');
+  if (plan.action === 'start' || plan.action === 'finish') {
+    // Start opens a sealed unit; an opened one can only be finished.
+    if (plan.action === 'start' && unit.status === 'IN_USE') return fail('Already in use.');
+    // Equipment is used, not used up: it leaves through disposal, which the server does too.
+    if (plan.action === 'finish' && purchase.item.category === 'EQUIPMENT')
+      return fail("Equipment isn't used up — dispose it instead.");
     // A unit is used where it is, so it has to have been moved into this house first.
     if (plan.houseId && currentHouseId(unit) !== plan.houseId) {
       return fail(`It's at ${currentHouseName(unit)}, not ${plan.houseName ?? 'this house'} — move it here first.`);
@@ -96,22 +100,18 @@ export function decideScan(mode: Mode, check: Check, alreadyDone: boolean): Deci
  * line's -- never Item.unit, which is the base unit (1 ML would mean 1 mL, not 1 bottle).
  * The server converts via ItemUnit.factor_to_base.
  */
-export function consumptionBody(
-  unit: StockUnit,
+/** POST /stock-units/:id/use -- the server works out how much was left in the unit for a finish. */
+export function unitUseBody(
+  action: 'start' | 'finish',
   o: { houseId: string; batchId?: string; now: Date; key: string },
 ) {
-  const purchase = unit.purchase_item;
-  if (!purchase) throw new Error('unit has no purchase record');
   return {
+    action: action === 'start' ? 'START' : 'FINISH',
     house_id: o.houseId,
-    item_id: purchase.item_id,
-    stock_unit_id: unit.id,
-    quantity: 1,
-    unit: purchase.unit,
     date: o.now.toISOString(),
     ...(o.batchId ? { batch_id: o.batchId } : {}),
     idempotency_key: o.key,
-  };
+  } as const;
 }
 
 /**
