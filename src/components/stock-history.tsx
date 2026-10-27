@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 
+import { SectionHead } from '@/components/house-stock';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -99,19 +100,23 @@ export function StockPreviewCard({
   houseId: string;
   results: (HouseAllocation | HouseConsumption)[] | undefined;
 }) {
+  const theme = useTheme();
   const rows = toRows(kind, results);
   if (rows.length === 0) return null;
   const slug = kind === 'allocated' ? 'allocation-history' : 'used-stocks';
 
   return (
-    <Card
-      rows
-      eyebrow={KINDS[kind].title}
-      action="See all"
-      onActionPress={() => router.push(`/houses/${houseId}/${slug}` as Href)}
-      style={styles.preview}
-    >
-      <ActivityRows kind={kind} rows={rows} />
+    <Card rows style={styles.preview}>
+      <SectionHead
+        title={kind === 'used' ? 'Used stock' : KINDS[kind].title}
+        icon={KINDS[kind].icon}
+        tint="surfaceAlt"
+        tone="muted"
+        onSeeAll={() => router.push(`/houses/${houseId}/${slug}` as Href)}
+      />
+      <View style={[styles.previewRows, { borderTopColor: theme.line }]}>
+        <ActivityRows kind={kind} rows={rows} />
+      </View>
     </Card>
   );
 }
@@ -309,7 +314,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
   },
-  preview: { marginTop: Spacing.xl },
+  preview: { marginTop: Spacing.lg },
+  previewRows: { borderTopWidth: 1 },
   // Bleeds to the screen edges so the tiles slide under the padding instead of stopping at it.
   kpiScroll: { marginHorizontal: -Spacing.xl, marginTop: Spacing.md },
   kpiRow: { gap: Spacing.md, paddingHorizontal: Spacing.xl },

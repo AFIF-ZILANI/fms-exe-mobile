@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { HouseHero, LogTile, ShortcutTile } from '@/components/house-detail-parts';
 import { StockPreviewCard, useStockPreview } from '@/components/stock-history';
-import { BulkStockCard, HouseUnitsCard } from '@/components/house-stock';
+import { HouseSuppliesCard, HouseUnitsCard } from '@/components/house-stock';
 import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
 import { Card } from '@/components/ui/card';
@@ -219,7 +219,7 @@ export default function HouseDetailScreen() {
           {/* Each omitted entirely until there is something to show. What's here now, then what was used. */}
           <HouseUnitsCard houseId={id} section="sealed" />
           <HouseUnitsCard houseId={id} section="in-use" />
-          <BulkStockCard houseId={id} />
+          <HouseSuppliesCard houseId={id} />
           <StockPreviewCard kind="used" houseId={id} results={used.data?.results} />
 
           {openTasks.length > 0 ? (

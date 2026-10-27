@@ -11,7 +11,8 @@ import { TextField } from '@/components/ui/text-field';
 import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
 import { useGetData, type Paginated } from '@/lib/api';
-import { formatBalance, summarizeStock, type StockRow } from '@/lib/stock-summary';
+import { formatBalance, type StockRow } from '@/lib/stock-summary';
+import { houseBalance } from '@/lib/house-stock';
 import type { Item } from '@/lib/types';
 import { goBack } from '@/lib/nav';
 
@@ -37,9 +38,8 @@ export default function ConsumptionScreen() {
   const stockRows = useGetData<StockRow[]>('/items/stock-by-location', ['items', 'stock-by-location'], { enabled: wantStock });
   // Opened from a house's supplies list: the item comes pre-chosen until the person picks another.
   const item = picked ?? (params.item_id ? (stockItems.data?.results.find((i) => i.id === params.item_id) ?? null) : null);
-  const onHand = item
-    ? summarizeStock(stockItems.data?.results ?? [], stockRows.data ?? []).find((l) => l.item.id === item.id)?.balance ?? null
-    : null;
+  // This house's own balance: the server only lets a house use what was moved into it.
+  const onHand = item && house && stockRows.data ? houseBalance(stockRows.data, house.id, item.id) : null;
   const quantityNum = Number(quantity);
   const overStock = onHand !== null && quantityNum > onHand;
   const isValid = !!house && !!item && quantityNum > 0;
@@ -105,8 +105,8 @@ export default function ConsumptionScreen() {
             onHand === null
               ? undefined
               : overStock
-                ? `More than the ${formatBalance(onHand)} ${item?.unit.toLowerCase()} in stock — check the amount.`
-                : `${formatBalance(onHand)} ${item?.unit.toLowerCase()} in stock`
+                ? `More than the ${formatBalance(onHand)} ${item?.unit.toLowerCase()} in this house — check the amount.`
+                : `${formatBalance(onHand)} ${item?.unit.toLowerCase()} in this house`
           }
           helperColor={overStock ? 'warning' : 'muted'}
         />

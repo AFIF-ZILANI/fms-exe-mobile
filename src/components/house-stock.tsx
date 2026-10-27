@@ -20,13 +20,16 @@ import { Radius, Spacing, type ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, apiFetch, useGetData, type Paginated } from '@/lib/api';
 import { formatRelative } from '@/lib/format';
-import { bulkLines, codeTail, unitActions } from '@/lib/house-stock';
+import { codeTail, houseSupplies, unitActions, type HouseSupply } from '@/lib/house-stock';
 import { scanErrorMessage } from '@/lib/scan';
 import { unitUseBody } from '@/lib/scan-actions';
-import { formatBalance, summarizeStock, type StockLine, type StockRow } from '@/lib/stock-summary';
+import { formatBalance, type StockRow } from '@/lib/stock-summary';
 import type { House, Item, StockUnit } from '@/lib/types';
 
 const PREVIEW = 5;
+
+type Tint = 'tintBlue' | 'tintGreen' | 'tintAmber' | 'surfaceAlt';
+type Tone = 'info' | 'success' | 'warning' | 'muted';
 
 /** Sealed units waiting in the house, and opened ones being used. */
 export type UnitSection = 'sealed' | 'in-use';
@@ -34,12 +37,12 @@ export type UnitSection = 'sealed' | 'in-use';
 const SECTIONS = {
   sealed: {
     status: 'BOUND',
-    title: 'Sealed in this house',
+    title: 'Sealed',
     slug: 'allocated-stocks',
     icon: 'package' as IconName,
-    tint: 'tintBlue' as const,
-    color: 'info' as const,
-    since: 'In since',
+    tint: 'tintBlue' as Tint,
+    tone: 'info' as Tone,
+    since: 'in since',
     empty: { title: 'Nothing sealed here.', body: 'Units moved into this house wait here until someone opens one.' },
   },
   'in-use': {
@@ -47,9 +50,9 @@ const SECTIONS = {
     title: 'In use',
     slug: 'in-use-stocks',
     icon: 'play-circle' as IconName,
-    tint: 'tintGreen' as const,
-    color: 'success' as const,
-    since: 'Here since',
+    tint: 'tintGreen' as Tint,
+    tone: 'success' as Tone,
+    since: 'here since',
     empty: { title: 'Nothing open right now.', body: 'Start using a sealed unit and it shows up here.' },
   },
 } as const;
@@ -62,13 +65,13 @@ export function useHouseUnits(houseId: string, section: UnitSection, limit: numb
   );
 }
 
-/** Supplies without codes (feed, husk…) that have stock to draw on. Same URLs and keys as the Stock tab. */
-export function useBulkStock() {
+/** Feed and other uncoded supplies held in this house. Same URLs and keys as the Stock tab. */
+export function useHouseSupplies(houseId: string) {
   const items = useGetData<Paginated<Item>>('/items?is_active=true&limit=100', ['items', 'active']);
   const rows = useGetData<StockRow[]>('/items/stock-by-location', ['items', 'stock-by-location']);
-  const lines = items.data && rows.data ? bulkLines(summarizeStock(items.data.results, rows.data)) : undefined;
+  const supplies = items.data && rows.data ? houseSupplies(items.data.results, rows.data, houseId) : undefined;
   return {
-    lines,
+    supplies,
     isPending: items.isPending || rows.isPending,
     isError: (items.isError && !items.data) || (rows.isError && !rows.data),
     refetch: () => Promise.allSettled([items.refetch(), rows.refetch()]),
@@ -114,66 +117,113 @@ function useUnitAction(houseId: string) {
     if (action === 'start') return void send(unit, 'start');
     // Finishing logs what was left as used and can't be taken back from the phone: ask first.
     const name = unit.purchase_item?.item.name ?? 'this unit';
-    Alert.alert(
-      `${name} ${codeTail(unit.id)} used up?`,
-      'What was left in it is recorded as used in this house.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Used up', style: 'destructive', onPress: () => void send(unit, 'finish') },
-      ],
-    );
+    Alert.alert(`${name} ${codeTail(unit.id)} consumed?`, 'What was left in it is recorded as used in this house.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Consumed', style: 'destructive', onPress: () => void send(unit, 'finish') },
+    ]);
   };
 
   return { run, busy };
 }
 
-type ChipTone = 'primary' | 'neutral';
-
-/** A compact action under a row: big enough for a gloved thumb, small enough that three fit. */
-function ActionChip({
-  label,
+/** A card's own header: what the section is, how many, and the way into the full list. */
+export function SectionHead({
+  title,
   icon,
-  tone = 'neutral',
-  onPress,
-  disabled,
-  loading,
-  done,
+  tint,
+  tone,
+  count,
+  onSeeAll,
 }: {
-  label: string;
+  title: string;
   icon: IconName;
-  tone?: ChipTone;
-  onPress: () => void;
-  disabled?: boolean;
-  loading?: boolean;
-  /** Briefly shows a check in place of the icon (Copied). */
-  done?: boolean;
+  tint: Tint;
+  tone: Tone;
+  /** Left out where the total isn't known (a preview of a long history). */
+  count?: number;
+  onSeeAll?: () => void;
 }) {
   const theme = useTheme();
-  const primary = tone === 'primary';
-  const fg: ThemeColor = primary ? 'onPrimary' : 'ink';
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled || loading}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled: !!(disabled || loading) }}
-      style={({ pressed }) => [
-        styles.chip,
-        { backgroundColor: primary ? theme.primary : theme.surfaceAlt },
-        (disabled || loading) && styles.chipDisabled,
-        pressed && { transform: [{ scale: 0.97 }] },
-      ]}
-    >
-      {loading ? (
-        <ActivityIndicator size="small" color={primary ? '#FFFFFF' : theme.muted} />
-      ) : (
-        <Icon name={done ? 'check' : icon} size={16} color={done ? 'success' : fg} />
-      )}
-      <AppText variant="label" color={done ? 'success' : fg} numberOfLines={1}>
-        {label}
-      </AppText>
-    </Pressable>
+    <View style={styles.head}>
+      <IconTile name={icon} tint={tint} color={tone} size={32} />
+      <AppText variant="bodyStrong">{title}</AppText>
+      {count !== undefined ? (
+        <View style={[styles.count, { backgroundColor: theme[tint] }]}>
+          <AppText variant="data" color={tone}>
+            {count}
+          </AppText>
+        </View>
+      ) : null}
+      <View style={styles.flex} />
+      {onSeeAll ? (
+        <Pressable onPress={onSeeAll} accessibilityRole="link" hitSlop={12} style={styles.seeAll}>
+          <AppText variant="label" color="primary">
+            See all
+          </AppText>
+          <Icon name="chevron-right" size={16} color="primary" />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+type Segment = {
+  key: string;
+  label: string;
+  icon: IconName;
+  onPress: () => void;
+  /** The main thing to do with this unit: tinted, the rest stay neutral. */
+  main?: boolean;
+  disabled?: boolean;
+  loading?: boolean;
+  done?: boolean;
+};
+
+/** One slim bar of equal segments under a row. Quieter than separate buttons, and it stays on one line
+ *  at large system font sizes (labels shrink a little rather than wrap). */
+function ActionBar({ segments }: { segments: Segment[] }) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.bar, { borderColor: theme.line }]}>
+      {segments.map((s, i) => {
+        const off = s.disabled || s.loading;
+        const color: ThemeColor = s.done ? 'success' : s.main ? 'primary' : 'ink';
+        return (
+          <Pressable
+            key={s.key}
+            onPress={s.onPress}
+            disabled={off}
+            accessibilityRole="button"
+            accessibilityLabel={s.label}
+            accessibilityState={{ disabled: !!off }}
+            style={({ pressed }) => [
+              styles.segment,
+              i > 0 && { borderLeftWidth: 1, borderLeftColor: theme.line },
+              s.main && { backgroundColor: theme.primarySoft },
+              pressed && { backgroundColor: theme.surfaceAlt },
+              s.disabled && styles.disabled,
+            ]}
+          >
+            {s.loading ? (
+              <ActivityIndicator size="small" color={theme.primary} />
+            ) : (
+              <Icon name={s.done ? 'check' : s.icon} size={16} color={color} />
+            )}
+            <AppText
+              variant="label"
+              color={color}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+              style={styles.segmentLabel}
+            >
+              {s.label}
+            </AppText>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 
@@ -184,14 +234,12 @@ function UnitRow({
   houseId,
   offline,
   action,
-  first,
 }: {
   unit: StockUnit;
   section: UnitSection;
   houseId: string;
   offline: boolean;
   action: ReturnType<typeof useUnitAction>;
-  first: boolean;
 }) {
   const theme = useTheme();
   const cfg = SECTIONS[section];
@@ -210,79 +258,82 @@ function UnitRow({
     setTimeout(() => setCopied(false), 1500);
   };
 
+  const segments: Segment[] = [];
+  if (can.start)
+    segments.push({
+      key: 'start',
+      label: 'Start',
+      icon: 'play',
+      main: true,
+      onPress: () => action.run(unit, 'start'),
+      disabled: blocked || busy === 'finish',
+      loading: busy === 'start',
+    });
+  if (can.finish)
+    segments.push({
+      key: 'finish',
+      label: 'Consumed',
+      icon: 'check-circle',
+      main: !can.start,
+      onPress: () => action.run(unit, 'finish'),
+      disabled: blocked || busy === 'start',
+      loading: busy === 'finish',
+    });
+  segments.push({ key: 'copy', label: copied ? 'Copied' : 'Copy', icon: 'copy', onPress: () => void copy(), done: copied });
+
   return (
-    <View style={[styles.unit, !first && { borderTopWidth: 1, borderTopColor: theme.line }]}>
-      <View style={styles.unitHead}>
-        <IconTile name={item ? categoryIcon(item.category) : cfg.icon} tint={cfg.tint} color={cfg.color} size={40} />
+    <View style={[styles.row, { borderTopColor: theme.line }]}>
+      <View style={styles.rowHead}>
+        <IconTile name={item ? categoryIcon(item.category) : cfg.icon} tint={cfg.tint} color={cfg.tone} size={32} />
         <View style={styles.flex}>
           <AppText variant="bodyStrong" numberOfLines={1}>
             {item?.name ?? 'Unit'}
           </AppText>
-          <View style={styles.meta}>
+          <AppText variant="caption" color="muted" numberOfLines={1}>
             <AppText variant="data" color="muted">
               {codeTail(unit.id)}
             </AppText>
-            {arrived ? (
-              <AppText variant="caption" color="muted" numberOfLines={1} style={styles.flex}>
-                {`  ·  ${cfg.since.toLowerCase()} ${formatRelative(arrived)}`}
-              </AppText>
-            ) : null}
-          </View>
+            {arrived ? `  ·  ${cfg.since} ${formatRelative(arrived)}` : ''}
+          </AppText>
         </View>
       </View>
-
-      <View style={styles.actions}>
-        {can.start ? (
-          <ActionChip
-            label="Start using"
-            icon="play"
-            tone="primary"
-            onPress={() => action.run(unit, 'start')}
-            disabled={blocked || busy === 'finish'}
-            loading={busy === 'start'}
-          />
-        ) : null}
-        {can.finish ? (
-          <ActionChip
-            label="Consumed"
-            icon="check-circle"
-            tone={can.start ? 'neutral' : 'primary'}
-            onPress={() => action.run(unit, 'finish')}
-            disabled={blocked || busy === 'start'}
-            loading={busy === 'finish'}
-          />
-        ) : null}
-        <ActionChip label={copied ? 'Copied' : 'Copy code'} icon="copy" onPress={() => void copy()} done={copied} />
-      </View>
+      <ActionBar segments={segments} />
     </View>
   );
 }
 
-/** A supply without codes: how much is in stock, and a way to log what this house used. */
-function BulkRow({ line, houseId, first }: { line: StockLine; houseId: string; first: boolean }) {
+/** A supply without codes: how much this house holds, and a way to log what it used. */
+function SupplyRow({ supply, houseId }: { supply: HouseSupply; houseId: string }) {
   const theme = useTheme();
-  const unit = line.item.unit.toLowerCase();
   return (
-    <View style={[styles.unit, !first && { borderTopWidth: 1, borderTopColor: theme.line }]}>
-      <View style={styles.unitHead}>
-        <IconTile name={categoryIcon(line.item.category)} tint="tintAmber" color="warning" size={40} />
-        <View style={styles.flex}>
-          <AppText variant="bodyStrong" numberOfLines={1}>
-            {line.item.name}
+    <View style={[styles.row, styles.rowHead, { borderTopColor: theme.line }]}>
+      <IconTile name={categoryIcon(supply.item.category)} tint="tintAmber" color="warning" size={32} />
+      <View style={styles.flex}>
+        <AppText variant="bodyStrong" numberOfLines={1}>
+          {supply.item.name}
+        </AppText>
+        <AppText variant="caption" color="muted" numberOfLines={1}>
+          <AppText variant="data" color="ink">
+            {formatBalance(supply.balance)}
           </AppText>
-          <AppText variant="caption" color={line.isLow ? 'warning' : 'muted'} numberOfLines={1}>
-            {`${formatBalance(line.balance)} ${unit} in stock${line.isLow ? ' · low' : ''}`}
-          </AppText>
-        </View>
-        <ActionChip
-          label="Consumed"
-          icon="edit-3"
-          tone="primary"
-          onPress={() =>
-            router.push(`/log/consumption?house_id=${houseId}&item_id=${line.item.id}` as Href)
-          }
-        />
+          {` ${supply.item.unit.toLowerCase()} in this house`}
+        </AppText>
       </View>
+      <Pressable
+        onPress={() => router.push(`/log/consumption?house_id=${houseId}&item_id=${supply.item.id}` as Href)}
+        accessibilityRole="button"
+        accessibilityLabel={`Log ${supply.item.name} consumed`}
+        style={({ pressed }) => [
+          styles.tonal,
+          { backgroundColor: theme.primarySoft },
+          pressed && { transform: [{ scale: 0.97 }] },
+        ]}
+      >
+        <Icon name="edit-3" size={16} color="primary" />
+        <AppText variant="label" color="primary" numberOfLines={1}>
+          Consumed
+        </AppText>
+      </Pressable>
     </View>
   );
 }
@@ -310,45 +361,43 @@ export function HouseUnitsCard({ houseId, section }: { houseId: string; section:
   const total = q.data?.total ?? units.length;
 
   return (
-    <Card
-      rows
-      eyebrow={`${cfg.title} · ${total}`}
-      action={total > units.length ? 'See all' : undefined}
-      onActionPress={() => router.push(`/houses/${houseId}/${cfg.slug}` as Href)}
-      style={styles.card}
-    >
-      {units.map((unit, i) => (
-        <UnitRow
-          key={unit.id}
-          unit={unit}
-          section={section}
-          houseId={houseId}
-          offline={offline}
-          action={action}
-          first={i === 0}
-        />
+    <Card rows style={styles.card}>
+      <SectionHead
+        title={cfg.title}
+        icon={cfg.icon}
+        tint={cfg.tint}
+        tone={cfg.tone}
+        count={total}
+        onSeeAll={total > units.length ? () => router.push(`/houses/${houseId}/${cfg.slug}` as Href) : undefined}
+      />
+      {units.map((unit) => (
+        <UnitRow key={unit.id} unit={unit} section={section} houseId={houseId} offline={offline} action={action} />
       ))}
       {offline ? <OfflineNote /> : null}
     </Card>
   );
 }
 
-/** The house screen's card of supplies without codes. */
-export function BulkStockCard({ houseId }: { houseId: string }) {
-  const { lines } = useBulkStock();
-  if (!lines || lines.length === 0) return null;
-  const shown = lines.slice(0, PREVIEW);
+/** The house screen's card of feed and supplies held in this house. */
+export function HouseSuppliesCard({ houseId }: { houseId: string }) {
+  const { supplies } = useHouseSupplies(houseId);
+  if (!supplies || supplies.length === 0) return null;
+  const shown = supplies.slice(0, PREVIEW);
 
   return (
-    <Card
-      rows
-      eyebrow={`Feed & supplies · ${lines.length}`}
-      action={lines.length > shown.length ? 'See all' : undefined}
-      onActionPress={() => router.push(`/houses/${houseId}/bulk-stocks` as Href)}
-      style={styles.card}
-    >
-      {shown.map((line, i) => (
-        <BulkRow key={line.item.id} line={line} houseId={houseId} first={i === 0} />
+    <Card rows style={styles.card}>
+      <SectionHead
+        title="Feed & supplies"
+        icon="package"
+        tint="tintAmber"
+        tone="warning"
+        count={supplies.length}
+        onSeeAll={
+          supplies.length > shown.length ? () => router.push(`/houses/${houseId}/bulk-stocks` as Href) : undefined
+        }
+      />
+      {shown.map((supply) => (
+        <SupplyRow key={supply.item.id} supply={supply} houseId={houseId} />
       ))}
     </Card>
   );
@@ -380,7 +429,7 @@ export function HouseUnitsScreen({ section }: { section: UnitSection }) {
   return (
     <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
       <Header
-        title={cfg.title}
+        title={section === 'sealed' ? 'Sealed stock' : 'In use'}
         eyebrow={houseQ.data?.name}
         leading="back"
         // The move-in history used to be this page; it stays one tap away.
@@ -412,42 +461,35 @@ export function HouseUnitsScreen({ section }: { section: UnitSection }) {
           <EmptyState compact icon={cfg.icon} tint="surfaceAlt" title={cfg.empty.title} body={cfg.empty.body} />
         </Card>
       ) : (
-        <>
-          <AppText variant="caption" color="muted" style={styles.count}>
-            {total > units.length ? `Showing ${units.length} of ${total}` : `${total} unit${total === 1 ? '' : 's'}`}
-          </AppText>
-          <Card rows>
-            {units.map((unit, i) => (
-              <UnitRow
-                key={unit.id}
-                unit={unit}
-                section={section}
-                houseId={id}
-                offline={offline}
-                action={action}
-                first={i === 0}
-              />
-            ))}
-            {offline ? <OfflineNote /> : null}
-          </Card>
-        </>
+        <Card rows style={styles.card}>
+          <SectionHead title={cfg.title} icon={cfg.icon} tint={cfg.tint} tone={cfg.tone} count={total} />
+          {units.map((unit) => (
+            <UnitRow key={unit.id} unit={unit} section={section} houseId={id} offline={offline} action={action} />
+          ))}
+          {offline ? <OfflineNote /> : null}
+          {total > units.length ? (
+            <AppText variant="caption" color="muted" style={styles.more}>
+              Showing the first {units.length} of {total}.
+            </AppText>
+          ) : null}
+        </Card>
       )}
     </Screen>
   );
 }
 
-/** houses/:id/bulk-stocks: every supply without codes that has stock. */
+/** houses/:id/bulk-stocks: every uncoded supply this house holds. */
 export function BulkStockScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [refreshing, setRefreshing] = useState(false);
   const houseQ = useGetData<House>(`/houses/${id}`, ['houses', id]);
-  const bulk = useBulkStock();
-  const lines = bulk.lines ?? [];
+  const q = useHouseSupplies(id);
+  const supplies = q.supplies ?? [];
 
   const refresh = async () => {
     setRefreshing(true);
     try {
-      await Promise.allSettled([houseQ.refetch(), bulk.refetch()]);
+      await Promise.allSettled([houseQ.refetch(), q.refetch()]);
     } finally {
       setRefreshing(false);
     }
@@ -456,32 +498,33 @@ export function BulkStockScreen() {
   return (
     <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
       <Header title="Feed & supplies" eyebrow={houseQ.data?.name} leading="back" />
-      {bulk.isPending ? (
+      {q.isPending ? (
         <Skeleton height={220} />
-      ) : bulk.isError ? (
+      ) : q.isError ? (
         <Card>
           <EmptyState
             compact
             icon="alert-circle"
             tint="tintRed"
             title="Couldn't load this."
-            action={{ label: 'Retry', onPress: () => void bulk.refetch() }}
+            action={{ label: 'Retry', onPress: () => void q.refetch() }}
           />
         </Card>
-      ) : lines.length === 0 ? (
+      ) : supplies.length === 0 ? (
         <Card>
           <EmptyState
             compact
             icon="package"
             tint="surfaceAlt"
-            title="No feed or supplies in stock."
-            body="Purchased feed and other uncoded supplies show up here."
+            title="No feed or supplies in this house."
+            body="Feed and other uncoded supplies show up here once they're moved into the house."
           />
         </Card>
       ) : (
-        <Card rows>
-          {lines.map((line, i) => (
-            <BulkRow key={line.item.id} line={line} houseId={id} first={i === 0} />
+        <Card rows style={styles.card}>
+          <SectionHead title="Feed & supplies" icon="package" tint="tintAmber" tone="warning" count={supplies.length} />
+          {supplies.map((supply) => (
+            <SupplyRow key={supply.item.id} supply={supply} houseId={id} />
           ))}
         </Card>
       )}
@@ -491,21 +534,38 @@ export function BulkStockScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  card: { marginTop: Spacing.xl },
-  unit: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, gap: Spacing.md },
-  unitHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  meta: { flexDirection: 'row', alignItems: 'baseline', marginTop: 2 },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  chip: {
-    minHeight: 40,
+  card: { marginTop: Spacing.lg },
+  head: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    // The card already pads its rows top and bottom.
+    paddingBottom: Spacing.md,
+  },
+  count: { minWidth: 26, paddingHorizontal: Spacing.sm, borderRadius: Radius.pill, alignItems: 'center' },
+  seeAll: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  row: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, gap: Spacing.sm, borderTopWidth: 1 },
+  rowHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  bar: { flexDirection: 'row', height: 40, borderWidth: 1, borderRadius: Radius.control, overflow: 'hidden' },
+  segment: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.xs,
+    paddingHorizontal: Spacing.xs,
+  },
+  segmentLabel: { flexShrink: 1 },
+  disabled: { opacity: 0.4 },
+  tonal: {
+    height: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
     paddingHorizontal: Spacing.md,
     borderRadius: Radius.pill,
   },
-  chipDisabled: { opacity: 0.45 },
   offline: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -513,5 +573,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.md,
   },
-  count: { marginTop: Spacing.md, marginBottom: Spacing.sm, paddingHorizontal: Spacing.xs },
+  more: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md },
 });
