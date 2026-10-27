@@ -89,11 +89,11 @@ export default function FeedingProgramScreen() {
     !!batch &&
     !!feedType &&
     !!item &&
-    startNum >= 0 &&
+    startNum >= 1 &&
     Number.isInteger(startNum) &&
     (endDay.trim() === '' || (endNum !== null && endNum >= startNum));
 
-  const today = batch ? dayOfCycle(batch.starting_date) : 0;
+  const today = batch ? dayOfCycle(batch.starting_date) : 1;
   const total = batch ? expectedCycleDays(batch) : 35;
 
   const handleSubmit = async () => {
@@ -154,7 +154,7 @@ export default function FeedingProgramScreen() {
               <View style={styles.timelineWrap}>
                 <View style={styles.axis}>
                   <AppText variant="data" color="muted">
-                    d0
+                    d1
                   </AppText>
                   <AppText variant="data" color="muted">
                     d{total}
@@ -163,7 +163,8 @@ export default function FeedingProgramScreen() {
                 <View style={[styles.timeline, { backgroundColor: theme.surfaceAlt }]}>
                   {rows.map((row, i) => {
                     const end = row.end_day ?? total;
-                    const width = Math.max(0, Math.min(total, end) - row.start_day) / total;
+                    // Days are counted from 1 and both ends are included: days 1-10 is ten days.
+                    const width = Math.max(0, Math.min(total, end) - row.start_day + 1) / total;
                     return (
                       <View
                         key={row.id}

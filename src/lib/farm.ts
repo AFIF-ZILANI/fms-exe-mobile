@@ -5,21 +5,22 @@ import type { Batch } from '@/lib/types';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** `today − batch.starting_date`, in whole days. There's no endpoint for
- *  this and it doesn't need one (docs/PRD.md §6.5). */
-export function dayOfCycle(startingDate: string): number {
-  const start = new Date(startingDate).getTime();
-  return Math.max(0, Math.floor((Date.now() - start) / DAY_MS));
+/** A stored farm date (midnight UTC of that calendar day, e.g. "2026-09-06T00:00:00Z") as a day count. */
+const storedDay = (iso: string) => Math.round(Date.parse(iso.slice(0, 10)) / DAY_MS);
+/** The phone's own calendar day -- the farm's day, not UTC's. */
+const localDay = (d: Date) => Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY_MS);
+
+/** Which day of the batch it is, the farm's way: the placement day is Day 1, the next calendar day Day 2.
+ *  Counted in calendar days, so it ticks over at midnight, not 24 hours after placement. */
+export function dayOfCycle(startingDate: string, now: Date = new Date()): number {
+  return Math.max(1, localDay(now) - storedDay(startingDate) + 1);
 }
 
-/** The batch's own planned length, from placement to expected sale --
- *  what <DayCycleBar/> fills against. Falls back to a broiler-typical 35
- *  days if the dates are unusable. */
+/** The day number the batch is expected to be sold on (placement = Day 1), what <DayCycleBar/> fills
+ *  against: placed Sep 6, sold Nov 5 is Day 61. Falls back to a broiler-typical 35 if the dates are unusable. */
 export function expectedCycleDays(batch: Pick<Batch, 'starting_date' | 'expected_selling_date'>): number {
-  const start = new Date(batch.starting_date).getTime();
-  const end = new Date(batch.expected_selling_date).getTime();
-  const days = Math.round((end - start) / DAY_MS);
-  return days > 0 ? days : 35;
+  const days = storedDay(batch.expected_selling_date) - storedDay(batch.starting_date) + 1;
+  return days > 1 ? days : 35;
 }
 
 /** The ledger gutter's house token -- "H2", or an em dash when the row
