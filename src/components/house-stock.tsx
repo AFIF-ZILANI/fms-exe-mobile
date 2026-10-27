@@ -368,7 +368,12 @@ export function HouseUnitsCard({ houseId, section }: { houseId: string; section:
         tint={cfg.tint}
         tone={cfg.tone}
         count={total}
-        onSeeAll={total > units.length ? () => router.push(`/houses/${houseId}/${cfg.slug}` as Href) : undefined}
+        // Sealed always links through: its page also holds the move-in history.
+        onSeeAll={
+          total > units.length || section === 'sealed'
+            ? () => router.push(`/houses/${houseId}/${cfg.slug}` as Href)
+            : undefined
+        }
       />
       {units.map((unit) => (
         <UnitRow key={unit.id} unit={unit} section={section} houseId={houseId} offline={offline} action={action} />
