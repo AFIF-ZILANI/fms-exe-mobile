@@ -33,7 +33,7 @@ export type StockKind = 'allocated' | 'used';
 /** Everything that differs between the two histories. The pages themselves are identical. */
 const KINDS = {
   allocated: {
-    title: 'Allocated stock',
+    title: 'Move-in history',
     path: '/stock-house-allocations',
     icon: 'arrow-down-circle' as IconName,
     toRow: (r: HouseAllocation) => allocationRow(r),
@@ -101,7 +101,7 @@ export function StockPreviewCard({
 }) {
   const rows = toRows(kind, results);
   if (rows.length === 0) return null;
-  const slug = kind === 'allocated' ? 'allocated-stocks' : 'used-stocks';
+  const slug = kind === 'allocated' ? 'allocation-history' : 'used-stocks';
 
   return (
     <Card

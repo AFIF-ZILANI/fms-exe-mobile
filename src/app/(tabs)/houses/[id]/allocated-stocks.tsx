@@ -1,5 +1,5 @@
-import { StockHistoryScreen } from '@/components/stock-history';
+import { HouseUnitsScreen } from '@/components/house-stock';
 
 export default function AllocatedStocksScreen() {
-  return <StockHistoryScreen kind="allocated" />;
+  return <HouseUnitsScreen section="sealed" />;
 }

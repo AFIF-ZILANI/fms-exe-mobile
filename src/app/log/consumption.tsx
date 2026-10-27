@@ -19,12 +19,12 @@ import { goBack } from '@/lib/nav';
  *  — without QR in v1 this is the aggregate branch ConsumptionService already
  *  supports, not the coded stock_unit_id draw. */
 export default function ConsumptionScreen() {
-  const params = useLocalSearchParams<{ house_id?: string; task_id?: string }>();
+  const params = useLocalSearchParams<{ house_id?: string; item_id?: string; task_id?: string }>();
   const { employee } = useSession();
   const submit = useQueuedSubmit();
 
   const [house, setHouse] = usePrefillHouse(params.house_id);
-  const [item, setItem] = useState<Item | null>(null);
+  const [picked, setItem] = useState<Item | null>(null);
   const [quantity, setQuantity] = useState('');
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -32,8 +32,11 @@ export default function ConsumptionScreen() {
   const { balance } = useResolvedBatch(house?.id);
   // What is on hand for the chosen item, so a typo (500 for 50) shows before it is recorded. Same URLs and
   // keys as the Stock tab, so this is usually already cached.
-  const stockItems = useGetData<Paginated<Item>>('/items?is_active=true&limit=100', ['items', 'active'], { enabled: !!item });
-  const stockRows = useGetData<StockRow[]>('/items/stock-by-location', ['items', 'stock-by-location'], { enabled: !!item });
+  const wantStock = !!picked || !!params.item_id;
+  const stockItems = useGetData<Paginated<Item>>('/items?is_active=true&limit=100', ['items', 'active'], { enabled: wantStock });
+  const stockRows = useGetData<StockRow[]>('/items/stock-by-location', ['items', 'stock-by-location'], { enabled: wantStock });
+  // Opened from a house's supplies list: the item comes pre-chosen until the person picks another.
+  const item = picked ?? (params.item_id ? (stockItems.data?.results.find((i) => i.id === params.item_id) ?? null) : null);
   const onHand = item
     ? summarizeStock(stockItems.data?.results ?? [], stockRows.data ?? []).find((l) => l.item.id === item.id)?.balance ?? null
     : null;
@@ -68,7 +71,7 @@ export default function ConsumptionScreen() {
     <FormScreen
       title="Log feed"
       hint="Feed or supplies given to a house. It comes off stock."
-      dirty={!!item || !!quantity || !!note}
+      dirty={!!picked || !!quantity || !!note}
       submit={{
         label:
           quantityNum > 0 && item
