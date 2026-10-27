@@ -7,6 +7,7 @@ import { Header } from '@/components/ui/header';
 import { Card, StatCard } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SyncBanner } from '@/components/ui/sync-banner';
+import { UpdateBanner } from '@/components/ui/update-banner';
 import { LedgerRow } from '@/components/ui/ledger-row';
 import { CycleBar } from '@/components/cycle-bar';
 import { FeatureGrid } from '@/components/feature-grid';
@@ -243,6 +244,7 @@ export default function DashboardScreen() {
       />
 
       <SyncBanner />
+      <UpdateBanner />
 
       <View style={styles.statRow}>
         <StatCard
