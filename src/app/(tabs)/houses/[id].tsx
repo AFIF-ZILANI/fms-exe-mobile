@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { RefreshControl, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { HouseHero, LogTile, ShortcutTile } from '@/components/house-detail-parts';
 import { StockPreviewCard, useStockPreview } from '@/components/stock-history';
+import { HouseSuppliesCard, HouseUnitsCard } from '@/components/house-stock';
 import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
 import { Card } from '@/components/ui/card';
@@ -89,9 +91,9 @@ export default function HouseDetailScreen() {
     ['task-assignments', 'house', id],
   );
 
-  // The five latest of each, for the Allocated / Used stock cards.
-  const allocated = useStockPreview('allocated', id);
+  // The five latest draws, for the Used stock card. The sealed / in-use / supplies cards read their own.
   const used = useStockPreview('used', id);
+  const queryClient = useQueryClient();
 
   // Wait for BOTH the house and its birds: otherwise a house whose counts have not arrived reads "Empty".
   // `isPending`, not `isLoading`: offline with nothing cached a query is paused and `isLoading` is false.
@@ -106,8 +108,12 @@ export default function HouseDetailScreen() {
     try {
       setNow(new Date());
       // Offline, refetches are paused and never settle: don't wait for them forever.
-      const refetches = [houseQ, balanceQ, mortality, consumption, weight, environment, tasks, allocated, used].map((q) =>
-        q.refetch(),
+      const refetches: Promise<unknown>[] = [houseQ, balanceQ, mortality, consumption, weight, environment, tasks, used].map(
+        (q) => q.refetch(),
+      );
+      refetches.push(
+        queryClient.refetchQueries({ queryKey: ['stock-units', 'house', id] }),
+        queryClient.refetchQueries({ queryKey: ['items'] }),
       );
       if (batchId) refetches.push(medications.refetch(), vaccinations.refetch());
       await Promise.race([
@@ -210,8 +216,10 @@ export default function HouseDetailScreen() {
             />
           </View>
 
-          {/* Each omitted entirely until there is something to show. */}
-          <StockPreviewCard kind="allocated" houseId={id} results={allocated.data?.results} />
+          {/* Each omitted entirely until there is something to show. What's here now, then what was used. */}
+          <HouseUnitsCard houseId={id} section="sealed" />
+          <HouseUnitsCard houseId={id} section="in-use" />
+          <HouseSuppliesCard houseId={id} />
           <StockPreviewCard kind="used" houseId={id} results={used.data?.results} />
 
           {openTasks.length > 0 ? (

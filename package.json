@@ -14,6 +14,7 @@
     "expo-audio": "~58.0.10",
     "expo-build-properties": "~58.0.11",
     "expo-camera": "~58.0.12",
+    "expo-clipboard": "~58.0.4",
     "expo-constants": "~58.0.13",
     "expo-crypto": "~58.0.7",
     "expo-device": "~58.0.5",
@@ -55,7 +56,7 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "build:apk": "expo prebuild --platform android --no-install && cd android && EXPO_PUBLIC_API_BASE_URL=https://api.zfarms.zerod.bd/api NODE_ENV=production ./gradlew assembleRelease && cd .. && mkdir -p dist && cp android/app/build/outputs/apk/release/app-release.apk \"dist/ZFarm-v$(node -p \"require('./app.json').expo.version\").apk\"",
-    "test": "bun src/lib/format.test.ts && bun src/lib/scan.test.ts && bun src/lib/scan-actions.test.ts && bun src/lib/profile-format.test.ts && bun src/lib/appearance-pref.test.ts && bun src/lib/launcher.test.ts && bun src/lib/stock-summary.test.ts && bun src/lib/outbox-describe.test.ts && bun src/lib/logout-decision.test.ts && bun src/lib/houses-summary.test.ts && bun src/lib/house-detail.test.ts && bun src/lib/batch-balance.test.ts && bun src/lib/tasks-view.test.ts && bun src/lib/alerts-view.test.ts && bun src/lib/outbox-owner.test.ts && bun src/lib/due-date.test.ts && bun src/lib/notifications-view.test.ts && bun src/lib/criteria.test.ts && bun src/lib/team-view.test.ts && bun src/lib/performance-view.test.ts && bun src/lib/lot-split.test.ts && bun src/lib/scan-area.test.ts && bun src/lib/link-summary.test.ts && bun src/lib/stock-history.test.ts && bun src/lib/coded-stock.test.ts && bun src/lib/app-version.test.ts"
+    "test": "bun src/lib/format.test.ts && bun src/lib/scan.test.ts && bun src/lib/scan-actions.test.ts && bun src/lib/profile-format.test.ts && bun src/lib/appearance-pref.test.ts && bun src/lib/launcher.test.ts && bun src/lib/stock-summary.test.ts && bun src/lib/outbox-describe.test.ts && bun src/lib/logout-decision.test.ts && bun src/lib/houses-summary.test.ts && bun src/lib/house-detail.test.ts && bun src/lib/batch-balance.test.ts && bun src/lib/tasks-view.test.ts && bun src/lib/alerts-view.test.ts && bun src/lib/outbox-owner.test.ts && bun src/lib/due-date.test.ts && bun src/lib/notifications-view.test.ts && bun src/lib/criteria.test.ts && bun src/lib/team-view.test.ts && bun src/lib/performance-view.test.ts && bun src/lib/lot-split.test.ts && bun src/lib/scan-area.test.ts && bun src/lib/link-summary.test.ts && bun src/lib/stock-history.test.ts && bun src/lib/coded-stock.test.ts && bun src/lib/app-version.test.ts && bun src/lib/house-stock.test.ts"
   },
   "private": true
 }

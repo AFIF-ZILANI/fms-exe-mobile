@@ -182,7 +182,12 @@ export type StockUnit = {
   /** Present on GET /stock-units/:id and the list (server withRelations). */
   purchase_item?: { id: string; item_id: string; unit: string; item: Item } | null;
   /** Newest first, at most one: the latest allocation is the unit's current location. */
-  houseAllocations?: { house_id: string | null; house?: { id: string; name: string } | null }[];
+  houseAllocations?: {
+    house_id: string | null;
+    /** When it arrived where it is now. */
+    occurred_at?: string;
+    house?: { id: string; name: string } | null;
+  }[];
 };
 
 export type Doctor = {
