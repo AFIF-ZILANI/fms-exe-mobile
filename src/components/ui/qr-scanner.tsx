@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,7 +11,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { classifyScan, markSent, newScanState, releaseScan } from '@/lib/scan';
 import type { ScanResult, Settled } from '@/lib/scan';
-import { buzz, primeFeedback } from '@/lib/haptics';
+import { buzz, primeFeedback, tick } from '@/lib/haptics';
 import { frameSide, inFrame, type Detected } from '@/lib/scan-area';
 
 // expo-camera's zoom is a share of the phone's max zoom, which differs per phone (and iOS maps it
@@ -23,6 +23,12 @@ const ZOOM_DEFAULT = 0.2;
 const ZOOM_STEP = 0.05;
 const ZOOM_MAX = 0.6;
 const clampZoom = (z: number) => Math.round(Math.min(ZOOM_MAX, Math.max(0, z)) * 100) / 100;
+
+// How long a read waits on the server before the banner says the connection is slow. Most answers
+// land well inside this; past it, the operator needs to know the label was fine and it's the network.
+const SLOW_MS = 2500;
+
+const tail = (id: string) => `…${id.slice(-7)}`;
 
 export type ScanRow = {
   id: string;
@@ -42,7 +48,7 @@ export type ScanLabels = {
   offlineBody: string;
   /** Shown while the list is empty. */
   hint: string;
-  /** Flashed when a scan arrives with nothing left to take. */
+  /** Shown, steady, once there is nothing left to take; the camera stops reading. */
   full: string;
 };
 
@@ -53,7 +59,7 @@ export const DEFAULT_LABELS: ScanLabels = {
   offlineBody:
     "Each code is checked against the server as you scan, so this screen can't work offline. Everything else in the app can.",
   hint: 'Point the camera at a code. The camera stays open — scan the whole pallet without stopping.',
-  full: 'This lot is full — no more codes needed',
+  full: 'All codes linked — this lot is complete',
 };
 
 /** A scanned unit waiting for the operator's Confirm or Cancel (manual mode). */
@@ -88,7 +94,7 @@ type QrScannerProps = {
   onScanned: (row: ScanRow) => void;
   /** Blocks scanning — this screen deliberately requires a connection. */
   offline?: boolean;
-  /** How many more this target can take. At 0 the camera stops accepting codes; null/undefined = no limit. */
+  /** How many more this target can take. At 0 the camera stops reading codes; null/undefined = no limit. */
   remaining?: number | null;
 };
 
@@ -112,6 +118,8 @@ export function QrScanner({
   const theme = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const [flash, setFlash] = useState<null | { state: 'ok' | 'warn' | 'error'; text: string }>(null);
+  // A code the camera has read and the server hasn't answered for yet.
+  const [checking, setChecking] = useState<null | { label: string; slow: boolean }>(null);
 
   // Session state is a ref, not React state: onBarcodeScanned fires many times
   // a second and every one of them must see the latest set, not a value closed
@@ -163,7 +171,7 @@ export function QrScanner({
   // One place for what an attempt looked like, whether it was auto or confirmed by hand.
   const settle = useCallback(
     (id: string, result: Settled) => {
-      const label = result.label ?? `…${id.slice(-7)}`;
+      const label = result.label ?? tail(id);
 
       if (!result.ok) {
         // The hook's "already done" answer is a nudge, not a failure: no row.
@@ -214,19 +222,9 @@ export function QrScanner({
 
   const handle = useCallback(
     async (payload: string) => {
-      if (offline || pending || inFlight.current) return;
-
-      // A full target takes no more. Said once in a while, not on every frame, and the server
-      // would refuse it anyway -- this just stops a pallet's worth of pointless round trips.
-      if (remaining !== null && remaining <= 0) {
-        const now = Date.now();
-        if (now - lastNudgeAt.current > 2500) {
-          lastNudgeAt.current = now;
-          buzz('error');
-          show('error', labels.full);
-        }
-        return;
-      }
+      // A full target takes no more. The camera stops reading at 0 too; this covers the frames
+      // already on their way when the last code landed.
+      if (offline || pending || inFlight.current || (remaining !== null && remaining <= 0)) return;
 
       const outcome = classifyScan(session.current, payload, Date.now());
 
@@ -253,6 +251,12 @@ export function QrScanner({
       inFlight.current = true;
       markSent(session.current, outcome.id);
 
+      // Read, not yet answered: say so now, so a slow network never looks like a bad label.
+      tick();
+      const label = tail(outcome.id);
+      setChecking({ label, slow: false });
+      const slowTimer = setTimeout(() => setChecking({ label, slow: true }), SLOW_MS);
+
       try {
         const result = await onScan(outcome.id);
 
@@ -265,6 +269,8 @@ export function QrScanner({
 
         settle(outcome.id, result);
       } finally {
+        clearTimeout(slowTimer);
+        setChecking(null);
         inFlight.current = false;
       }
     },
@@ -289,6 +295,9 @@ export function QrScanner({
   );
 
   const linked = rows.filter((r) => r.state === 'ok').length;
+  // Reached the target. Stop reading rather than refuse each frame: the last label is usually still
+  // in view, and an error buzz right after its success reads as if that one failed.
+  const full = remaining !== null && remaining <= 0;
 
   return (
     <Modal visible={open} animationType="slide" onRequestClose={onClose}>
@@ -344,11 +353,24 @@ export function QrScanner({
                   zoom={zoom}
                   enableTorch={torch}
                   barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-                  onBarcodeScanned={onDetected}
+                  onBarcodeScanned={full ? undefined : onDetected}
                 />
                 <View style={styles.reticle} pointerEvents="none">
                   <View
-                    style={[styles.frame, { width: side, height: side, borderColor: flashColor(flash, theme) }]}
+                    style={[
+                      styles.frame,
+                      {
+                        width: side,
+                        height: side,
+                        borderColor: flash
+                          ? flashColor(flash, theme)
+                          : checking
+                            ? theme.info
+                            : full
+                              ? theme.primary
+                              : flashColor(null, theme),
+                      },
+                    ]}
                   />
                 </View>
                 <View style={styles.zoom}>
@@ -397,6 +419,25 @@ export function QrScanner({
                 />
                 <AppText variant="label" color="onPrimary" style={styles.flex} numberOfLines={2}>
                   {flash.text}
+                </AppText>
+              </View>
+            ) : checking ? (
+              <View
+                style={[styles.flash, { backgroundColor: checking.slow ? theme.warning : theme.info }]}
+                accessibilityLiveRegion="polite"
+              >
+                <ActivityIndicator color="#FFFFFF" />
+                <AppText variant="label" color="onPrimary" style={styles.flex} numberOfLines={2}>
+                  {checking.slow
+                    ? `Read ${checking.label} — slow connection, still waiting for the server`
+                    : `Read ${checking.label} — checking…`}
+                </AppText>
+              </View>
+            ) : full ? (
+              <View style={[styles.flash, { backgroundColor: theme.primary }]} accessibilityLiveRegion="polite">
+                <Icon name="check-circle" size={20} color="onPrimary" />
+                <AppText variant="label" color="onPrimary" style={styles.flex} numberOfLines={2}>
+                  {labels.full}
                 </AppText>
               </View>
             ) : null}

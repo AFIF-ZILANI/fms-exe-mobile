@@ -22,6 +22,12 @@ function player(kind: keyof typeof SOUND_FILES) {
   return (players[kind] ??= createAudioPlayer(SOUND_FILES[kind]));
 }
 
+/** A light tick the instant the camera reads a code, before the server answers. Vibration only:
+ *  the sounds are kept for the outcome, so a read never sounds like a success. */
+export function tick(): void {
+  void Haptics.selectionAsync().catch(() => {});
+}
+
 /** Loads both sounds ahead of the first scan, so the first beep isn't the one that gets dropped. */
 export function primeFeedback(): void {
   try {
