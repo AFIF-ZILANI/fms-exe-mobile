@@ -2,7 +2,7 @@
   "expo": {
     "name": "ZFarm",
     "slug": "zfarm",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "zfarm",
@@ -19,7 +19,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.zerod.fms",
-      "versionCode": 2
+      "versionCode": 3
     },
     "web": {
       "output": "single",
