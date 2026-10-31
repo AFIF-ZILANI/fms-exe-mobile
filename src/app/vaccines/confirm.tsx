@@ -56,7 +56,7 @@ const tail = (id: string) => `…${id.slice(-7)}`;
 /** Scan the bottles used, say how much of each, then confirm. The server draws every bottle, logs the
  *  vaccination and marks the row done in one go -- there is no separate "record as used" step. */
 export default function ConfirmVaccineScreen() {
-  const { id, batch_id } = useLocalSearchParams<{ id: string; batch_id: string }>();
+  const { id, batch_id, house_id } = useLocalSearchParams<{ id: string; batch_id: string; house_id: string }>();
   const queryClient = useQueryClient();
   const offline = useNetworkState().isConnected === false;
   // One key per visit: a retry after a lost response returns the same confirmed row instead of drawing twice.
@@ -72,6 +72,7 @@ export default function ConfirmVaccineScreen() {
   ]);
   const row = scheduleQ.data?.find((r) => r.id === id);
   const purposeLabel = row?.purposeRef.label;
+  const houseName = row?.houses.find((h) => h.id === house_id)?.name;
 
   const onScan = async (code: string): Promise<ScanResult> => {
     if (bottles.some((b) => b.id === code))
@@ -84,8 +85,13 @@ export default function ConfirmVaccineScreen() {
       if (!item) return { ok: false, message: 'This bottle has no purchase record.', retryable: false };
       // The row names a purpose, not a product: any vaccine bottle will do. Server checks the same.
       if (item.category !== 'VACCINE') return { ok: false, message: `${item.name} isn't a vaccine.`, retryable: false };
-      if (!unit.houseAllocations?.[0]?.house_id)
-        return { ok: false, message: 'Still in the warehouse — move it to the house first.', retryable: false };
+      // A split batch is confirmed house by house: the bottles have to be in this house.
+      if (unit.houseAllocations?.[0]?.house_id !== house_id)
+        return {
+          ok: false,
+          message: `In ${currentHouseName(unit)} — move it to ${houseName ?? 'this house'} first.`,
+          retryable: false,
+        };
       // The units this bottle's amount can be typed in (doses, litres...) come from its own item.
       const units = amountUnits(await apiFetch<ItemWithUnits>(`/items/${item.id}`));
       setBottles((bs) => [
@@ -120,6 +126,7 @@ export default function ConfirmVaccineScreen() {
         method: 'POST',
         body: JSON.stringify({
           idempotency_key: key,
+          house_id,
           bottles: bottles.map((b) => ({ stock_unit_id: b.id, quantity: Number(b.quantity), unit: b.unit })),
         }),
       });
@@ -139,7 +146,7 @@ export default function ConfirmVaccineScreen() {
   const review = () =>
     Alert.alert(
       'Confirm this vaccine?',
-      `${purposeLabel ?? ''}\n\n${bottles.map((b) => `${b.vaccine} ${b.label} · ${b.quantity} ${b.unit.toLowerCase()}`).join('\n')}\n\nThese amounts are taken out of stock.`,
+      `${purposeLabel ?? ''} · ${houseName ?? ''}\n\n${bottles.map((b) => `${b.vaccine} ${b.label} · ${b.quantity} ${b.unit.toLowerCase()}`).join('\n')}\n\nThese amounts are taken out of stock.`,
       [
         { text: 'Back', style: 'cancel' },
         { text: 'Yes, confirm', onPress: () => void submit() },
@@ -158,7 +165,7 @@ export default function ConfirmVaccineScreen() {
         <View style={styles.form}>
           <FormCard title={row.purposeRef.label}>
             <AppText variant="caption" color="muted">
-              Day {row.day}
+              {houseName ?? 'This house'} · Day {row.day}
               {row.method ? ` · ${METHOD_LABEL[row.method]}` : ''}
             </AppText>
           </FormCard>
@@ -209,7 +216,7 @@ export default function ConfirmVaccineScreen() {
                 />
               ) : (
                 <AppText variant="caption" color="muted">
-                  Bottles must already be moved into the house.
+                  Bottles must already be moved into this house.
                 </AppText>
               )}
             </View>
@@ -220,7 +227,7 @@ export default function ConfirmVaccineScreen() {
       <QrScanner
         open={scanning}
         onClose={() => setScanning(false)}
-        context={purposeLabel ? `Vaccine bottles for ${purposeLabel}` : ''}
+        context={purposeLabel ? `${purposeLabel} · ${houseName ?? ''}` : ''}
         onScan={onScan}
         rows={rows}
         onScanned={(r) => setRows((rs) => [r, ...rs])}

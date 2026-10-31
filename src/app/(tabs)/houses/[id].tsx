@@ -202,7 +202,7 @@ export default function HouseDetailScreen() {
                 <ShortcutTile
                   label="Vaccine schedule"
                   icon="shield"
-                  onPress={() => router.push(`/vaccines/${batchId}` as Href)}
+                  onPress={() => router.push(`/vaccines/${batchId}?house_id=${id}` as Href)}
                 />
               </View>
             </>

@@ -28,7 +28,8 @@ const STATE_LABEL = {
 /** docs/superpowers/specs/2026-10-31-vaccine-schedule-design.md — the batch's vaccine plan, read-only.
  *  The only action is Confirm on a row that is due or overdue; planning changes are made on the web. */
 export default function VaccineScheduleScreen() {
-  const { batchId } = useLocalSearchParams<{ batchId: string }>();
+  // house_id: the house this was opened from -- the only one this screen can confirm for.
+  const { batchId, house_id } = useLocalSearchParams<{ batchId: string; house_id?: string }>();
   const batchQ = useGetData<Batch>(`/batches/${batchId}`, ['batches', batchId]);
   const rowsQ = useGetData<VaccineScheduleRow[]>(`/batch-vaccine-schedules?batch_id=${batchId}`, [
     'batch-vaccine-schedules',
@@ -74,7 +75,13 @@ export default function VaccineScheduleScreen() {
           {rows.map((row, i) => {
             const state = rowState(row, today);
             const moved = row.day !== row.planned_day;
-            const detail = [row.method ? METHOD_LABEL[row.method] : null, moved ? `planned Day ${row.planned_day}` : null]
+            const here = row.houses.find((h) => h.id === house_id);
+            const housesDone = row.houses.filter((h) => h.confirm).length;
+            const detail = [
+              row.method ? METHOD_LABEL[row.method] : null,
+              moved ? `planned Day ${row.planned_day}` : null,
+              row.status === 'PENDING' && row.houses.length > 1 ? `${housesDone} of ${row.houses.length} houses done` : null,
+            ]
               .filter(Boolean)
               .join(' · ');
             return (
@@ -100,14 +107,18 @@ export default function VaccineScheduleScreen() {
                     {row.confirmed_by?.name ?? 'Confirmed'} · {[...new Set(row.vaccinations.map((v) => v.vaccine_name))].join(', ')}
                   </AppText>
                 ) : null}
-                {batch.status === 'RUNNING' && canConfirm(state) ? (
+                {row.status === 'PENDING' && here?.confirm ? (
+                  <AppText variant="caption" color="muted">
+                    {here.name} done · {here.confirm.confirmed_by.name}
+                  </AppText>
+                ) : batch.status === 'RUNNING' && canConfirm(state, row, house_id) ? (
                   <View style={styles.action}>
                     <Button
                       label="Confirm"
                       icon="check"
                       variant="secondary"
                       onPress={() =>
-                        router.push(`/vaccines/confirm?id=${row.id}&batch_id=${batchId}` as Href)
+                        router.push(`/vaccines/confirm?id=${row.id}&batch_id=${batchId}&house_id=${house_id}` as Href)
                       }
                     />
                   </View>
