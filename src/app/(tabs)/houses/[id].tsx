@@ -197,6 +197,14 @@ export default function HouseDetailScreen() {
                   />
                 ))}
               </View>
+              {/* Treatments are per batch, so the plan opens for the batch in this house, not the house. */}
+              <View style={[styles.shortcuts, styles.vaccines]}>
+                <ShortcutTile
+                  label="Vaccine schedule"
+                  icon="shield"
+                  onPress={() => router.push(`/vaccines/${batchId}` as Href)}
+                />
+              </View>
             </>
           ) : null}
 
@@ -248,6 +256,7 @@ export default function HouseDetailScreen() {
 const styles = StyleSheet.create({
   state: { marginTop: Spacing.md },
   section: { marginTop: Spacing.xl, marginBottom: Spacing.sm, paddingHorizontal: Spacing.xs },
+  vaccines: { marginTop: Spacing.sm },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
   shortcuts: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
   card: { marginTop: Spacing.xl },
