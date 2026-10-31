@@ -15,4 +15,15 @@ assert.equal(canConfirm('DUE_TODAY'), true);
 assert.equal(canConfirm('OVERDUE'), true); // late is fine
 assert.equal(canConfirm('DONE'), false);
 
-assert.deepEqual(amountUnits({ id: 'i', name: 'ND', unit: 'DOSE', itemUnits: [{ unit: 'LITRE' }, { unit: 'DOSE' }] }), ['DOSE', 'LITRE']);
+assert.deepEqual(
+  amountUnits({
+    unit: 'DOSE',
+    itemUnits: [
+      { unit: 'LITRE', is_usable: true },
+      { unit: 'DOSE', is_usable: true },
+      { unit: 'BOX', is_usable: false }, // purchase-only units aren't offered
+    ],
+  }),
+  ['DOSE', 'LITRE'],
+);
+assert.deepEqual(amountUnits({ unit: 'BOTTLE' }), ['BOTTLE']);

@@ -2,17 +2,34 @@
 export type VaccineScheduleRow = {
   id: string;
   batch_id: string;
-  item_id: string;
-  item: { id: string; name: string; unit: string; itemUnits: { unit: string }[] };
+  /** What it's for (Gumboro, Ranikhet...). No product: any vaccine bottle scanned at confirm is what was given. */
   purpose: string;
-  method: string | null;
+  purposeRef: { code: string; label: string };
+  method: VaccineMethod | null;
   planned_day: number;
   day: number;
   status: 'PENDING' | 'DONE' | 'CANCELLED';
   reason: string | null;
   confirmed_by: { id: string; name: string } | null;
   confirmed_at: string | null;
-  vaccinations: { id: string; consumption: { quantity: string; unit: string } | null }[];
+  vaccinations: { id: string; vaccine_name: string; consumption: { quantity: string; unit: string } | null }[];
+};
+
+export type VaccineMethod =
+  | 'EYE_DROP'
+  | 'NASAL_DROP'
+  | 'DRINKING_WATER'
+  | 'MUSCLE_INJECTION'
+  | 'NECK_INJECTION'
+  | 'SPRAY';
+
+export const METHOD_LABEL: Record<VaccineMethod, string> = {
+  EYE_DROP: 'Eye drop',
+  NASAL_DROP: 'Nasal drop',
+  DRINKING_WATER: 'Drinking water',
+  MUSCLE_INJECTION: 'Muscle injection',
+  NECK_INJECTION: 'Neck injection',
+  SPRAY: 'Spray',
 };
 
 export type VaccineRowState = 'UPCOMING' | 'DUE_TODAY' | 'OVERDUE' | 'DONE' | 'CANCELLED';
@@ -27,7 +44,7 @@ export function rowState(row: Pick<VaccineScheduleRow, 'status' | 'day'>, today:
 
 export const canConfirm = (state: VaccineRowState) => state === 'DUE_TODAY' || state === 'OVERDUE';
 
-/** The units a bottle's amount can be entered in: the item's own unit, then any usable conversion. */
-export function amountUnits(item: VaccineScheduleRow['item']): string[] {
-  return [...new Set([item.unit, ...item.itemUnits.map((u) => u.unit)])];
+/** The units a bottle's amount can be entered in: its item's own unit, then any conversion marked usable. */
+export function amountUnits(item: { unit: string; itemUnits?: { unit: string; is_usable: boolean }[] }): string[] {
+  return [...new Set([item.unit, ...(item.itemUnits ?? []).filter((u) => u.is_usable).map((u) => u.unit)])];
 }

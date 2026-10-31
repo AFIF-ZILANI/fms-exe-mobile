@@ -15,7 +15,7 @@ import { useGetData } from '@/lib/api';
 import { dayOfCycle } from '@/lib/farm';
 import { formatBatchCode } from '@/lib/format';
 import type { Batch } from '@/lib/types';
-import { canConfirm, rowState, type VaccineScheduleRow } from '@/lib/vaccine-schedule';
+import { METHOD_LABEL, canConfirm, rowState, type VaccineScheduleRow } from '@/lib/vaccine-schedule';
 
 const STATE_LABEL = {
   UPCOMING: 'Upcoming',
@@ -74,19 +74,22 @@ export default function VaccineScheduleScreen() {
           {rows.map((row, i) => {
             const state = rowState(row, today);
             const moved = row.day !== row.planned_day;
+            const detail = [row.method ? METHOD_LABEL[row.method] : null, moved ? `planned Day ${row.planned_day}` : null]
+              .filter(Boolean)
+              .join(' · ');
             return (
               <LedgerRow key={row.id} gutter={`D${row.day}`} gutterWidth={52} last={i === rows.length - 1}>
                 <View style={styles.title}>
                   <AppText variant="bodyStrong" style={state === 'CANCELLED' ? styles.struck : undefined}>
-                    {row.item.name}
+                    {row.purposeRef.label}
                   </AppText>
                   <StatusPill status={state === 'DUE_TODAY' ? 'PENDING' : state} label={STATE_LABEL[state]} />
                 </View>
-                <AppText variant="caption" color="muted">
-                  {row.purpose}
-                  {row.method ? ` · ${row.method}` : ''}
-                  {moved ? ` · planned Day ${row.planned_day}` : ''}
-                </AppText>
+                {detail ? (
+                  <AppText variant="caption" color="muted">
+                    {detail}
+                  </AppText>
+                ) : null}
                 {row.reason ? (
                   <AppText variant="caption" color="muted">
                     {row.reason}
@@ -94,8 +97,7 @@ export default function VaccineScheduleScreen() {
                 ) : null}
                 {row.status === 'DONE' ? (
                   <AppText variant="caption" color="muted">
-                    {row.confirmed_by?.name ?? 'Confirmed'} · {row.vaccinations.length} bottle
-                    {row.vaccinations.length === 1 ? '' : 's'}
+                    {row.confirmed_by?.name ?? 'Confirmed'} · {[...new Set(row.vaccinations.map((v) => v.vaccine_name))].join(', ')}
                   </AppText>
                 ) : null}
                 {batch.status === 'RUNNING' && canConfirm(state) ? (

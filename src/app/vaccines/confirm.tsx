@@ -21,7 +21,7 @@ import { goBack } from '@/lib/nav';
 import { scanErrorMessage, type ScanResult } from '@/lib/scan';
 import { currentHouseName } from '@/lib/scan-actions';
 import type { StockUnit } from '@/lib/types';
-import { amountUnits, type VaccineScheduleRow } from '@/lib/vaccine-schedule';
+import { METHOD_LABEL, amountUnits, type VaccineScheduleRow } from '@/lib/vaccine-schedule';
 
 const LABELS: ScanLabels = {
   done: 'added',
@@ -39,7 +39,17 @@ const BLOCKED: Partial<Record<StockUnit['status'], string>> = {
   DISPOSED: 'Already disposed.',
 };
 
-type Bottle = { id: string; label: string; house: string; quantity: string; unit: string };
+type Bottle = {
+  id: string;
+  label: string;
+  vaccine: string;
+  house: string;
+  units: string[];
+  quantity: string;
+  unit: string;
+};
+
+type ItemWithUnits = { unit: string; itemUnits?: { unit: string; is_usable: boolean }[] };
 
 const tail = (id: string) => `…${id.slice(-7)}`;
 
@@ -61,10 +71,7 @@ export default function ConfirmVaccineScreen() {
     batch_id,
   ]);
   const row = scheduleQ.data?.find((r) => r.id === id);
-  const units = row ? amountUnits(row.item) : [];
-  const itemId = row?.item_id;
-  const itemName = row?.item.name;
-  const defaultUnit = units[0] ?? '';
+  const purposeLabel = row?.purposeRef.label;
 
   const onScan = async (code: string): Promise<ScanResult> => {
     if (bottles.some((b) => b.id === code))
@@ -73,17 +80,25 @@ export default function ConfirmVaccineScreen() {
       const unit = await apiFetch<StockUnit>(`/stock-units/${code}`);
       const blocked = BLOCKED[unit.status];
       if (blocked) return { ok: false, message: blocked, retryable: false };
-      if (unit.purchase_item?.item_id !== itemId)
-        return {
-          ok: false,
-          message: `Not ${itemName ?? 'this vaccine'} — this is ${unit.purchase_item?.item.name ?? 'another item'}.`,
-          retryable: false,
-        };
+      const item = unit.purchase_item?.item;
+      if (!item) return { ok: false, message: 'This bottle has no purchase record.', retryable: false };
+      // The row names a purpose, not a product: any vaccine bottle will do. Server checks the same.
+      if (item.category !== 'VACCINE') return { ok: false, message: `${item.name} isn't a vaccine.`, retryable: false };
       if (!unit.houseAllocations?.[0]?.house_id)
         return { ok: false, message: 'Still in the warehouse — move it to the house first.', retryable: false };
+      // The units this bottle's amount can be typed in (doses, litres...) come from its own item.
+      const units = amountUnits(await apiFetch<ItemWithUnits>(`/items/${item.id}`));
       setBottles((bs) => [
         ...bs,
-        { id: code, label: tail(code), house: currentHouseName(unit), quantity: '', unit: defaultUnit },
+        {
+          id: code,
+          label: tail(code),
+          vaccine: item.name,
+          house: currentHouseName(unit),
+          units,
+          quantity: '',
+          unit: units[0] ?? item.unit,
+        },
       ]);
       return { ok: true, label: tail(code) };
     } catch (err) {
@@ -124,7 +139,7 @@ export default function ConfirmVaccineScreen() {
   const review = () =>
     Alert.alert(
       'Confirm this vaccine?',
-      `${itemName ?? ''}\n\n${bottles.map((b) => `${b.label} · ${b.quantity} ${b.unit.toLowerCase()}`).join('\n')}\n\nThese amounts are taken out of stock.`,
+      `${purposeLabel ?? ''}\n\n${bottles.map((b) => `${b.vaccine} ${b.label} · ${b.quantity} ${b.unit.toLowerCase()}`).join('\n')}\n\nThese amounts are taken out of stock.`,
       [
         { text: 'Back', style: 'cancel' },
         { text: 'Yes, confirm', onPress: () => void submit() },
@@ -141,18 +156,18 @@ export default function ConfirmVaccineScreen() {
         <AppText color="muted">This vaccine isn&apos;t on the schedule any more.</AppText>
       ) : (
         <View style={styles.form}>
-          <FormCard title={row.item.name}>
+          <FormCard title={row.purposeRef.label}>
             <AppText variant="caption" color="muted">
-              Day {row.day} · {row.purpose}
-              {row.method ? ` · ${row.method}` : ''}
+              Day {row.day}
+              {row.method ? ` · ${METHOD_LABEL[row.method]}` : ''}
             </AppText>
           </FormCard>
 
           {bottles.map((b) => (
-            <FormCard key={b.id} title={`Bottle ${b.label}`} hint={b.house}>
-              {units.length > 1 ? (
+            <FormCard key={b.id} title={`${b.vaccine} ${b.label}`} hint={b.house}>
+              {b.units.length > 1 ? (
                 <PillSelect
-                  options={units.map((u) => ({ value: u, label: u.toLowerCase() }))}
+                  options={b.units.map((u) => ({ value: u, label: u.toLowerCase() }))}
                   value={b.unit}
                   onChange={(u) => patch(b.id, { unit: u })}
                 />
@@ -205,7 +220,7 @@ export default function ConfirmVaccineScreen() {
       <QrScanner
         open={scanning}
         onClose={() => setScanning(false)}
-        context={itemName ? `Bottles of ${itemName}` : ''}
+        context={purposeLabel ? `Vaccine bottles for ${purposeLabel}` : ''}
         onScan={onScan}
         rows={rows}
         onScanned={(r) => setRows((rs) => [r, ...rs])}
