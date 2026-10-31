@@ -9,8 +9,7 @@ import { FormCard } from '@/components/ui/form-card';
 import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
 import { Button } from '@/components/ui/button';
-import { NumberField } from '@/components/ui/number-field';
-import { PillSelect } from '@/components/ui/pill-select';
+import { TextField } from '@/components/ui/text-field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AppText } from '@/components/ui/text';
 import { QrScanner, type ScanLabels, type ScanRow } from '@/components/ui/qr-scanner';
@@ -18,10 +17,9 @@ import { OfflineNote } from '@/components/scan-parts';
 import { Spacing } from '@/constants/theme';
 import { ApiError, apiFetch, useGetData } from '@/lib/api';
 import { goBack } from '@/lib/nav';
-import { scanErrorMessage, type ScanResult } from '@/lib/scan';
-import { currentHouseName } from '@/lib/scan-actions';
+import { isStockCode, scanErrorMessage, type ScanResult } from '@/lib/scan';
 import type { StockUnit } from '@/lib/types';
-import { METHOD_LABEL, amountUnits, type VaccineScheduleRow } from '@/lib/vaccine-schedule';
+import { METHOD_LABEL, bottleProblem, type VaccineScheduleRow } from '@/lib/vaccine-schedule';
 
 const LABELS: ScanLabels = {
   done: 'added',
@@ -32,29 +30,13 @@ const LABELS: ScanLabels = {
   full: '',
 };
 
-const BLOCKED: Partial<Record<StockUnit['status'], string>> = {
-  UNASSIGNED: 'Not linked to a purchase yet.',
-  PRINTED: 'Not linked to a purchase yet.',
-  CONSUMED: 'Already used up.',
-  DISPOSED: 'Already disposed.',
-};
-
-type Bottle = {
-  id: string;
-  label: string;
-  vaccine: string;
-  house: string;
-  units: string[];
-  quantity: string;
-  unit: string;
-};
-
-type ItemWithUnits = { unit: string; itemUnits?: { unit: string; is_usable: boolean }[] };
+type Bottle = { id: string; label: string; vaccine: string };
 
 const tail = (id: string) => `…${id.slice(-7)}`;
 
-/** Scan the bottles used, say how much of each, then confirm. The server draws every bottle, logs the
- *  vaccination and marks the row done in one go -- there is no separate "record as used" step. */
+/** Scan (or type) the bottles used, then confirm. Each bottle counts as used up: the server records whatever
+ *  was left in it, logs the vaccination and marks this house confirmed in one go -- nobody types an amount,
+ *  and there is no separate "record as used" step. */
 export default function ConfirmVaccineScreen() {
   const { id, batch_id, house_id } = useLocalSearchParams<{ id: string; batch_id: string; house_id: string }>();
   const queryClient = useQueryClient();
@@ -65,6 +47,9 @@ export default function ConfirmVaccineScreen() {
   const [rows, setRows] = useState<ScanRow[]>([]);
   const [scanning, setScanning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // Typed codes, for a label the camera can't read.
+  const [typed, setTyped] = useState('');
+  const [typedNote, setTypedNote] = useState<{ ok: boolean; text: string } | null>(null);
 
   const scheduleQ = useGetData<VaccineScheduleRow[]>(`/batch-vaccine-schedules?batch_id=${batch_id}`, [
     'batch-vaccine-schedules',
@@ -79,33 +64,9 @@ export default function ConfirmVaccineScreen() {
       return { ok: false, duplicate: true, message: 'Already added', retryable: false };
     try {
       const unit = await apiFetch<StockUnit>(`/stock-units/${code}`);
-      const blocked = BLOCKED[unit.status];
-      if (blocked) return { ok: false, message: blocked, retryable: false };
-      const item = unit.purchase_item?.item;
-      if (!item) return { ok: false, message: 'This bottle has no purchase record.', retryable: false };
-      // The row names a purpose, not a product: any vaccine bottle will do. Server checks the same.
-      if (item.category !== 'VACCINE') return { ok: false, message: `${item.name} isn't a vaccine.`, retryable: false };
-      // A split batch is confirmed house by house: the bottles have to be in this house.
-      if (unit.houseAllocations?.[0]?.house_id !== house_id)
-        return {
-          ok: false,
-          message: `In ${currentHouseName(unit)} — move it to ${houseName ?? 'this house'} first.`,
-          retryable: false,
-        };
-      // The units this bottle's amount can be typed in (doses, litres...) come from its own item.
-      const units = amountUnits(await apiFetch<ItemWithUnits>(`/items/${item.id}`));
-      setBottles((bs) => [
-        ...bs,
-        {
-          id: code,
-          label: tail(code),
-          vaccine: item.name,
-          house: currentHouseName(unit),
-          units,
-          quantity: '',
-          unit: units[0] ?? item.unit,
-        },
-      ]);
+      const problem = bottleProblem(unit, house_id, houseName ?? 'this house');
+      if (problem) return { ok: false, message: problem, retryable: false };
+      setBottles((bs) => [...bs, { id: code, label: tail(code), vaccine: unit.purchase_item?.item.name ?? '' }]);
       return { ok: true, label: tail(code) };
     } catch (err) {
       if (err instanceof ApiError)
@@ -114,10 +75,14 @@ export default function ConfirmVaccineScreen() {
     }
   };
 
-  const patch = (bottleId: string, change: Partial<Bottle>) =>
-    setBottles((bs) => bs.map((b) => (b.id === bottleId ? { ...b, ...change } : b)));
-
-  const ready = bottles.length > 0 && bottles.every((b) => Number(b.quantity) > 0 && b.unit);
+  const addTyped = async () => {
+    const code = typed.trim().toLowerCase();
+    if (!isStockCode(code)) return setTypedNote({ ok: false, text: "That isn't a bottle code — check it and try again." });
+    const result = await onScan(code);
+    if ('held' in result) return;
+    if (result.ok) setTyped('');
+    setTypedNote(result.ok ? { ok: true, text: `Added ${tail(code)}` } : { ok: false, text: result.message });
+  };
 
   const submit = async () => {
     setSubmitting(true);
@@ -127,7 +92,7 @@ export default function ConfirmVaccineScreen() {
         body: JSON.stringify({
           idempotency_key: key,
           house_id,
-          bottles: bottles.map((b) => ({ stock_unit_id: b.id, quantity: Number(b.quantity), unit: b.unit })),
+          bottles: bottles.map((b) => ({ stock_unit_id: b.id })),
         }),
       });
       void queryClient.invalidateQueries({ queryKey: ['batch-vaccine-schedules', batch_id] });
@@ -146,7 +111,7 @@ export default function ConfirmVaccineScreen() {
   const review = () =>
     Alert.alert(
       'Confirm this vaccine?',
-      `${purposeLabel ?? ''} · ${houseName ?? ''}\n\n${bottles.map((b) => `${b.vaccine} ${b.label} · ${b.quantity} ${b.unit.toLowerCase()}`).join('\n')}\n\nThese amounts are taken out of stock.`,
+      `${purposeLabel ?? ''} · ${houseName ?? ''}\n\n${bottles.map((b) => `${b.vaccine} ${b.label}`).join('\n')}\n\n${bottles.length === 1 ? 'This bottle is' : `These ${bottles.length} bottles are`} recorded as used up — everything left in them comes out of stock.`,
       [
         { text: 'Back', style: 'cancel' },
         { text: 'Yes, confirm', onPress: () => void submit() },
@@ -170,29 +135,23 @@ export default function ConfirmVaccineScreen() {
             </AppText>
           </FormCard>
 
-          {bottles.map((b) => (
-            <FormCard key={b.id} title={`${b.vaccine} ${b.label}`} hint={b.house}>
-              {b.units.length > 1 ? (
-                <PillSelect
-                  options={b.units.map((u) => ({ value: u, label: u.toLowerCase() }))}
-                  value={b.unit}
-                  onChange={(u) => patch(b.id, { unit: u })}
-                />
-              ) : null}
-              <NumberField
-                label="Amount used"
-                value={b.quantity}
-                onChangeText={(q) => patch(b.id, { quantity: q })}
-                unit={b.unit.toLowerCase()}
-              />
-              <Button
-                variant="ghost"
-                label="Remove bottle"
-                icon="trash-2"
-                onPress={() => setBottles((bs) => bs.filter((x) => x.id !== b.id))}
-              />
+          {bottles.length ? (
+            <FormCard title={`${bottles.length} bottle${bottles.length === 1 ? '' : 's'}`} hint="Used up">
+              {bottles.map((b) => (
+                <View key={b.id} style={styles.bottle}>
+                  <AppText style={styles.bottleName}>
+                    {b.vaccine} {b.label}
+                  </AppText>
+                  <Button
+                    variant="ghost"
+                    label="Remove"
+                    icon="trash-2"
+                    onPress={() => setBottles((bs) => bs.filter((x) => x.id !== b.id))}
+                  />
+                </View>
+              ))}
             </FormCard>
-          ))}
+          ) : null}
 
           {offline ? (
             <OfflineNote what="Confirming a vaccine" />
@@ -205,11 +164,30 @@ export default function ConfirmVaccineScreen() {
                 onPress={() => setScanning(true)}
                 block
               />
+              <FormCard title="Can't scan it?" hint="Type the code">
+                <TextField
+                  label="Bottle code"
+                  value={typed}
+                  onChangeText={(t) => {
+                    setTyped(t);
+                    setTypedNote(null);
+                  }}
+                  placeholder="e.g. 3f2a9c1e-…"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {typedNote ? (
+                  <AppText variant="caption" color={typedNote.ok ? 'success' : 'critical'}>
+                    {typedNote.text}
+                  </AppText>
+                ) : null}
+                <Button variant="secondary" label="Add bottle" icon="plus" disabled={!typed.trim()} onPress={() => void addTyped()} />
+              </FormCard>
               {bottles.length ? (
                 <Button
                   label="Confirm"
                   icon="check"
-                  disabled={!ready}
+                  disabled={bottles.length === 0}
                   loading={submitting}
                   onPress={review}
                   block
@@ -241,4 +219,6 @@ export default function ConfirmVaccineScreen() {
 const styles = StyleSheet.create({
   form: { gap: Spacing.md },
   actions: { gap: Spacing.sm },
+  bottle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm },
+  bottleName: { flex: 1 },
 });

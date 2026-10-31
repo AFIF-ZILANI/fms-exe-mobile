@@ -1,3 +1,5 @@
+import type { StockUnit } from '@/lib/types';
+
 /** A batch's planned vaccine row (GET /batch-vaccine-schedules?batch_id=). Workers can only confirm one. */
 export type VaccineScheduleRow = {
   id: string;
@@ -51,7 +53,24 @@ export function canConfirm(state: VaccineRowState, row: Pick<VaccineScheduleRow,
   return !!house && !house.confirm;
 }
 
-/** The units a bottle's amount can be entered in: its item's own unit, then any conversion marked usable. */
-export function amountUnits(item: { unit: string; itemUnits?: { unit: string; is_usable: boolean }[] }): string[] {
-  return [...new Set([item.unit, ...(item.itemUnits ?? []).filter((u) => u.is_usable).map((u) => u.unit)])];
+const BLOCKED: Partial<Record<StockUnit['status'], string>> = {
+  UNASSIGNED: 'Not linked to a purchase yet.',
+  PRINTED: 'Not linked to a purchase yet.',
+  CONSUMED: 'Already used up.',
+  DISPOSED: 'Already disposed.',
+};
+
+/** Why a scanned (or typed) bottle can't go into this house's confirm, or null when it can. The server checks
+ *  the same and more (what's left in it); this just answers on the spot instead of at Confirm. */
+export function bottleProblem(unit: StockUnit, houseId: string, houseName: string): string | null {
+  const blocked = BLOCKED[unit.status];
+  if (blocked) return blocked;
+  const item = unit.purchase_item?.item;
+  if (!item) return 'This bottle has no purchase record.';
+  // The row names a purpose, not a product: any vaccine bottle will do.
+  if (item.category !== 'VACCINE') return `${item.name} isn't a vaccine.`;
+  // A split batch is confirmed house by house: the bottles have to be in this house.
+  const here = unit.houseAllocations?.[0];
+  if (here?.house_id !== houseId) return `In ${here?.house?.name ?? 'the warehouse'} — move it to ${houseName} first.`;
+  return null;
 }
