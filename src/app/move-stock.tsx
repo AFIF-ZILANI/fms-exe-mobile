@@ -9,12 +9,15 @@ import { ItemPicker } from '@/components/ui/item-picker';
 import { PickerField } from '@/components/ui/picker-field';
 import { NumberField } from '@/components/ui/number-field';
 import { TextField } from '@/components/ui/text-field';
+import { PillSelect } from '@/components/ui/pill-select';
+import { AppText } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
 import { useGetData, type Paginated } from '@/lib/api';
-import { formatBalance, type StockRow } from '@/lib/stock-summary';
+import { formatBalance, usableUnits, type StockRow } from '@/lib/stock-summary';
+import { humanise } from '@/lib/profile-format';
 import type { Item, Warehouse } from '@/lib/types';
 import { goBack } from '@/lib/nav';
 
@@ -28,7 +31,8 @@ const placeKey = (p: Place) => `${p.type}:${p.id}`;
  * Coded units move by scan instead (scan/allocate.tsx). Opened from a house, the house is the
  * source and the warehouse the destination, since that is the return this screen exists for.
  *
- * ponytail: quantity is in Item.unit only, like Log feed. Add a unit picker if bag counts are wanted.
+ * Quantity can be typed in any usable unit (bags, not just kg); the server converts it to Item.unit.
+ * Stock checks run in the base unit, so "3 bags" is compared as 150 kg.
  */
 export default function MoveStockScreen() {
   const params = useLocalSearchParams<{ house_id?: string }>();
@@ -40,6 +44,7 @@ export default function MoveStockScreen() {
   const [to, setTo] = useState<Place | null>(null);
   const [touched, setTouched] = useState(false);
   const [quantity, setQuantity] = useState('');
+  const [unitCode, setUnitCode] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -64,12 +69,19 @@ export default function MoveStockScreen() {
           .reduce((sum, r) => sum + (Number(r.balance) || 0), 0)
       : null;
 
+  const units = item ? usableUnits(item) : [];
+  // Falls back to the base unit when nothing (or a unit of the previous item) is picked.
+  const unit = units.find((u) => u.unit === unitCode) ?? units[0] ?? null;
+  const unitText = (code: string | undefined) => (code ? humanise(code).toLowerCase() : '');
+  const baseText = unitText(item?.unit);
+
   const onHand = source ? balanceAt(source) : null;
   const quantityNum = Number(quantity);
+  const baseQty = quantityNum * (unit?.factor ?? 1);
   const samePlace = !!source && !!dest && placeKey(source) === placeKey(dest);
   const bothWarehouses = source?.type === 'WAREHOUSE' && dest?.type === 'WAREHOUSE';
   // The server refuses more than the source holds, so catch it here rather than as a failed sync.
-  const overStock = onHand !== null && quantityNum > onHand;
+  const overStock = onHand !== null && baseQty > onHand;
   const isValid = !!item && !!source && !!dest && !samePlace && !bothWarehouses && quantityNum > 0 && !overStock;
 
   const pick = (which: 'from' | 'to', p: Place) => {
@@ -96,7 +108,7 @@ export default function MoveStockScreen() {
           to_location_type: dest.type,
           to_location_id: dest.id,
           quantity: quantityNum,
-          unit: item.unit,
+          unit: unit?.unit ?? item.unit,
           ...(note.trim() && { note: note.trim() }),
         },
       });
@@ -107,10 +119,11 @@ export default function MoveStockScreen() {
   };
 
   const handleSubmit = () => {
-    const left = onHand !== null ? formatBalance(onHand - quantityNum) : null;
+    const left = onHand !== null ? `${formatBalance(onHand - baseQty)} ${baseText}` : null;
+    const converted = unit && unit.factor !== 1 ? ` (${formatBalance(baseQty)} ${baseText})` : '';
     Alert.alert(
-      `Move ${quantity} ${item?.unit.toLowerCase()} ${item?.name.toLowerCase()}?`,
-      `${source?.name} → ${dest?.name}.${left !== null ? ` ${source?.name} keeps ${left}.` : ''} A mistake needs a second move back.`,
+      `Move ${quantity} ${unitText(unit?.unit)} ${item?.name.toLowerCase()}?`,
+      `${source?.name} → ${dest?.name}${converted}.${left !== null ? ` ${source?.name} keeps ${left}.` : ''} A mistake needs a second move back.`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Move', onPress: doSubmit },
@@ -128,7 +141,7 @@ export default function MoveStockScreen() {
       getSubLabel={(p) => {
         const b = balanceAt(p);
         const kind = p.type === 'WAREHOUSE' ? 'Warehouse' : 'House';
-        return b === null ? kind : `${kind} · ${formatBalance(b)} ${item?.unit.toLowerCase()}`;
+        return b === null ? kind : `${kind} · ${formatBalance(b)} ${baseText}`;
       }}
       onChange={(p) => pick(which, p)}
       loading={warehouses.isLoading || houses.isLoading}
@@ -143,14 +156,21 @@ export default function MoveStockScreen() {
       hint="Feed, husk and other uncoded stock, by quantity. Returns to the warehouse too."
       dirty={!!item || !!quantity || !!note}
       submit={{
-        label: quantityNum > 0 && item ? `Move ${quantity} ${item.unit.toLowerCase()}` : 'Move stock',
+        label: quantityNum > 0 && item ? `Move ${quantity} ${unitText(unit?.unit)}` : 'Move stock',
         onPress: handleSubmit,
         disabled: !isValid,
         loading: submitting,
       }}
     >
       <FormCard title="What">
-        <ItemPicker value={item} onChange={setItem} unitTracked={false} />
+        <ItemPicker
+          value={item}
+          onChange={(i) => {
+            setItem(i);
+            setUnitCode(null);
+          }}
+          unitTracked={false}
+        />
       </FormCard>
 
       <FormCard title="From">{placeField('From', source, 'from')}</FormCard>
@@ -173,18 +193,36 @@ export default function MoveStockScreen() {
               : undefined,
         )}
 
+        {units.length > 1 ? (
+          <View style={styles.group}>
+            <AppText variant="eyebrow" color="muted">
+              Unit
+            </AppText>
+            <PillSelect
+              options={units.map((u) => ({
+                value: u.unit,
+                label: u.factor === 1 ? humanise(u.unit) : `${humanise(u.unit)} · ${formatBalance(u.factor)} ${baseText}`,
+              }))}
+              value={unit?.unit ?? null}
+              onChange={setUnitCode}
+            />
+          </View>
+        ) : null}
+
         <NumberField
           label="Quantity"
           value={quantity}
           onChangeText={setQuantity}
-          unit={item?.unit}
+          unit={unit ? humanise(unit.unit) : undefined}
           warn={overStock}
           helper={
             onHand === null || !source
               ? undefined
               : overStock
-                ? `${source.name} only has ${formatBalance(onHand)} ${item?.unit.toLowerCase()}.`
-                : `${formatBalance(onHand)} ${item?.unit.toLowerCase()} at ${source.name}`
+                ? `${source.name} only has ${formatBalance(onHand)} ${baseText}.`
+                : unit && unit.factor !== 1 && quantityNum > 0
+                  ? `= ${formatBalance(baseQty)} ${baseText} · ${formatBalance(onHand)} ${baseText} at ${source.name}`
+                  : `${formatBalance(onHand)} ${baseText} at ${source.name}`
           }
           helperColor={overStock ? 'critical' : 'muted'}
         />
@@ -196,6 +234,7 @@ export default function MoveStockScreen() {
 }
 
 const styles = StyleSheet.create({
+  group: { gap: Spacing.sm },
   arrow: { alignItems: 'center', marginVertical: -Spacing.xs },
   arrowDot: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
 });
