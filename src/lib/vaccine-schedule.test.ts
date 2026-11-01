@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 
 import type { StockUnit } from './types';
-import { bottleProblem, canConfirm, rowState } from './vaccine-schedule';
+import { bottleProblem, canConfirm, dateOfDay, groupRows, nextVaccine, relativeDay, rowState, type VaccineScheduleRow } from './vaccine-schedule';
 
 assert.equal(rowState({ status: 'PENDING', day: 7 }, 5), 'UPCOMING');
 assert.equal(rowState({ status: 'PENDING', day: 5 }, 5), 'DUE_TODAY');
@@ -46,3 +46,41 @@ assert.equal(bottleProblem(unit({ status: 'CONSUMED' }), 'x', 'House X'), 'Alrea
 assert.equal(bottleProblem(unit({ category: 'MEDICINE' }), 'x', 'House X'), "Ma5+Clone30 isn't a vaccine.");
 assert.equal(bottleProblem(unit({ houseId: null }), 'x', 'House X'), 'In the warehouse — move it to House X first.');
 assert.equal(bottleProblem(unit({ houseId: 'y' }), 'x', 'House X'), 'In House X — move it to House X first.');
+
+// dateOfDay / relativeDay
+assert.equal(dateOfDay('2026-10-25T00:00:00.000Z', 1).getDate(), 25); // placement day is Day 1
+assert.equal(dateOfDay('2026-10-25T00:00:00.000Z', 9).getDate(), 2); // Day 9 = 2 Nov
+assert.equal(relativeDay(5, 5), 'today');
+assert.equal(relativeDay(6, 5), 'tomorrow');
+assert.equal(relativeDay(9, 5), 'in 4 days');
+assert.equal(relativeDay(4, 5), '1 day late');
+assert.equal(relativeDay(2, 5), '3 days late');
+
+// groupRows / nextVaccine
+const r = (id: string, day: number, status: VaccineScheduleRow['status'], xDone = false): VaccineScheduleRow => ({
+  id,
+  batch_id: 'b',
+  purpose: 'P',
+  purposeRef: { code: 'P', label: id },
+  method: null,
+  planned_day: day,
+  day,
+  status,
+  reason: null,
+  confirmed_by: null,
+  confirmed_at: null,
+  vaccinations: [],
+  houses: [
+    { id: 'x', name: 'X', confirm: xDone ? { confirmed_at: '2026-11-01T00:00:00Z', confirmed_by: { id: 'p', name: 'R' } } : null },
+    { id: 'y', name: 'Y', confirm: null },
+  ],
+});
+const rows = [r('late', 3, 'PENDING'), r('later', 12, 'PENDING'), r('today', 5, 'PENDING'), r('gone', 2, 'CANCELLED'), r('mine', 4, 'PENDING', true), r('next', 8, 'PENDING')];
+const g = groupRows(rows, 5, 'x');
+assert.deepEqual(g.due.map((x) => x.id), ['late', 'today']); // overdue first
+assert.deepEqual(g.upcoming.map((x) => x.id), ['next', 'later']);
+assert.deepEqual(g.done.map((x) => x.id), ['gone', 'mine']); // X already confirmed "mine"
+assert.deepEqual(groupRows(rows, 5, 'y').due.map((x) => x.id), ['late', 'mine', 'today']); // Y still owes "mine"
+assert.equal(nextVaccine(rows, 5, 'x')?.id, 'late');
+assert.equal(nextVaccine([r('next', 8, 'PENDING')], 5, 'x')?.id, 'next');
+assert.equal(nextVaccine([r('gone', 2, 'CANCELLED')], 5, 'x'), null);

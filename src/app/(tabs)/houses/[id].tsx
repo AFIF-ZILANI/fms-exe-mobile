@@ -14,12 +14,15 @@ import { SyncBanner } from '@/components/ui/sync-banner';
 import { LedgerRow } from '@/components/ui/ledger-row';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AppText } from '@/components/ui/text';
-import type { IconName } from '@/components/ui/icon';
+import { Icon, type IconName } from '@/components/ui/icon';
 import { Spacing, type ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useGetData, type Paginated } from '@/lib/api';
 import { formatTime } from '@/lib/format';
 import { freshness, newestIso } from '@/lib/house-detail';
+import { dayOfCycle } from '@/lib/farm';
+import { nextVaccine, type VaccineScheduleRow } from '@/lib/vaccine-schedule';
+import { VaccineRow } from '@/components/vaccine-row';
 import type { BatchHouseBalance, House, TaskAssignment } from '@/lib/types';
 
 type Dated = { id: string; date?: string; recorded_at?: string };
@@ -86,6 +89,11 @@ export default function HouseDetailScreen() {
     ['vaccinations', 'latest', batchId ?? 'none'],
     { enabled: !!batchId },
   );
+  const vaccinesQ = useGetData<VaccineScheduleRow[]>(
+    batchId ? `/batch-vaccine-schedules?batch_id=${batchId}` : '',
+    ['batch-vaccine-schedules', batchId ?? 'none'],
+    { enabled: !!batchId },
+  );
   const tasks = useGetData<Paginated<TaskAssignment>>(
     `/task-assignments?house_id=${id}&status=PENDING&limit=20`,
     ['task-assignments', 'house', id],
@@ -115,7 +123,7 @@ export default function HouseDetailScreen() {
         queryClient.refetchQueries({ queryKey: ['stock-units', 'house', id] }),
         queryClient.refetchQueries({ queryKey: ['items'] }),
       );
-      if (batchId) refetches.push(medications.refetch(), vaccinations.refetch());
+      if (batchId) refetches.push(medications.refetch(), vaccinations.refetch(), vaccinesQ.refetch());
       await Promise.race([
         Promise.allSettled(refetches),
         new Promise((resolve) => setTimeout(resolve, REFRESH_TIMEOUT_MS)),
@@ -137,6 +145,11 @@ export default function HouseDetailScreen() {
   const tileWidth = Math.floor((width - 2 * Spacing.xl - 2 * Spacing.md) / 3);
   const withHouse = (path: string) => `${path}?house_id=${id}` as Href;
   const openTasks = tasks.data?.results ?? [];
+  const vaccineRows = vaccinesQ.data ?? [];
+  const startingDate = balance?.batch?.starting_date;
+  const today = startingDate ? dayOfCycle(startingDate, now) : 0;
+  const nextShot = nextVaccine(vaccineRows, today, id);
+  const openVaccines = () => router.push(`/vaccines/${batchId}?house_id=${id}` as Href);
 
   return (
     <Screen
@@ -198,13 +211,37 @@ export default function HouseDetailScreen() {
                 ))}
               </View>
               {/* Treatments are per batch, so the plan opens for the batch in this house, not the house. */}
-              <View style={[styles.shortcuts, styles.vaccines]}>
-                <ShortcutTile
-                  label="Vaccine schedule"
-                  icon="shield"
-                  onPress={() => router.push(`/vaccines/${batchId}?house_id=${id}` as Href)}
-                />
-              </View>
+              {vaccineRows.length && balance?.batch ? (
+                <Card
+                  rows
+                  eyebrow="Vaccines"
+                  action="All"
+                  onActionPress={openVaccines}
+                  style={styles.card}
+                >
+                  {nextShot ? (
+                    <VaccineRow
+                      row={nextShot}
+                      today={today}
+                      startingDate={balance.batch.starting_date}
+                      houseId={id}
+                      last
+                      onPress={
+                        nextShot.day <= today
+                          ? () =>
+                              router.push(
+                                `/vaccines/confirm?id=${nextShot.id}&batch_id=${batchId}&house_id=${id}` as Href,
+                              )
+                          : openVaccines
+                      }
+                    />
+                  ) : (
+                    <LedgerRow gutterNode={<Icon name="check" size={20} color="success" />} last onPress={openVaccines}>
+                      <AppText variant="bodyStrong">All vaccines done here</AppText>
+                    </LedgerRow>
+                  )}
+                </Card>
+              ) : null}
             </>
           ) : null}
 
@@ -256,7 +293,6 @@ export default function HouseDetailScreen() {
 const styles = StyleSheet.create({
   state: { marginTop: Spacing.md },
   section: { marginTop: Spacing.xl, marginBottom: Spacing.sm, paddingHorizontal: Spacing.xs },
-  vaccines: { marginTop: Spacing.sm },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
   shortcuts: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
   card: { marginTop: Spacing.xl },

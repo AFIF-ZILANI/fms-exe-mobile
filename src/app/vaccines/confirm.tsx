@@ -1,20 +1,22 @@
 import { useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useNetworkState } from 'expo-network';
 import { useQueryClient } from '@tanstack/react-query';
 import * as Crypto from 'expo-crypto';
 
-import { FormCard } from '@/components/ui/form-card';
-import { Screen } from '@/components/ui/screen';
-import { Header } from '@/components/ui/header';
+import { FormScreen } from '@/components/ui/form-screen';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Icon } from '@/components/ui/icon';
 import { TextField } from '@/components/ui/text-field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AppText } from '@/components/ui/text';
 import { QrScanner, type ScanLabels, type ScanRow } from '@/components/ui/qr-scanner';
 import { OfflineNote } from '@/components/scan-parts';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { ApiError, apiFetch, useGetData } from '@/lib/api';
 import { goBack } from '@/lib/nav';
 import { isStockCode, scanErrorMessage, type ScanResult } from '@/lib/scan';
@@ -50,6 +52,8 @@ export default function ConfirmVaccineScreen() {
   // Typed codes, for a label the camera can't read.
   const [typed, setTyped] = useState('');
   const [typedNote, setTypedNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const [typing, setTyping] = useState(false);
+  const theme = useTheme();
 
   const scheduleQ = useGetData<VaccineScheduleRow[]>(`/batch-vaccine-schedules?batch_id=${batch_id}`, [
     'batch-vaccine-schedules',
@@ -108,117 +112,148 @@ export default function ConfirmVaccineScreen() {
     }
   };
 
+  // Named once per product, not once per bottle: three bottles of one vaccine read as one line.
+  const byProduct = [...new Set(bottles.map((b) => b.vaccine))].map((name) => ({
+    name,
+    codes: bottles.filter((b) => b.vaccine === name),
+  }));
+  const count = `${bottles.length} bottle${bottles.length === 1 ? '' : 's'}`;
+
   const review = () =>
     Alert.alert(
-      'Confirm this vaccine?',
-      `${purposeLabel ?? ''} · ${houseName ?? ''}\n\n${bottles.map((b) => `${b.vaccine} ${b.label}`).join('\n')}\n\n${bottles.length === 1 ? 'This bottle is' : `These ${bottles.length} bottles are`} recorded as used up — everything left in them comes out of stock.`,
+      `Confirm ${purposeLabel ?? 'this vaccine'} in ${houseName ?? 'this house'}?`,
+      `${byProduct.map((p) => `${p.name} × ${p.codes.length}`).join('\n')}\n\n${
+        bottles.length === 1 ? 'The bottle is' : `All ${bottles.length} bottles are`
+      } recorded as used up.`,
       [
         { text: 'Back', style: 'cancel' },
-        { text: 'Yes, confirm', onPress: () => void submit() },
+        { text: 'Confirm', onPress: () => void submit() },
       ],
     );
 
   return (
-    <Screen>
-      <Header title="Confirm vaccine" leading="back" />
-
+    <FormScreen
+      title="Confirm vaccine"
+      hint={row ? [row.purposeRef.label, houseName, `Day ${row.day}`, row.method ? METHOD_LABEL[row.method] : null].filter(Boolean).join(' · ') : undefined}
+      dirty={bottles.length > 0}
+      submit={{
+        label: bottles.length ? `Confirm · ${count} used` : 'Scan a bottle first',
+        onPress: review,
+        disabled: !row || bottles.length === 0 || offline,
+        loading: submitting,
+      }}
+    >
       {scheduleQ.isPending ? (
         <Skeleton height={160} />
       ) : !row ? (
-        <AppText color="muted">This vaccine isn&apos;t on the schedule any more.</AppText>
+        <Card>
+          <EmptyState compact icon="alert-circle" tint="surfaceAlt" title="This vaccine isn't on the schedule any more." />
+        </Card>
       ) : (
-        <View style={styles.form}>
-          <FormCard title={row.purposeRef.label}>
-            <AppText variant="caption" color="muted">
-              {houseName ?? 'This house'} · Day {row.day}
-              {row.method ? ` · ${METHOD_LABEL[row.method]}` : ''}
-            </AppText>
-          </FormCard>
+        <>
+          {offline ? <OfflineNote what="Confirming a vaccine" /> : null}
 
-          {bottles.length ? (
-            <FormCard title={`${bottles.length} bottle${bottles.length === 1 ? '' : 's'}`} hint="Used up">
-              {bottles.map((b) => (
-                <View key={b.id} style={styles.bottle}>
-                  <AppText style={styles.bottleName}>
-                    {b.vaccine} {b.label}
+          <Card rows eyebrow="Bottles used" note={bottles.length ? String(bottles.length) : undefined}>
+            {bottles.length === 0 ? (
+              <EmptyState
+                compact
+                icon="camera"
+                tint="surfaceAlt"
+                title="No bottles yet."
+                body="Scan each bottle you used. Each one is recorded as used up."
+              />
+            ) : (
+              byProduct.map((p, gi) => (
+                <View key={p.name} style={[styles.group, gi > 0 && { borderTopColor: theme.line, borderTopWidth: 1 }]}>
+                  <AppText variant="bodyStrong" numberOfLines={2} style={styles.product}>
+                    {p.name}
                   </AppText>
-                  <Button
-                    variant="ghost"
-                    label="Remove"
-                    icon="trash-2"
-                    onPress={() => setBottles((bs) => bs.filter((x) => x.id !== b.id))}
-                  />
+                  {p.codes.map((b) => (
+                    <View key={b.id} style={[styles.code, { borderTopColor: theme.line }]}>
+                      <AppText variant="data" style={styles.flex}>
+                        {b.label}
+                      </AppText>
+                      <Pressable
+                        onPress={() => setBottles((bs) => bs.filter((x) => x.id !== b.id))}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Remove bottle ${b.label}`}
+                        hitSlop={Spacing.xs}
+                        style={({ pressed }) => [styles.remove, pressed && { backgroundColor: theme.surfaceAlt }]}
+                      >
+                        <Icon name="x" size={20} color="muted" />
+                      </Pressable>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </FormCard>
-          ) : null}
+              ))
+            )}
+          </Card>
 
-          {offline ? (
-            <OfflineNote what="Confirming a vaccine" />
-          ) : (
+          {offline ? null : (
             <View style={styles.actions}>
               <Button
-                variant={bottles.length ? 'secondary' : 'primary'}
+                variant="secondary"
                 label={bottles.length ? 'Scan another bottle' : 'Scan bottles'}
                 icon="camera"
                 onPress={() => setScanning(true)}
                 block
               />
-              <FormCard title="Can't scan it?" hint="Type the code">
-                <TextField
-                  label="Bottle code"
-                  value={typed}
-                  onChangeText={(t) => {
-                    setTyped(t);
-                    setTypedNote(null);
-                  }}
-                  placeholder="e.g. 3f2a9c1e-…"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                {typedNote ? (
-                  <AppText variant="caption" color={typedNote.ok ? 'success' : 'critical'}>
-                    {typedNote.text}
-                  </AppText>
-                ) : null}
-                <Button variant="secondary" label="Add bottle" icon="plus" disabled={!typed.trim()} onPress={() => void addTyped()} />
-              </FormCard>
-              {bottles.length ? (
-                <Button
-                  label="Confirm"
-                  icon="check"
-                  disabled={bottles.length === 0}
-                  loading={submitting}
-                  onPress={review}
-                  block
-                />
+              {typing ? (
+                <Card style={styles.typed}>
+                  <TextField
+                    label="Bottle code"
+                    value={typed}
+                    onChangeText={(t) => {
+                      setTyped(t);
+                      setTypedNote(null);
+                    }}
+                    placeholder="The code printed under the QR"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoFocus
+                  />
+                  {typedNote ? (
+                    <AppText variant="caption" color={typedNote.ok ? 'success' : 'critical'}>
+                      {typedNote.text}
+                    </AppText>
+                  ) : null}
+                  <Button variant="secondary" label="Add bottle" disabled={!typed.trim()} onPress={() => void addTyped()} block />
+                </Card>
               ) : (
-                <AppText variant="caption" color="muted">
-                  Bottles must already be moved into this house.
-                </AppText>
+                <Button variant="ghost" label="Type a code instead" onPress={() => setTyping(true)} />
               )}
             </View>
           )}
-        </View>
+        </>
       )}
 
       <QrScanner
         open={scanning}
         onClose={() => setScanning(false)}
-        context={purposeLabel ? `${purposeLabel} · ${houseName ?? ''}` : ''}
+        context={[purposeLabel, houseName].filter(Boolean).join(' · ')}
         onScan={onScan}
         rows={rows}
         onScanned={(r) => setRows((rs) => [r, ...rs])}
         offline={offline}
         labels={LABELS}
       />
-    </Screen>
+    </FormScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  form: { gap: Spacing.md },
+  flex: { flex: 1 },
+  group: { paddingTop: Spacing.md },
+  product: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm },
+  code: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 48,
+    paddingLeft: Spacing.lg,
+    paddingRight: Spacing.xs,
+    borderTopWidth: 1,
+  },
+  remove: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.control },
   actions: { gap: Spacing.sm },
-  bottle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm },
-  bottleName: { flex: 1 },
+  typed: { gap: Spacing.md },
 });

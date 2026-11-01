@@ -12,6 +12,7 @@ const STATUS_MAP: Record<string, StatusEntry> = {
   PENDING: { tone: 'warning', label: 'Pending' },
   DONE: { tone: 'neutral', label: 'Done' },
   OVERDUE: { tone: 'critical', label: 'Overdue' },
+  DUE_TODAY: { tone: 'info', label: 'Due today' },
   CANCELLED: { tone: 'neutral', label: 'Cancelled' },
   RUNNING: { tone: 'success', label: 'Running' },
   EMPTY: { tone: 'neutral', label: 'Empty' },

@@ -74,3 +74,43 @@ export function bottleProblem(unit: StockUnit, houseId: string, houseName: strin
   if (here?.house_id !== houseId) return `In ${here?.house?.name ?? 'the warehouse'} — move it to ${houseName} first.`;
   return null;
 }
+
+
+/** The calendar date a batch day falls on (Day 1 = placement day), the same rule as dayOfCycle. */
+export function dateOfDay(startingDate: string, day: number): Date {
+  const [y, m, d] = startingDate.slice(0, 10).split('-').map(Number);
+  return new Date(y!, m! - 1, d! + day - 1);
+}
+
+export const shortDate = (d: Date) => d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+
+/** How far off a day is, in words: "today", "in 3 days", "2 days late". */
+export function relativeDay(day: number, today: number): string {
+  const n = day - today;
+  if (n === 0) return 'today';
+  if (n === 1) return 'tomorrow';
+  if (n > 0) return `in ${n} days`;
+  return n === -1 ? '1 day late' : `${-n} days late`;
+}
+
+export type VaccineGroups = { due: VaccineScheduleRow[]; upcoming: VaccineScheduleRow[]; done: VaccineScheduleRow[] };
+
+/** The timeline as a worker in one house reads it. Due = theirs to confirm now (oldest first,
+ *  so overdue tops the list); a row this house already confirmed counts as done here even while another
+ *  house is still waiting. Cancelled rows sit with the done ones, muted. */
+export function groupRows(rows: VaccineScheduleRow[], today: number, houseId?: string): VaccineGroups {
+  const groups: VaccineGroups = { due: [], upcoming: [], done: [] };
+  for (const row of [...rows].sort((a, b) => a.day - b.day)) {
+    const doneHere = !!row.houses.find((h) => h.id === houseId)?.confirm;
+    if (row.status !== 'PENDING' || doneHere) groups.done.push(row);
+    else if (row.day <= today) groups.due.push(row);
+    else groups.upcoming.push(row);
+  }
+  return groups;
+}
+
+/** The one row the house screen previews: what's due here now, else what's next. */
+export function nextVaccine(rows: VaccineScheduleRow[], today: number, houseId?: string): VaccineScheduleRow | null {
+  const { due, upcoming } = groupRows(rows, today, houseId);
+  return due[0] ?? upcoming[0] ?? null;
+}
