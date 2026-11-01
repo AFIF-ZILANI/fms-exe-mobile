@@ -66,6 +66,14 @@ assert.deepEqual(checkUnit(allocate, unit({ status: 'PRINTED', purchase_item: nu
 assert.deepEqual(checkUnit(allocate, unit({ status: 'CONSUMED' })), { ok: false, reason: 'Already used up.' });
 assert.deepEqual(checkUnit(allocate, unit({ status: 'DISPOSED' })), { ok: false, reason: 'Already disposed.' });
 
+// --- return (house -> warehouse) ----------------------------------------------
+const ret: ScanPlan = { action: 'return' };
+assert.deepEqual(checkUnit(ret, inH1), { ok: true }, 'a unit in any house can go back');
+assert.deepEqual(checkUnit(ret, unit({ status: 'IN_USE', houseAllocations: inH1.houseAllocations })), { ok: true }, 'an opened unit too');
+assert.deepEqual(checkUnit(ret, unit()), { ok: false, reason: 'Already at the warehouse.' });
+assert.deepEqual(checkUnit(ret, returned), { ok: false, reason: 'Already at the warehouse.' });
+assert.deepEqual(checkUnit(ret, unit({ status: 'CONSUMED', houseAllocations: inH1.houseAllocations })), { ok: false, reason: 'Already used up.' });
+
 // --- item filter --------------------------------------------------------------
 const filtered: ScanPlan = { ...allocate, itemId: OTHER.id, itemName: OTHER.name };
 assert.deepEqual(checkUnit(filtered, unit()), {

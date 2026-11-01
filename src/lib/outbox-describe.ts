@@ -32,6 +32,16 @@ const RULES: Rule[] = [
   { match: /^\/batch-house-allocations$/, title: 'Birds moved', detail: (b) => (count(b.quantity) !== null ? `${b.quantity} ${b.quantity === 1 ? 'bird' : 'birds'}` : null) },
   { match: /^\/performance-score-entries$/, title: 'Points given' },
   { match: /^\/inventory-adjustments$/, title: 'Stock discrepancy' },
+  {
+    match: /^\/stock-transfers$/,
+    title: 'Stock moved',
+    detail: (b) => {
+      const q = count(b.quantity);
+      if (q === null) return null;
+      const unit = text(b.unit);
+      return unit ? `${q} ${unit.toLowerCase()}` : String(q);
+    },
+  },
   { match: /^\/alerts$/, title: 'Low-stock flag' },
   { match: /^\/batch-feeding-programs$/, title: 'Feeding plan phase' },
   { match: /^\/stock-units\/[^/]+\/bind$/, title: 'Item linked' },

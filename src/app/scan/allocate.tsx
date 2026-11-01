@@ -9,6 +9,7 @@ import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
 import { Button } from '@/components/ui/button';
 import { AppText } from '@/components/ui/text';
+import { SegmentedToggle } from '@/components/ui/segmented-toggle';
 import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
 import { ItemPicker } from '@/components/ui/item-picker';
 import { QrScanner, type ScanLabels } from '@/components/ui/qr-scanner';
@@ -29,26 +30,42 @@ const LABELS: ScanLabels = {
   full: '',
 };
 
-/** docs/scan-flows-design.md — plan first (which house), then scan units into it. */
+const RETURN_LABELS: ScanLabels = {
+  ...LABELS,
+  done: 'returned',
+  flashOk: 'Returned',
+  hint: 'Point the camera at a code. The camera stays open — scan every unit going back to the warehouse.',
+};
+
+type Dest = 'house' | 'warehouse';
+
+/** docs/scan-flows-design.md — plan first (which house, or back to the warehouse), then scan units.
+ *  A return lands in the warehouse the unit's lot was bought into (server-side), so there is no warehouse to pick. */
 export default function AllocateScreen() {
-  const params = useLocalSearchParams<{ house_id?: string }>();
+  const params = useLocalSearchParams<{ house_id?: string; to?: string }>();
   const queryClient = useQueryClient();
   const offline = useNetworkState().isConnected === false;
 
   const [house, setHouse] = usePrefillHouse(params.house_id);
   const [item, setItem] = useState<Item | null>(null);
   const [mode, setMode] = useState<Mode>('manual');
+  const [dest, setDest] = useState<Dest>(params.to === 'warehouse' ? 'warehouse' : 'house');
+  const toWarehouse = dest === 'warehouse';
+  const ready = toWarehouse || !!house;
   const [scanning, setScanning] = useState(false);
 
   const session = useScanSession({
-    plan: { action: 'allocate', houseId: house?.id, itemId: item?.id, itemName: item?.name },
+    plan: toWarehouse
+      ? { action: 'return', itemId: item?.id, itemName: item?.name }
+      : { action: 'allocate', houseId: house?.id, itemId: item?.id, itemName: item?.name },
     mode,
-    confirmLabel: house ? `Move to ${house.name}` : 'Move',
+    confirmLabel: toWarehouse ? 'Return to warehouse' : house ? `Move to ${house.name}` : 'Move',
     commit: async (unit, key) => {
-      if (!house) throw new Error('No house chosen');
+      if (!toWarehouse && !house) throw new Error('No house chosen');
       await apiFetch(`/stock-units/${unit.id}/relocate`, {
         method: 'POST',
-        body: JSON.stringify({ house_id: house.id, idempotency_key: key }),
+        // null house = back to the warehouse (a RETURN)
+        body: JSON.stringify({ house_id: toWarehouse ? null : house!.id, idempotency_key: key }),
       });
       void queryClient.invalidateQueries({ queryKey: ['stock-units'] });
       // The house screen's Allocated stock card and its full page, still mounted behind this one.
@@ -58,18 +75,36 @@ export default function AllocateScreen() {
 
   return (
     <Screen>
-      <Header title="Move to house" leading="back" />
+      <Header title={toWarehouse ? 'Return to warehouse' : 'Move to house'} leading="back" />
 
       <View style={styles.form}>
         <FormCard>
-          <HousePicker
-            label="Move into"
-            value={house}
-            onChange={(h) => {
-              setHouse(h);
+          <SegmentedToggle
+            height={48}
+            options={[
+              { value: 'house', label: 'To a house' },
+              { value: 'warehouse', label: 'To warehouse' },
+            ]}
+            value={dest}
+            onChange={(d) => {
+              setDest(d);
               session.reset();
             }}
           />
+          {toWarehouse ? (
+            <AppText variant="caption" color="muted">
+              Units from any house go back to the warehouse they were bought into. Opened bottles go back with what is left in them.
+            </AppText>
+          ) : (
+            <HousePicker
+              label="Move into"
+              value={house}
+              onChange={(h) => {
+                setHouse(h);
+                session.reset();
+              }}
+            />
+          )}
         </FormCard>
 
         <FormCard title="Which units" hint="Optional">
@@ -91,11 +126,11 @@ export default function AllocateScreen() {
       </View>
 
       {offline ? (
-        <OfflineNote what="Moving" />
+        <OfflineNote what={toWarehouse ? 'Returning' : 'Moving'} />
       ) : (
         <View style={styles.actions}>
-          <Button label="Scan codes" icon="camera" disabled={!house} onPress={() => setScanning(true)} />
-          {!house ? (
+          <Button label="Scan codes" icon="camera" disabled={!ready} onPress={() => setScanning(true)} />
+          {!ready ? (
             <AppText variant="caption" color="muted" style={styles.hint}>
               Choose the house first, then scan the units going into it.
             </AppText>
@@ -103,7 +138,7 @@ export default function AllocateScreen() {
         </View>
       )}
 
-      <ScanResults rows={session.rows} done="moved" />
+      <ScanResults rows={session.rows} done={toWarehouse ? 'returned' : 'moved'} />
 
       <QrScanner
         key={session.generation}
@@ -112,12 +147,12 @@ export default function AllocateScreen() {
           session.close();
           setScanning(false);
         }}
-        context={house ? `Into ${house.name}` : ''}
+        context={toWarehouse ? 'Back to the warehouse' : house ? `Into ${house.name}` : ''}
         onScan={session.onScan}
         rows={session.rows}
         onScanned={session.onScanned}
         offline={offline}
-        labels={LABELS}
+        labels={toWarehouse ? RETURN_LABELS : LABELS}
         pending={session.pending}
       />
     </Screen>

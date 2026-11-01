@@ -11,6 +11,7 @@ const d = (endpoint: string, body: unknown) =>
 assert.deepEqual(d('/mortality-logs', { count_died: 12 }), { title: 'Mortality', detail: '12 died' });
 assert.deepEqual(d('/mortality-logs', { count_died: 1 }), { title: 'Mortality', detail: '1 died' });
 assert.deepEqual(d('/consumptions', { quantity: 2.5, unit: 'KG' }), { title: 'Feed or item use', detail: '2.5 kg' });
+assert.deepEqual(d('/stock-transfers', { quantity: 50, unit: 'KG' }), { title: 'Stock moved', detail: '50 kg' });
 assert.deepEqual(d('/consumptions', { quantity: 1, unit: 'BOTTLE', stock_unit_id: 'u' }), {
   title: 'Feed or item use',
   detail: '1 bottle',
