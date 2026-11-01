@@ -149,8 +149,6 @@ export type Purchase = {
   id: string;
   supplier_id: string;
   purchase_date: string;
-  // a zero-cost "Opening stock" lot behind an opening balance, not a real purchase
-  is_opening: boolean;
 };
 
 export type PurchaseItem = {

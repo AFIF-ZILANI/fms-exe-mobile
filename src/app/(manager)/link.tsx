@@ -32,9 +32,7 @@ const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 
 const quantityLabel = (p: PurchaseItem) => `${Number(p.base_quantity)} ${p.item.unit.toLowerCase()}`;
-// Opening lots have no supplier or invoice -- say what they are instead of just a date.
-const lotDate = (p: PurchaseItem) =>
-  `${p.purchase.is_opening ? 'Opening stock, ' : ''}${formatDate(p.purchase.purchase_date)}`;
+const lotDate = (p: PurchaseItem) => formatDate(p.purchase.purchase_date);
 
 /**
  * docs/layout/18-link-items.md — bind pre-printed QR codes to the delivery lot
