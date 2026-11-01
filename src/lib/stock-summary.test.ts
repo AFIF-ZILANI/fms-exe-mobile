@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 
 import {
+  usableUnits,
   attentionOrder,
   categoryCounts,
   filterStock,
@@ -143,3 +144,17 @@ assert.equal(formatBalance(2.0), '2');
 }
 
 console.log('stock-summary checks passed');
+
+// --- usable units: base first, then is_usable conversions only ------------------------------------------
+assert.deepEqual(usableUnits({ unit: 'KG' }), [{ unit: 'KG', factor: 1 }]);
+assert.deepEqual(
+  usableUnits({
+    unit: 'KG',
+    itemUnits: [
+      { unit: 'BAG', factor_to_base: '50.0000', is_usable: true },
+      { unit: 'METRIC_TON', factor_to_base: '1000', is_usable: false },
+      { unit: 'KG', factor_to_base: '1', is_usable: true },
+    ],
+  }),
+  [{ unit: 'KG', factor: 1 }, { unit: 'BAG', factor: 50 }],
+);

@@ -130,3 +130,12 @@ export function reorderGap(line: Pick<StockLine, 'balance'> & { item: Pick<Item,
   const diff = line.balance - reorder;
   return { short: diff < 0, amount: Math.abs(diff) };
 }
+
+/** Units an item may be moved or used in: its base unit (factor 1), then every is_usable conversion.
+ *  Mirrors the server's toBaseQuantity(..., "USABLE"), which refuses any other unit. */
+export function usableUnits(item: Pick<Item, 'unit' | 'itemUnits'>): { unit: string; factor: number }[] {
+  const extra = (item.itemUnits ?? [])
+    .filter((u) => u.is_usable && u.unit !== item.unit && Number(u.factor_to_base) > 0)
+    .map((u) => ({ unit: u.unit, factor: Number(u.factor_to_base) }));
+  return [{ unit: item.unit, factor: 1 }, ...extra];
+}

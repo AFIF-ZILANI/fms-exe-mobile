@@ -79,6 +79,15 @@ export type Item = {
   is_active: boolean;
   /** Decimal as a string; null/absent = no reorder level set. */
   reorder_level?: string | null;
+  /** Conversions to Item.unit; GET /items includes them. */
+  itemUnits?: ItemUnit[];
+};
+
+export type ItemUnit = {
+  unit: string;
+  /** Decimal string: 1 of `unit` = this many of Item.unit. */
+  factor_to_base: string;
+  is_usable: boolean;
 };
 
 export type TaskType = {
