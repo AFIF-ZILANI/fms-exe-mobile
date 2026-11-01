@@ -30,6 +30,8 @@ export function buildLauncher(isManager: boolean, houseId: string | null): Launc
     { label: 'Stock levels', description: 'What is on hand, what is low', path: '/stock', icon: 'archive', tint: 'tintBlue' },
     { label: 'Move to house', description: 'Scan units into a house', path: withHouse('/scan/allocate'), icon: 'arrow-right', tint: 'tintGreen' },
     { label: 'Use an item', description: 'Scan a bottle or tool you used', path: withHouse('/scan/consume'), icon: 'box', tint: 'tintAmber' },
+    { label: 'Return to warehouse', description: 'Scan units back from a house', path: houseId ? `/scan/allocate?to=warehouse&house_id=${houseId}` : '/scan/allocate?to=warehouse', icon: 'corner-up-left', tint: 'tintBlue' },
+    { label: 'Move supplies', description: 'Feed, husk, uncoded stock', path: withHouse('/move-stock'), icon: 'truck', tint: 'tintAmber' },
   ];
 
   const groups: LauncherGroup[] = [

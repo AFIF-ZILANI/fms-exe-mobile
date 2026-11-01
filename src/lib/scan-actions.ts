@@ -6,8 +6,8 @@
 
 import type { StockUnit, StockUnitStatus } from './types';
 
-/** start/finish are "Use an item": open a unit (no log) / log it used up. */
-export type ScanAction = 'allocate' | 'start' | 'finish' | 'bind';
+/** start/finish are "Use an item": open a unit (no log) / log it used up. return: house -> warehouse. */
+export type ScanAction = 'allocate' | 'return' | 'start' | 'finish' | 'bind';
 export type Mode = 'manual' | 'auto';
 export type Check = { ok: true } | { ok: false; reason: string };
 
@@ -17,7 +17,7 @@ export type ScanPlan = {
   houseId?: string;
   /** For the "move it here first" message. */
   houseName?: string;
-  /** Only units of this item pass (allocate, start, finish). None = any item. */
+  /** Only units of this item pass (allocate, return, start, finish). None = any item. */
   itemId?: string;
   itemName?: string;
   /** bind: the purchase line the units are linked to. Unused by the checks (the server validates it). */
@@ -57,7 +57,7 @@ export function checkUnit(plan: ScanPlan, unit: StockUnit): Check {
     return fail(`Already linked · ${unit.status.toLowerCase().replace('_', ' ')}`);
   }
 
-  // allocate / start / finish: only a live, bound unit makes sense.
+  // allocate / return / start / finish: only a live, bound unit makes sense.
   const blocked = BLOCKED[unit.status];
   if (blocked) return fail(blocked);
 
@@ -71,6 +71,8 @@ export function checkUnit(plan: ScanPlan, unit: StockUnit): Check {
   if (plan.action === 'allocate' && plan.houseId && currentHouseId(unit) === plan.houseId) {
     return fail(`Already in ${currentHouseName(unit)}.`);
   }
+
+  if (plan.action === 'return' && currentHouseId(unit) === null) return fail('Already at the warehouse.');
 
   if (plan.action === 'start' || plan.action === 'finish') {
     // Start opens a sealed unit; an opened one can only be finished.
