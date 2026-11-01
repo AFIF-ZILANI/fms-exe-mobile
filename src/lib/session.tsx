@@ -10,6 +10,7 @@ import { ApiError, apiFetch } from '@/lib/api';
 import { loadToken, onUnauthorized, setToken } from '@/lib/auth-token';
 import { setOutboxOwner } from '@/lib/outbox';
 import { SUMMARY_KEY, triggerFlush } from '@/lib/use-outbox';
+import { setDayStartHour } from '@/lib/farm';
 import type { Employee } from '@/lib/types';
 
 const EMPLOYEE_KEY = 'fms:session';
@@ -19,7 +20,16 @@ type Me = {
   role: string;
   employee_id: string | null;
   must_change_password: boolean;
+  farm_day_start_hour: number;
 };
+
+const FARM_DAY_KEY = 'fms:farm-day-start-hour';
+/** Batch days count from the farm's day start; cached so an offline start still uses the farm's hour. */
+function applyFarmDay(me: Me) {
+  setDayStartHour(me.farm_day_start_hour ?? 0);
+  AsyncStorage.setItem(FARM_DAY_KEY, String(me.farm_day_start_hour ?? 0)).catch(() => undefined);
+  return me;
+}
 
 type SessionState = {
   employee: Employee | null;
@@ -96,13 +106,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (!cancelled) setState(SIGNED_OUT);
         return;
       }
+      const cachedHour = await AsyncStorage.getItem(FARM_DAY_KEY).catch(() => null);
+      if (cachedHour !== null) setDayStartHour(Number(cachedHour));
       const raw = await AsyncStorage.getItem(EMPLOYEE_KEY).catch(() => null);
       const employee = raw ? (JSON.parse(raw) as Employee) : null;
       if (!cancelled) {
         setState({ ...SIGNED_OUT, employee, signedIn: true });
       }
       try {
-        const me = await apiFetch<Me>('/auth/me');
+        const me = applyFarmDay(await apiFetch<Me>('/auth/me'));
         if (cancelled) return;
         // Only a pending temp password; otherwise leave the snapshot alone.
         setState((s) => ({ ...s, mustChangePassword: me.must_change_password }));
@@ -124,6 +136,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       throw new ApiError(403, { detail: 'Admins use the web dashboard, not this app.' });
     }
     await setToken(res.token);
+    applyFarmDay(res.profile);
     queryClient.clear();
     if (res.profile.must_change_password) {
       setState({ ...SIGNED_OUT, signedIn: true, mustChangePassword: true });
@@ -139,13 +152,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ current_password: current, new_password: next }),
     });
     await setToken(res.token);
-    const me = await apiFetch<Me>('/auth/me');
+    const me = applyFarmDay(await apiFetch<Me>('/auth/me'));
     const employee = await loadEmployee(me);
     setState({ ...SIGNED_OUT, signedIn: true, employee });
   };
 
   const refresh = async () => {
-    const me = await apiFetch<Me>('/auth/me');
+    const me = applyFarmDay(await apiFetch<Me>('/auth/me'));
     const employee = await loadEmployee(me);
     setState((s) => ({ ...s, employee, mustChangePassword: me.must_change_password }));
   };

@@ -4,16 +4,26 @@
 import type { Batch } from '@/lib/types';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** The farm runs on Bangladesh time (UTC+6, no daylight saving), whatever zone the phone is set to. */
+const FARM_UTC_OFFSET_HOURS = 6;
+
+/** Farm-local hour (0-6) the farm day starts at, from /auth/me (cached by the session for offline starts).
+ *  Same rule as the server's lib/farm-day.ts: with 4, 01:30 still belongs to the previous farm day. */
+let dayStartHour = 0;
+export function setDayStartHour(hour: number) {
+  dayStartHour = hour;
+}
 
 /** A stored farm date (midnight UTC of that calendar day, e.g. "2026-09-06T00:00:00Z") as a day count. */
 const storedDay = (iso: string) => Math.round(Date.parse(iso.slice(0, 10)) / DAY_MS);
-/** The phone's own calendar day -- the farm's day, not UTC's. */
-const localDay = (d: Date) => Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY_MS);
+/** The farm day an instant falls on, as a day count. */
+const farmDayNumber = (d: Date) =>
+  Math.floor((d.getTime() + (FARM_UTC_OFFSET_HOURS - dayStartHour) * 3_600_000) / DAY_MS);
 
-/** Which day of the batch it is, the farm's way: the placement day is Day 1, the next calendar day Day 2.
- *  Counted in calendar days, so it ticks over at midnight, not 24 hours after placement. */
+/** Which day of the batch it is, the farm's way: the placement day is Day 1, the next farm day Day 2.
+ *  Ticks over at the farm's day start, not 24 hours after placement. */
 export function dayOfCycle(startingDate: string, now: Date = new Date()): number {
-  return Math.max(1, localDay(now) - storedDay(startingDate) + 1);
+  return Math.max(1, farmDayNumber(now) - storedDay(startingDate) + 1);
 }
 
 /** The day number the batch is expected to be sold on (placement = Day 1), what <DayCycleBar/> fills
