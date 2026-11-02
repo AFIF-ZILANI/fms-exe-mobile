@@ -18,7 +18,8 @@ export function unitActions(unit: StockUnit, houseId: string): UnitActions {
 export type HouseSupply = { item: Item; balance: number };
 
 /** Feed and other supplies without codes held in this house, A-Z. Only what was moved into the house
- *  counts: the server refuses to log use beyond the house's own balance, so warehouse stock isn't usable here. */
+ *  counts: the server refuses to log use beyond the house's own balance, so warehouse stock isn't usable here.
+ *  Chicks are left out: they are the batch's birds, not a supply anyone draws from. */
 export function houseSupplies(items: Item[], rows: StockRow[], houseId: string): HouseSupply[] {
   const byId = new Map(items.map((i) => [i.id, i]));
   const out: HouseSupply[] = [];
@@ -26,7 +27,7 @@ export function houseSupplies(items: Item[], rows: StockRow[], houseId: string):
     if (r.location_type !== 'HOUSE' || r.location_id !== houseId) continue;
     const item = byId.get(r.item_id);
     const balance = Number(r.balance);
-    if (!item || !item.is_active || item.is_unit_tracked || !(balance > 0)) continue;
+    if (!item || !item.is_active || item.is_unit_tracked || item.category === 'CHICKS' || !(balance > 0)) continue;
     out.push({ item, balance });
   }
   return out.sort((a, b) => a.item.name.localeCompare(b.item.name));

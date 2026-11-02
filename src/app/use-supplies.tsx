@@ -6,7 +6,8 @@ import { FormCard } from '@/components/ui/form-card';
 import { FormScreen } from '@/components/ui/form-screen';
 import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
 import { BatchResolver, useResolvedBatch } from '@/components/ui/batch-resolver';
-import { ItemPicker } from '@/components/ui/item-picker';
+import { PickerField } from '@/components/ui/picker-field';
+import { useHouseSupplies } from '@/components/house-stock';
 import { NumberField } from '@/components/ui/number-field';
 import { PillSelect } from '@/components/ui/pill-select';
 import { TextField } from '@/components/ui/text-field';
@@ -14,11 +15,9 @@ import { AppText } from '@/components/ui/text';
 import { Spacing } from '@/constants/theme';
 import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
-import { useGetData, type Paginated } from '@/lib/api';
-import { formatBalance, usableUnits, type StockRow } from '@/lib/stock-summary';
-import { houseBalance } from '@/lib/house-stock';
+import { formatBalance, usableUnits } from '@/lib/stock-summary';
+import type { HouseSupply } from '@/lib/house-stock';
 import { humanise } from '@/lib/profile-format';
-import type { Item } from '@/lib/types';
 import { goBack } from '@/lib/nav';
 
 /**
@@ -33,20 +32,20 @@ export default function UseSuppliesScreen() {
   const submit = useQueuedSubmit();
 
   const [house, setHouse] = usePrefillHouse(params.house_id);
-  const [picked, setItem] = useState<Item | null>(null);
+  const [picked, setPicked] = useState<{ houseId: string; itemId: string } | null>(null);
   const [unitCode, setUnitCode] = useState<string | null>(null);
   const [quantity, setQuantity] = useState('');
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const { balance } = useResolvedBatch(house?.id);
-  // Same URLs and keys as the Stock tab, so this is usually already cached.
-  const stockItems = useGetData<Paginated<Item>>('/items?is_active=true&limit=100', ['items', 'active'], {
-    enabled: !!params.item_id,
-  });
-  const stockRows = useGetData<StockRow[]>('/items/stock-by-location', ['items', 'stock-by-location']);
-  // Opened from a house's supplies list: the item comes pre-chosen until the person picks another.
-  const item = picked ?? (params.item_id ? (stockItems.data?.results.find((i) => i.id === params.item_id) ?? null) : null);
+  // Only what this house holds: items without codes, moved in, not chicks. Same queries as the house page.
+  const houseStock = useHouseSupplies(house?.id ?? '');
+  const supplies = house ? (houseStock.supplies ?? []) : [];
+  // Opened from a house's supplies list the item comes pre-chosen. A pick made for another house is dropped.
+  const wantedId = picked && picked.houseId === house?.id ? picked.itemId : params.item_id;
+  const supply: HouseSupply | null = supplies.find((s) => s.item.id === wantedId) ?? null;
+  const item = supply?.item ?? null;
 
   const units = item ? usableUnits(item) : [];
   // Falls back to the base unit when nothing (or a unit of the previous item) is picked.
@@ -54,7 +53,7 @@ export default function UseSuppliesScreen() {
   const unitText = (code: string | undefined) => (code ? humanise(code).toLowerCase() : '');
   const baseText = unitText(item?.unit);
 
-  const onHand = item && house && stockRows.data ? houseBalance(stockRows.data, house.id, item.id) : null;
+  const onHand = supply?.balance ?? null;
   const quantityNum = Number(quantity);
   const baseQty = quantityNum * (unit?.factor ?? 1);
   // The server refuses more than the house holds, so catch it here rather than as a failed sync.
@@ -102,13 +101,22 @@ export default function UseSuppliesScreen() {
       </FormCard>
 
       <FormCard title="What, how much">
-        <ItemPicker
-          value={item}
-          onChange={(i) => {
-            setItem(i);
+        <PickerField
+          label="Item"
+          value={supply}
+          options={supplies}
+          getKey={(s) => s.item.id}
+          getLabel={(s) => s.item.name}
+          getSubLabel={(s) => `${formatBalance(s.balance)} ${s.item.unit.toLowerCase()} in this house`}
+          onChange={(s) => {
+            if (!house) return;
+            setPicked({ houseId: house.id, itemId: s.item.id });
             setUnitCode(null);
           }}
-          unitTracked={false}
+          disabled={!house}
+          loading={!!house && houseStock.isPending}
+          placeholder={house ? 'Choose what was used' : 'Pick the house first'}
+          emptyLabel="Nothing without a QR code is in this house. Move supplies in first."
         />
 
         {units.length > 1 ? (

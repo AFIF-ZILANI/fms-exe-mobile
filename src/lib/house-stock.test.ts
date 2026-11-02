@@ -35,7 +35,14 @@ const row = (item_id: string, location_type: string, location_id: string, balanc
   balance,
   location_name: location_id,
 });
-const items = [supply('Starter feed'), supply('Grower feed'), supply('Husk'), supply('Vitamin', true), supply('Old feed', false, false)];
+const items = [
+  supply('Starter feed'),
+  supply('Grower feed'),
+  supply('Husk'),
+  supply('Vitamin', true),
+  supply('Old feed', false, false),
+  item({ id: 'Day-old chick', name: 'Day-old chick', category: 'CHICKS', is_unit_tracked: false }),
+];
 const rows = [
   row('Starter feed', 'HOUSE', HOUSE, '40'),
   row('Starter feed', 'WAREHOUSE', 'w1', '4950'), // warehouse stock is not this house's
@@ -44,6 +51,7 @@ const rows = [
   row('Husk', 'HOUSE', HOUSE, '0'), // used up
   row('Vitamin', 'HOUSE', HOUSE, '3'), // coded: listed with the units instead
   row('Old feed', 'HOUSE', HOUSE, '5'), // inactive item
+  row('Day-old chick', 'HOUSE', HOUSE, '500'), // the batch's birds, not a supply
 ];
 
 assert.deepEqual(
