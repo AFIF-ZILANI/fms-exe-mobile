@@ -59,6 +59,8 @@ export function FormScreen({ title, hint, children, submit, dirty }: FormScreenP
         ) : null}
       </View>
 
+      {/* Android is left alone here: the app is edge-to-edge, where "resize" no longer shrinks the window, so
+          app.json sets softwareKeyboardLayoutMode "pan" and Android slides the focused field above the keyboard. */}
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
