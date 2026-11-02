@@ -20,8 +20,9 @@ export type UnitProfile = {
     unit: string;
     base_quantity: string;
     unit_count: number | null;
-    unit_price: string;
-    total_price: string;
+    /** Prices are null for a worker: only managers see what stock cost. */
+    unit_price: string | null;
+    total_price: string | null;
     cost_per_unit: string | null;
     mfg_date: string | null;
     expiration_date: string | null;

@@ -223,17 +223,22 @@ export default function StockUnitScreen() {
                   />
                 ) : null}
                 <InfoRow label="Invoice" value={p.purchase.invoice_no ?? 'None'} />
-                <InfoRow
-                  label="Price"
-                  value={
-                    p.lot.cost_per_unit
-                      ? `${formatMoney(p.lot.cost_per_unit)} each`
-                      : `${formatMoney(p.lot.unit_price)} per ${humanise(p.lot.unit).toLowerCase()}`
-                  }
-                />
+                {/* Prices come only to managers; for a worker the server sends them empty. */}
+                {p.lot.cost_per_unit || p.lot.unit_price ? (
+                  <InfoRow
+                    label="Price"
+                    value={
+                      p.lot.cost_per_unit
+                        ? `${formatMoney(p.lot.cost_per_unit)} each`
+                        : `${formatMoney(p.lot.unit_price!)} per ${humanise(p.lot.unit).toLowerCase()}`
+                    }
+                  />
+                ) : null}
                 <InfoRow
                   label="Lot"
-                  value={`${formatBalance(Number(p.lot.quantity))} ${humanise(p.lot.unit).toLowerCase()} · ${formatMoney(p.lot.total_price)}`}
+                  value={`${formatBalance(Number(p.lot.quantity))} ${humanise(p.lot.unit).toLowerCase()}${
+                    p.lot.total_price ? ` · ${formatMoney(p.lot.total_price)}` : ''
+                  }`}
                 />
                 {p.lot.mfg_date ? <InfoRow label="Made on" value={formatDate(p.lot.mfg_date)} /> : null}
                 {p.lot.expiration_date ? <InfoRow label="Expires" value={formatDate(p.lot.expiration_date)} /> : null}
