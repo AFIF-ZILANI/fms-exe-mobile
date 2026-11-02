@@ -35,6 +35,7 @@ const PAGE = 100;
 const WORKER_SHORTCUTS: { label: string; path: string; icon: IconName }[] = [
   { label: 'Move to house', path: '/scan/allocate', icon: 'arrow-right' },
   { label: 'Use an item', path: '/scan/consume', icon: 'box' },
+  { label: 'Use supplies', path: '/use-supplies', icon: 'package' },
 ];
 
 const STATUS_CHIPS: { value: StockFilter['status']; label: string }[] = [

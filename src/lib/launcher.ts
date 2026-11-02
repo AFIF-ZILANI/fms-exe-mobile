@@ -20,7 +20,6 @@ export function buildLauncher(isManager: boolean, houseId: string | null): Launc
 
   const record: LauncherItem[] = [
     { label: 'Mortality', description: 'Birds that died today', path: withHouse('/log/mortality'), icon: 'alert-circle', tint: 'tintRed' },
-    { label: 'Feed', description: 'Feed or supplies drawn', path: withHouse('/log/consumption'), icon: 'package', tint: 'tintAmber' },
     { label: 'Weight', description: 'Average sample weight', path: withHouse('/log/weight'), icon: 'bar-chart-2', tint: 'tintBlue' },
     { label: 'Environment', description: 'Temperature, humidity, gas', path: withHouse('/log/environment'), icon: 'thermometer', tint: 'tintBlue' },
     { label: 'Treatment', description: 'Medication or vaccination', path: withHouse('/log/treatment'), icon: 'plus-square', tint: 'tintGreen' },
@@ -30,6 +29,7 @@ export function buildLauncher(isManager: boolean, houseId: string | null): Launc
     { label: 'Stock levels', description: 'What is on hand, what is low', path: '/stock', icon: 'archive', tint: 'tintBlue' },
     { label: 'Move to house', description: 'Scan units into a house', path: withHouse('/scan/allocate'), icon: 'arrow-right', tint: 'tintGreen' },
     { label: 'Use an item', description: 'Scan a bottle or tool you used', path: withHouse('/scan/consume'), icon: 'box', tint: 'tintAmber' },
+    { label: 'Use supplies', description: 'Feed, husk, items without QR', path: withHouse('/use-supplies'), icon: 'package', tint: 'tintAmber' },
     { label: 'Return to warehouse', description: 'Scan units back from a house', path: houseId ? `/scan/allocate?to=warehouse&house_id=${houseId}` : '/scan/allocate?to=warehouse', icon: 'corner-up-left', tint: 'tintBlue' },
     { label: 'Move supplies', description: 'Feed, husk, uncoded stock', path: withHouse('/move-stock'), icon: 'truck', tint: 'tintAmber' },
   ];

@@ -40,7 +40,7 @@ const LOGS: {
   tint: Extract<ThemeColor, 'tintRed' | 'tintAmber' | 'tintBlue' | 'tintGreen'>;
 }[] = [
   { key: 'mortality', label: 'Mortality', path: '/log/mortality', icon: 'alert-circle', tint: 'tintRed' },
-  { key: 'feed', label: 'Feed', path: '/log/consumption', icon: 'package', tint: 'tintAmber' },
+  { key: 'feed', label: 'Feed', path: '/use-supplies', icon: 'package', tint: 'tintAmber' },
   { key: 'weight', label: 'Weight', path: '/log/weight', icon: 'bar-chart-2', tint: 'tintBlue' },
   { key: 'environment', label: 'Environment', path: '/log/environment', icon: 'thermometer', tint: 'tintBlue' },
   { key: 'treatment', label: 'Treatment', path: '/log/treatment', icon: 'plus-square', tint: 'tintGreen' },
@@ -258,6 +258,11 @@ export default function HouseDetailScreen() {
               label="Use an item"
               icon="box"
               onPress={() => router.push(withHouse('/scan/consume'))}
+            />
+            <ShortcutTile
+              label="Use supplies"
+              icon="package"
+              onPress={() => router.push(withHouse('/use-supplies'))}
             />
           </View>
 

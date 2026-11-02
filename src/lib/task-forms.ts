@@ -9,7 +9,7 @@
  */
 export const TASK_FORMS = {
   MORTALITY: '/log/mortality',
-  CONSUMPTION: '/log/consumption',
+  CONSUMPTION: '/use-supplies',
   WEIGHT: '/log/weight',
   ENVIRONMENT: '/log/environment',
   MEDICATION: '/log/treatment?type=medication',

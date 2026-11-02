@@ -320,7 +320,7 @@ function SupplyRow({ supply, houseId }: { supply: HouseSupply; houseId: string }
         </AppText>
       </View>
       <Pressable
-        onPress={() => router.push(`/log/consumption?house_id=${houseId}&item_id=${supply.item.id}` as Href)}
+        onPress={() => router.push(`/use-supplies?house_id=${houseId}&item_id=${supply.item.id}` as Href)}
         accessibilityRole="button"
         accessibilityLabel={`Log ${supply.item.name} consumed`}
         style={({ pressed }) => [

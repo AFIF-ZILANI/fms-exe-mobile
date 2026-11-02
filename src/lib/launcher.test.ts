@@ -27,12 +27,12 @@ for (const p of MANAGER_ONLY_PATHS) {
 // --- contents ---------------------------------------------------------------
 assert.deepEqual(
   worker[0].items.map((i) => i.label),
-  ['Mortality', 'Feed', 'Weight', 'Environment', 'Treatment'],
+  ['Mortality', 'Weight', 'Environment', 'Treatment'],
 );
-assert.deepEqual(worker[1].items.map((i) => i.label), ['Stock levels', 'Move to house', 'Use an item', 'Return to warehouse', 'Move supplies']);
+assert.deepEqual(worker[1].items.map((i) => i.label), ['Stock levels', 'Move to house', 'Use an item', 'Use supplies', 'Return to warehouse', 'Move supplies']);
 assert.deepEqual(
   manager[1].items.map((i) => i.label),
-  ['Stock levels', 'Move to house', 'Use an item', 'Return to warehouse', 'Move supplies', 'Link items', 'Report discrepancy', 'Flag low stock'],
+  ['Stock levels', 'Move to house', 'Use an item', 'Use supplies', 'Return to warehouse', 'Move supplies', 'Link items', 'Report discrepancy', 'Flag low stock'],
 );
 assert.deepEqual(
   manager[2].items.map((i) => i.label),
@@ -46,6 +46,7 @@ const byLabel = (groups: typeof inHouse, label: string) =>
 assert.equal(byLabel(inHouse, 'Mortality').path, '/log/mortality?house_id=h-9');
 assert.equal(byLabel(inHouse, 'Move to house').path, '/scan/allocate?house_id=h-9');
 assert.equal(byLabel(inHouse, 'Use an item').path, '/scan/consume?house_id=h-9');
+assert.equal(byLabel(inHouse, 'Use supplies').path, '/use-supplies?house_id=h-9');
 assert.equal(byLabel(inHouse, 'Report discrepancy').path, '/adjust?house_id=h-9');
 assert.equal(byLabel(inHouse, 'Team').path, '/team', 'screens that are not house-scoped never get a house_id');
 assert.equal(byLabel(manager, 'Mortality').path, '/log/mortality', 'no house, no query string');
