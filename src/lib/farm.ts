@@ -17,7 +17,7 @@ export function setDayStartHour(hour: number) {
 /** A stored farm date (midnight UTC of that calendar day, e.g. "2026-09-06T00:00:00Z") as a day count. */
 const storedDay = (iso: string) => Math.round(Date.parse(iso.slice(0, 10)) / DAY_MS);
 /** The farm day an instant falls on, as a day count. */
-const farmDayNumber = (d: Date) =>
+export const farmDayNumber = (d: Date) =>
   Math.floor((d.getTime() + (FARM_UTC_OFFSET_HOURS - dayStartHour) * 3_600_000) / DAY_MS);
 
 /** Which day of the batch it is, the farm's way: the placement day is Day 1, the next farm day Day 2.

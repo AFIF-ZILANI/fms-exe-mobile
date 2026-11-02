@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { HouseHero, LogTile, ShortcutTile } from '@/components/house-detail-parts';
 import { StockPreviewCard, useStockPreview } from '@/components/stock-history';
 import { HouseSuppliesCard, HouseUnitsCard } from '@/components/house-stock';
+import { HouseActivityCard, useHouseActivityPreview } from '@/components/house-activity';
 import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
 import { Card } from '@/components/ui/card';
@@ -21,6 +22,7 @@ import { useGetData, type Paginated } from '@/lib/api';
 import { formatTime } from '@/lib/format';
 import { freshness, newestIso } from '@/lib/house-detail';
 import { dayOfCycle } from '@/lib/farm';
+import { activityStamp } from '@/lib/house-activity';
 import { nextVaccine, type VaccineScheduleRow } from '@/lib/vaccine-schedule';
 import { VaccineRow } from '@/components/vaccine-row';
 import type { BatchHouseBalance, House, TaskAssignment } from '@/lib/types';
@@ -101,6 +103,7 @@ export default function HouseDetailScreen() {
 
   // The five latest draws, for the Used stock card. The sealed / in-use / supplies cards read their own.
   const used = useStockPreview('used', id);
+  const activity = useHouseActivityPreview(id);
   const queryClient = useQueryClient();
 
   // Wait for BOTH the house and its birds: otherwise a house whose counts have not arrived reads "Empty".
@@ -116,7 +119,7 @@ export default function HouseDetailScreen() {
     try {
       setNow(new Date());
       // Offline, refetches are paused and never settle: don't wait for them forever.
-      const refetches: Promise<unknown>[] = [houseQ, balanceQ, mortality, consumption, weight, environment, tasks, used].map(
+      const refetches: Promise<unknown>[] = [houseQ, balanceQ, mortality, consumption, weight, environment, tasks, used, activity].map(
         (q) => q.refetch(),
       );
       refetches.push(
@@ -244,6 +247,8 @@ export default function HouseDetailScreen() {
               ) : null}
             </>
           ) : null}
+
+          <HouseActivityCard houseId={id} results={activity.data?.results} stamp={(e) => activityStamp(e, now)} />
 
           <AppText variant="eyebrow" color="muted" style={styles.section}>
             Stock
