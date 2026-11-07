@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useNetworkState } from 'expo-network';
-import { useQueryClient } from '@tanstack/react-query';
 
 import { FormCard } from '@/components/ui/form-card';
 import { Screen } from '@/components/ui/screen';
@@ -43,7 +42,6 @@ type Dest = 'house' | 'warehouse';
  *  A return lands in the warehouse the unit's lot was bought into (server-side), so there is no warehouse to pick. */
 export default function AllocateScreen() {
   const params = useLocalSearchParams<{ house_id?: string; to?: string }>();
-  const queryClient = useQueryClient();
   const offline = useNetworkState().isConnected === false;
 
   const [house, setHouse] = usePrefillHouse(params.house_id);
@@ -67,10 +65,9 @@ export default function AllocateScreen() {
         // null house = back to the warehouse (a RETURN)
         body: JSON.stringify({ house_id: toWarehouse ? null : house!.id, idempotency_key: key }),
       });
-      void queryClient.invalidateQueries({ queryKey: ['stock-units'] });
-      // The house screen's Allocated stock card and its full page, still mounted behind this one.
-      void queryClient.invalidateQueries({ queryKey: ['house-stock'] });
     },
+    // The house screen's Allocated stock card and its full page, still mounted behind this one.
+    refresh: { after: [['stock-units'], ['house-stock']] },
   });
 
   return (
@@ -154,6 +151,7 @@ export default function AllocateScreen() {
         offline={offline}
         labels={toWarehouse ? RETURN_LABELS : LABELS}
         pending={session.pending}
+        parallel={session.parallel}
       />
     </Screen>
   );

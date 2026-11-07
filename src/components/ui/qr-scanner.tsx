@@ -13,6 +13,7 @@ import { classifyScan, markSent, newScanState, releaseScan } from '@/lib/scan';
 import type { ScanResult, Settled } from '@/lib/scan';
 import { buzz, primeFeedback, tick } from '@/lib/haptics';
 import { frameSide, inFrame, type Detected } from '@/lib/scan-area';
+import { createScanPump, type ScanPump } from '@/lib/scan-pump';
 
 // expo-camera's zoom is a share of the phone's max zoom, which differs per phone (and iOS maps it
 // differently from Android) -- so there's no true "2x" to ask for. The default lands around 2x on
@@ -27,6 +28,9 @@ const clampZoom = (z: number) => Math.round(Math.min(ZOOM_MAX, Math.max(0, z)) *
 // How long a read waits on the server before the banner says the connection is slow. Most answers
 // land well inside this; past it, the operator needs to know the label was fine and it's the network.
 const SLOW_MS = 2500;
+// Codes with the server at once when scanning straight through (no Confirm card). Each is a lookup plus a
+// write; one at a time, a fast operator outran the network and codes read meanwhile were thrown away.
+const PARALLEL = 4;
 
 const tail = (id: string) => `…${id.slice(-7)}`;
 
@@ -96,6 +100,9 @@ type QrScannerProps = {
   offline?: boolean;
   /** How many more this target can take. At 0 the camera stops reading codes; null/undefined = no limit. */
   remaining?: number | null;
+  /** Send several codes to the server at once. Only for auto mode: a held code (Confirm card) must be
+   *  the only one in flight, so manual mode stays one at a time. */
+  parallel?: boolean;
 };
 
 /**
@@ -114,6 +121,7 @@ export function QrScanner({
   remaining = null,
   labels = DEFAULT_LABELS,
   pending = null,
+  parallel = false,
 }: QrScannerProps) {
   const theme = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
@@ -125,7 +133,11 @@ export function QrScanner({
   // a second and every one of them must see the latest set, not a value closed
   // over from the last render.
   const session = useRef(newScanState());
-  const inFlight = useRef(false);
+  // Codes queued or with the server. Created once per scanner (its key changes on a new session); the
+  // limit is read when each code starts, so switching manual/auto takes effect for the next one.
+  const pump = useRef<ScanPump | null>(null);
+  const runCode = useRef<(id: string) => Promise<boolean>>(async () => false);
+  const limit = useRef(parallel ? PARALLEL : 1);
   // The code behind the card, and a guard so a fast double-tap on Confirm sends one write.
   const heldId = useRef<string | null>(null);
   const confirming = useRef(false);
@@ -220,11 +232,58 @@ export function QrScanner({
     card.onCancel();
   };
 
+  // One code end to end: banner, server, outcome. True when it took a slot of `remaining`.
+  const run = async (id: string) => {
+    const label = tail(id);
+    setChecking({ label, slow: false });
+    const slowTimer = setTimeout(() => setChecking({ label, slow: true }), SLOW_MS);
+    try {
+      const result = await onScan(id);
+      if ('held' in result) {
+        // Waiting on Confirm/Cancel. Release the code so a cancelled one can be rescanned.
+        heldId.current = id;
+        releaseScan(session.current, id);
+        return false;
+      }
+      settle(id, result);
+      return result.ok;
+    } finally {
+      clearTimeout(slowTimer);
+      if (pumpOf().busy() <= 1) setChecking(null);
+    }
+  };
+  // The pump outlives renders; hand it the latest run (fresh onScan/settle) and limit after each one.
+  useEffect(() => {
+    runCode.current = run;
+    limit.current = parallel ? PARALLEL : 1;
+  });
+
+  const pumpOf = useCallback(
+    () =>
+      (pump.current ??= createScanPump({
+        limit: () => limit.current,
+        run: (id) => runCode.current(id),
+      })),
+    [],
+  );
+
+  // The server's "N left" lags our own writes until its refetch lands; the pump counts what it has sent.
+  useEffect(() => {
+    pumpOf().setRemaining(remaining);
+  }, [remaining, pumpOf]);
+
+  // Closing the scanner drops codes that were read but not yet sent.
+  useEffect(() => {
+    if (!open) pump.current?.clear();
+  }, [open]);
+
   const handle = useCallback(
     async (payload: string) => {
       // A full target takes no more. The camera stops reading at 0 too; this covers the frames
       // already on their way when the last code landed.
-      if (offline || pending || inFlight.current || (remaining !== null && remaining <= 0)) return;
+      if (offline || pending || pumpOf().room() === 0) return;
+      // Manual mode: a code waiting on the server may come back held for Confirm; don't read past it.
+      if (limit.current === 1 && pumpOf().busy() > 0) return;
 
       const outcome = classifyScan(session.current, payload, Date.now());
 
@@ -248,33 +307,11 @@ export function QrScanner({
         return;
       }
 
-      inFlight.current = true;
       markSent(session.current, outcome.id);
-
-      // Read, not yet answered: say so now, so a slow network never looks like a bad label.
       tick();
-      const label = tail(outcome.id);
-      setChecking({ label, slow: false });
-      const slowTimer = setTimeout(() => setChecking({ label, slow: true }), SLOW_MS);
-
-      try {
-        const result = await onScan(outcome.id);
-
-        if ('held' in result) {
-          // Waiting on Confirm/Cancel. Release the code so a cancelled one can be rescanned.
-          heldId.current = outcome.id;
-          releaseScan(session.current, outcome.id);
-          return;
-        }
-
-        settle(outcome.id, result);
-      } finally {
-        clearTimeout(slowTimer);
-        setChecking(null);
-        inFlight.current = false;
-      }
+      pumpOf().push(outcome.id);
     },
-    [offline, pending, remaining, labels, onScan, settle, show],
+    [offline, pending, labels, show, pumpOf],
   );
 
   // Only a code sitting inside the square counts. One outside it is ignored, with a nudge every
@@ -298,6 +335,7 @@ export function QrScanner({
   // Reached the target. Stop reading rather than refuse each frame: the last label is usually still
   // in view, and an error buzz right after its success reads as if that one failed.
   const full = remaining !== null && remaining <= 0;
+  // A code already with the server counts as taken: don't keep reading once the last slot is in flight.
 
   return (
     <Modal visible={open} animationType="slide" onRequestClose={onClose}>

@@ -107,6 +107,7 @@ assert.equal(isStockCode(''), false);
 assert.equal(isRetryable(0), true, 'lost connection is worth another try');
 assert.equal(isRetryable(500), true);
 assert.equal(isRetryable(503), true);
+assert.equal(isRetryable(429), true, 'rate-limited is not settled — the same code must be scannable again');
 assert.equal(isRetryable(409), false, 'already bound is settled — never retry');
 assert.equal(isRetryable(404), false, 'unknown code stays unknown');
 assert.equal(isRetryable(400), false, 'wrong item for this lot is settled');

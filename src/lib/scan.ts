@@ -88,7 +88,9 @@ export type BindResult = { ok: true } | { ok: false; message: string; retryable:
  * and re-buzzes every cooldown, forever.
  */
 export function isRetryable(status: number): boolean {
-  return status === 0 || status >= 500;
+  // 429: the server asked us to slow down. The code itself is fine -- treating it as settled marked it
+  // done for the session, so rescanning it said "already linked" though it never was.
+  return status === 0 || status === 429 || status >= 500;
 }
 
 /** Turns a bind failure into something a person at a farm gate can act on.

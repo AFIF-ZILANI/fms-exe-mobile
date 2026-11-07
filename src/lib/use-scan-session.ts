@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import * as Crypto from 'expo-crypto';
+import { useQueryClient, type QueryKey } from '@tanstack/react-query';
 
 import type { PendingCard, ScanRow } from '@/components/ui/qr-scanner';
 import { ApiError, apiFetch } from '@/lib/api';
@@ -24,6 +25,10 @@ type Options = {
   confirmLabel: string;
   /** Consume: a replay conflict (409 idempotency_key) means the write already landed, so it counts as done. */
   treatReplayAsDone?: boolean;
+  /** What to refresh. `live`: the query the scanner's "N left" comes from, refetched after each write but
+   *  never more than one fetch at a time. `after`: every other list the writes touch, refreshed once when
+   *  scanning stops -- per scan, those refetches cost round trips and the server's rate limit. */
+  refresh?: { live?: QueryKey[]; after?: QueryKey[] };
 };
 
 const tail = (id: string) => `…${id.slice(-7)}`;
@@ -55,7 +60,8 @@ type KeyStore = ReturnType<typeof newKeyStore>;
  * write straight away (auto), hold for Confirm/Cancel (manual), or explain why not.
  * docs/scan-flows-design.md §3.
  */
-export function useScanSession({ plan, mode, commit, confirmLabel, treatReplayAsDone }: Options) {
+export function useScanSession({ plan, mode, commit, confirmLabel, treatReplayAsDone, refresh }: Options) {
+  const queryClient = useQueryClient();
   const [rows, setRows] = useState<ScanRow[]>([]);
   const [held, setHeld] = useState<StockUnit | null>(null);
   const [busy, setBusy] = useState(false);
@@ -77,6 +83,8 @@ export function useScanSession({ plan, mode, commit, confirmLabel, treatReplayAs
     }
     done.current.add(unit.id);
     keys().drop(unit.id);
+    // cancelRefetch: false joins a fetch already running instead of restarting it on every scan.
+    for (const queryKey of refresh?.live ?? []) void queryClient.invalidateQueries({ queryKey }, { cancelRefetch: false });
     return { ok: true, label: labelOf(unit) };
   };
 
@@ -129,8 +137,19 @@ export function useScanSession({ plan, mode, commit, confirmLabel, treatReplayAs
       }
     : null;
 
+  // Scanning stopped: bring everything the writes touched up to date, the live count included (its last
+  // joined fetch may have started before the final write).
+  const refreshAll = () => {
+    if (done.current.size === 0) return;
+    for (const queryKey of [...(refresh?.live ?? []), ...(refresh?.after ?? [])]) {
+      void queryClient.invalidateQueries({ queryKey });
+    }
+  };
+
   return {
     rows,
+    /** Several codes at once is only safe when none can come back held for a Confirm card. */
+    parallel: mode === 'auto',
     onScan: (id: string) => scan(id, mode),
     generation,
     onScanned: (row: ScanRow) => setRows((prev) => [row, ...prev]),
@@ -141,10 +160,13 @@ export function useScanSession({ plan, mode, commit, confirmLabel, treatReplayAs
       const result = await scan(id, 'auto');
       if ('held' in result) return false;
       setRows((prev) => [toRow(id, result), ...prev]);
+      // One deliberate tap, no scanner to close afterwards: refresh now.
+      if (result.ok) refreshAll();
       return result.ok;
     },
     /** A changed plan is a new session — counts and the done-set must not carry over. */
     reset: () => {
+      refreshAll();
       setRows([]);
       setHeld(null);
       done.current.clear();
@@ -153,6 +175,9 @@ export function useScanSession({ plan, mode, commit, confirmLabel, treatReplayAs
       setGeneration((g) => g + 1);
     },
     /** Closing the scanner abandons any unit still waiting on Confirm. */
-    close: () => setHeld(null),
+    close: () => {
+      setHeld(null);
+      refreshAll();
+    },
   };
 }

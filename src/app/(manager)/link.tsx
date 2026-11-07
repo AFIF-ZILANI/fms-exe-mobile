@@ -120,12 +120,9 @@ export default function LinkItemsScreen() {
           ...(lot?.unit_count == null && cap !== null && { unit_count: cap }),
         }),
       });
-      // Anything showing unit counts or unassigned units is now stale.
-      void queryClient.invalidateQueries({ queryKey: ['stock-units'] });
-      // Awaited: the scanner takes one code at a time, so the next one is judged against the
-      // updated count rather than racing the refetch.
-      await queryClient.invalidateQueries({ queryKey: ['purchase-items'] });
     },
+    // The lot's linked count (the "N left") is live; anything else showing unassigned units refreshes after.
+    refresh: { live: [['purchase-items']], after: [['stock-units']] },
   });
 
   // The last code in: close the camera after a beat, so the flash and the sound land first.
@@ -498,6 +495,7 @@ export default function LinkItemsScreen() {
         pending={session.pending}
         offline={offline}
         remaining={cap === null ? null : Math.max(0, cap - linkedTotal)}
+        parallel={session.parallel}
       />
     </Screen>
   );

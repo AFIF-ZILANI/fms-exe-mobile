@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useNetworkState } from 'expo-network';
-import { useQueryClient } from '@tanstack/react-query';
 
 import { FormCard } from '@/components/ui/form-card';
 import { Screen } from '@/components/ui/screen';
@@ -53,7 +52,6 @@ const LABELS: Record<UseAction, ScanLabels> = {
  *  accepts only that item's codes; no item accepts any. The item list is what is in the house right now. */
 export default function ConsumeScreen() {
   const params = useLocalSearchParams<{ house_id?: string }>();
-  const queryClient = useQueryClient();
   const offline = useNetworkState().isConnected === false;
 
   const [house, setHouse] = usePrefillHouse(params.house_id);
@@ -93,13 +91,12 @@ export default function ConsumeScreen() {
         method: 'POST',
         body: JSON.stringify(unitUseBody(action, { houseId: house.id, batchId: balance?.batch_id, now: new Date(), key })),
       });
-      void queryClient.invalidateQueries({ queryKey: ['stock-units'] });
-      void queryClient.invalidateQueries({ queryKey: ['consumptions'] });
+    },
+    refresh: {
+      // This house's available list (the "N left") plus the house screen's Used stock card and page.
+      live: [['house-stock']],
       // The Stock tab's levels are still mounted behind this screen.
-      void queryClient.invalidateQueries({ queryKey: ['items'] });
-      // Awaited, and it covers this house's available list and the house screen's Used stock card and page:
-      // the scanner takes one code at a time, so the next one is judged against the updated count.
-      await queryClient.invalidateQueries({ queryKey: ['house-stock'] });
+      after: [['stock-units'], ['consumptions'], ['items']],
     },
   });
 
@@ -235,6 +232,7 @@ export default function ConsumeScreen() {
         labels={LABELS[action]}
         pending={session.pending}
         remaining={house ? available : null}
+        parallel={session.parallel}
       />
     </Screen>
   );
