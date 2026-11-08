@@ -44,6 +44,7 @@ export function buildLauncher(isManager: boolean, houseId: string | null): Launc
 
   stock.push(
     { label: 'Link items', description: 'Scan QR codes onto a delivery', path: '/link', icon: 'maximize', tint: 'tintGreen' },
+    { label: 'Count stock', description: 'Find coded items used without a scan', path: withHouse('/stock-count'), icon: 'list', tint: 'tintBlue' },
     { label: 'Report discrepancy', description: "Stock doesn't match", path: withHouse('/adjust'), icon: 'clipboard', tint: 'tintAmber' },
     { label: 'Flag low stock', description: 'Raise a reorder signal', path: '/flag-stock', icon: 'flag', tint: 'tintAmber' },
   );

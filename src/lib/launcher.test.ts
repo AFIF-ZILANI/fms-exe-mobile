@@ -32,7 +32,7 @@ assert.deepEqual(
 assert.deepEqual(worker[1].items.map((i) => i.label), ['Stock levels', 'Look up a code', 'Move to house', 'Use an item', 'Use supplies', 'Return to warehouse', 'Move supplies']);
 assert.deepEqual(
   manager[1].items.map((i) => i.label),
-  ['Stock levels', 'Look up a code', 'Move to house', 'Use an item', 'Use supplies', 'Return to warehouse', 'Move supplies', 'Link items', 'Report discrepancy', 'Flag low stock'],
+  ['Stock levels', 'Look up a code', 'Move to house', 'Use an item', 'Use supplies', 'Return to warehouse', 'Move supplies', 'Link items', 'Count stock', 'Report discrepancy', 'Flag low stock'],
 );
 assert.deepEqual(
   manager[2].items.map((i) => i.label),
@@ -49,6 +49,7 @@ assert.equal(byLabel(inHouse, 'Use an item').path, '/scan/consume?house_id=h-9')
 assert.equal(byLabel(inHouse, 'Use supplies').path, '/use-supplies?house_id=h-9');
 assert.equal(byLabel(inHouse, 'Look up a code').path, '/scan/lookup', 'a code is looked up wherever it is');
 assert.equal(byLabel(inHouse, 'Report discrepancy').path, '/adjust?house_id=h-9');
+assert.equal(byLabel(inHouse, 'Count stock').path, '/stock-count?house_id=h-9');
 assert.equal(byLabel(inHouse, 'Team').path, '/team', 'screens that are not house-scoped never get a house_id');
 assert.equal(byLabel(manager, 'Mortality').path, '/log/mortality', 'no house, no query string');
 
