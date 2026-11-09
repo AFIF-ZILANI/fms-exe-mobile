@@ -1,4 +1,6 @@
 import type { OutboxRow } from './outbox';
+import { formatEntered } from './stock-summary';
+import type { Item } from './types';
 
 export type DescribedRow = { title: string; detail: string | null };
 
@@ -7,7 +9,17 @@ type Body = Record<string, unknown>;
 const text = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null);
 const count = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
-type Rule = { match: RegExp; title: string; detail?: (b: Body) => string | null };
+type Items = Pick<Item, 'id' | 'unit' | 'itemUnits'>[];
+type Rule = { match: RegExp; title: string; detail?: (b: Body, items: Items) => string | null };
+
+/** A queued draw or move's amount, in bags for feed when the item is known. */
+function amount(b: Body, items: Items): string | null {
+  const q = count(b.quantity);
+  if (q === null) return null;
+  const unit = text(b.unit);
+  if (!unit) return String(q);
+  return formatEntered(q, unit, items.find((i) => i.id === b.item_id));
+}
 
 /** Every write the app queues, in the words a worker uses. Order does not matter: patterns are anchored. */
 const RULES: Rule[] = [
@@ -15,12 +27,7 @@ const RULES: Rule[] = [
   {
     match: /^\/consumptions$/,
     title: 'Feed or item use',
-    detail: (b) => {
-      const q = count(b.quantity);
-      if (q === null) return null;
-      const unit = text(b.unit);
-      return unit ? `${q} ${unit.toLowerCase()}` : String(q);
-    },
+    detail: (b, items) => amount(b, items),
   },
   { match: /^\/weight-records$/, title: 'Weight sample' },
   { match: /^\/environment-records$/, title: 'Environment readings' },
@@ -35,12 +42,7 @@ const RULES: Rule[] = [
   {
     match: /^\/stock-transfers$/,
     title: 'Stock moved',
-    detail: (b) => {
-      const q = count(b.quantity);
-      if (q === null) return null;
-      const unit = text(b.unit);
-      return unit ? `${q} ${unit.toLowerCase()}` : String(q);
-    },
+    detail: (b, items) => amount(b, items),
   },
   { match: /^\/alerts$/, title: 'Low-stock flag' },
   { match: /^\/batch-feeding-programs$/, title: 'Feeding plan phase' },
@@ -57,10 +59,10 @@ function parseBody(raw: string): Body {
 }
 
 /** A queued write in plain words. Never throws: an unknown endpoint is "A record", a bad body just has no detail. */
-export function describeOutboxRow(row: Pick<OutboxRow, 'endpoint' | 'body'>): DescribedRow {
+export function describeOutboxRow(row: Pick<OutboxRow, 'endpoint' | 'body'>, items: Items = []): DescribedRow {
   const rule = RULES.find((r) => r.match.test(row.endpoint));
   if (!rule) return { title: 'A record', detail: null };
-  return { title: rule.title, detail: rule.detail ? rule.detail(parseBody(row.body)) : null };
+  return { title: rule.title, detail: rule.detail ? rule.detail(parseBody(row.body), items) : null };
 }
 
 /** Why the server refused a record, said plainly. The server's own sentence is kept when it is already readable. */

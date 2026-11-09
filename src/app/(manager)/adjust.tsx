@@ -19,6 +19,7 @@ import { useGetData, type Paginated } from '@/lib/api';
 import type { Item, StockByLocation, Warehouse } from '@/lib/types';
 import { goBack } from '@/lib/nav';
 import { humanise } from '@/lib/profile-format';
+import { formatBalance, formatStock, stockFigure } from '@/lib/stock-summary';
 
 type LocationKind = 'warehouse' | 'house';
 
@@ -77,6 +78,8 @@ export default function AdjustScreen() {
   );
 
   const countedNum = Number(counted);
+  // Feed reads "X Bag Y kg"; the count itself is still typed in the item's base unit.
+  const amount = (n: number): string => (item ? formatStock(n, item) : formatBalance(n));
   const hasCount = counted.trim() !== '' && Number.isFinite(countedNum);
   const delta = countedNum - onRecord;
   const noteRequired = reason === 'Other';
@@ -119,8 +122,8 @@ export default function AdjustScreen() {
   const handleSubmit = () => {
     const short = delta < 0;
     Alert.alert(
-      `Report ${Math.abs(delta).toLocaleString()} ${item?.unit ?? ''} ${short ? 'short' : 'over'}?`,
-      `The ledger will go from ${onRecord.toLocaleString()} to ${countedNum.toLocaleString()}.`,
+      `Report ${amount(Math.abs(delta))} ${short ? 'short' : 'over'}?`,
+      `The ledger will go from ${amount(onRecord)} to ${amount(countedNum)}.`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Report', onPress: doSubmit },
@@ -152,7 +155,7 @@ export default function AdjustScreen() {
       submit={{
         label:
           hasCount && delta !== 0 && item
-            ? `Report ${Math.abs(delta).toLocaleString()} ${item.unit} ${delta < 0 ? 'short' : 'over'}`
+            ? `Report ${amount(Math.abs(delta))} ${delta < 0 ? 'short' : 'over'}`
             : hasCount && delta === 0
               ? 'Nothing to report'
               : 'Report discrepancy',
@@ -202,10 +205,10 @@ export default function AdjustScreen() {
           </AppText>
           <View style={[styles.readOnly, { backgroundColor: theme.surfaceAlt }]}>
             <AppText variant="figure" color="muted" style={styles.flex}>
-              {onRecord.toLocaleString()}
+              {item ? stockFigure(onRecord, item).main : onRecord.toLocaleString()}
             </AppText>
             <AppText variant="body" color="muted">
-              {item?.unit ?? ''}
+              {item ? stockFigure(onRecord, item).sub : ''}
             </AppText>
           </View>
           <AppText variant="caption" color="muted">
@@ -213,11 +216,17 @@ export default function AdjustScreen() {
           </AppText>
         </View>
 
-        <NumberField label="Counted" value={counted} onChangeText={setCounted} unit={item?.unit} />
+        <NumberField
+          label="Counted"
+          value={counted}
+          onChangeText={setCounted}
+          unit={item?.unit}
+          helper={hasCount && item ? `= ${amount(countedNum)}` : undefined}
+        />
 
         <View style={[styles.delta, { backgroundColor: theme[deltaTint] }]}>
           <AppText variant="stat" color={deltaColor}>
-            {hasCount ? `${delta > 0 ? '+' : ''}${delta.toLocaleString()} ${item?.unit ?? ''}` : '—'}
+            {hasCount ? `${delta > 0 ? '+' : ''}${amount(delta)}` : '—'}
           </AppText>
           <AppText variant="eyebrow" color="muted">
             {deltaLabel}

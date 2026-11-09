@@ -8,7 +8,7 @@ import { Radius, Spacing, elevation } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { humanise } from '@/lib/profile-format';
-import { formatBalance, levelRatio, stockState, type StockLine, type StockState } from '@/lib/stock-summary';
+import { formatStock, levelRatio, stockFigure, stockState, type StockLine, type StockState } from '@/lib/stock-summary';
 
 const CATEGORY_ICON: Record<string, IconName> = {
   FEED: 'package',
@@ -53,14 +53,14 @@ export function StockItemCard({ line }: { line: StockLine }) {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const state = stockState(line);
   const look = LOOK[state];
-  const unit = line.item.unit.toLowerCase();
+  const figure = stockFigure(line.balance, line.item);
   const reorder = line.item.reorder_level == null ? null : Number(line.item.reorder_level);
 
   return (
     <Pressable
       onPress={() => router.push(`/stock/${line.item.id}` as Href)}
       accessibilityRole="button"
-      accessibilityLabel={`${line.item.name}, ${formatBalance(line.balance)} ${unit}${state === 'LOW' ? ', low' : state === 'OUT' ? ', out of stock' : ''}`}
+      accessibilityLabel={`${line.item.name}, ${formatStock(line.balance, line.item)}${state === 'LOW' ? ', low' : state === 'OUT' ? ', out of stock' : ''}`}
       style={({ pressed }) => [
         styles.card,
         { backgroundColor: pressed ? theme.surfaceAlt : theme.surface },
@@ -78,7 +78,7 @@ export function StockItemCard({ line }: { line: StockLine }) {
             {state === 'OUT'
               ? ' · out of stock'
               : reorder !== null && Number.isFinite(reorder)
-                ? ` · reorder at ${formatBalance(reorder)}`
+                ? ` · reorder at ${formatStock(reorder, line.item)}`
                 : ''}
           </AppText>
           {state === 'LOW' ? <StatusPill status="LOW" label="Low" /> : null}
@@ -87,11 +87,13 @@ export function StockItemCard({ line }: { line: StockLine }) {
       </View>
       <View style={styles.qty}>
         <AppText variant="figure" color={state === 'OK' ? 'ink' : state === 'LOW' ? 'warning' : 'critical'}>
-          {formatBalance(line.balance)}
+          {figure.main}
         </AppText>
-        <AppText variant="caption" color="muted">
-          {unit}
-        </AppText>
+        {figure.sub ? (
+          <AppText variant="caption" color="muted">
+            {figure.sub}
+          </AppText>
+        ) : null}
       </View>
       <Icon name="chevron-right" size={20} color="muted" />
     </Pressable>

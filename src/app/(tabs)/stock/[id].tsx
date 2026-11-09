@@ -18,9 +18,10 @@ import { useTheme } from '@/hooks/use-theme';
 import { useGetData, type Paginated } from '@/lib/api';
 import { humanise } from '@/lib/profile-format';
 import {
-  formatBalance,
+  formatStock,
   groupLocations,
   reorderGap,
+  stockFigure,
   stockState,
   summarizeStock,
   type StockRow,
@@ -61,7 +62,6 @@ export default function StockItemScreen() {
 
   const loading = (items.isPending && !items.data) || (rows.isPending && !rows.data);
   const groups = line ? groupLocations(line) : null;
-  const unit = line?.item.unit.toLowerCase() ?? '';
   const state = line ? stockState(line) : 'OK';
   const gap = line ? reorderGap(line) : null;
   const tone = state === 'OUT' ? 'critical' : state === 'LOW' ? 'warning' : 'ink';
@@ -85,7 +85,7 @@ export default function StockItemScreen() {
               <View
                 key={`${l.type}-${l.name}`}
                 accessible
-                accessibilityLabel={`${l.name}, ${formatBalance(l.balance)} ${unit}`}
+                accessibilityLabel={`${l.name}, ${formatStock(l.balance, line.item)}`}
                 style={[styles.place, { backgroundColor: theme.surface }, elevation(scheme, 'card')]}
               >
                 <IconTile name={icon} tint="surfaceAlt" color="muted" />
@@ -98,9 +98,9 @@ export default function StockItemScreen() {
                   </View>
                 </View>
                 <View style={styles.qty}>
-                  <AppText variant="figure">{formatBalance(l.balance)}</AppText>
+                  <AppText variant="figure">{stockFigure(l.balance, line.item).main}</AppText>
                   <AppText variant="caption" color="muted">
-                    {unit}
+                    {stockFigure(l.balance, line.item).sub}
                   </AppText>
                 </View>
               </View>
@@ -152,10 +152,10 @@ export default function StockItemScreen() {
                 </AppText>
                 <View style={styles.heroNumber}>
                   <AppText variant="stat" color={tone}>
-                    {formatBalance(line.balance)}
+                    {stockFigure(line.balance, line.item).main}
                   </AppText>
                   <AppText variant="label" color="muted">
-                    {unit} in total
+                    {`${stockFigure(line.balance, line.item).sub} in total`.trim()}
                   </AppText>
                 </View>
               </View>
@@ -168,8 +168,8 @@ export default function StockItemScreen() {
                 <LevelBar line={line} />
                 <AppText variant="caption" color={gap.short ? 'warning' : 'muted'}>
                   {gap.short
-                    ? `${formatBalance(gap.amount)} ${unit} short of the reorder level (${formatBalance(Number(line.item.reorder_level))})`
-                    : `${formatBalance(gap.amount)} ${unit} above the reorder level (${formatBalance(Number(line.item.reorder_level))})`}
+                    ? `${formatStock(gap.amount, line.item)} short of the reorder level (${formatStock(Number(line.item.reorder_level), line.item)})`
+                    : `${formatStock(gap.amount, line.item)} above the reorder level (${formatStock(Number(line.item.reorder_level), line.item)})`}
                 </AppText>
               </View>
             ) : (

@@ -23,7 +23,7 @@ import { formatRelative } from '@/lib/format';
 import { codeTail, houseSupplies, unitActions, type HouseSupply } from '@/lib/house-stock';
 import { scanErrorMessage } from '@/lib/scan';
 import { unitUseBody } from '@/lib/scan-actions';
-import { formatBalance, type StockRow } from '@/lib/stock-summary';
+import { formatStock, type StockRow } from '@/lib/stock-summary';
 import type { House, Item, StockUnit } from '@/lib/types';
 
 const PREVIEW = 5;
@@ -314,9 +314,9 @@ function SupplyRow({ supply, houseId }: { supply: HouseSupply; houseId: string }
         </AppText>
         <AppText variant="caption" color="muted" numberOfLines={1}>
           <AppText variant="data" color="ink">
-            {formatBalance(supply.balance)}
+            {formatStock(supply.balance, supply.item)}
           </AppText>
-          {` ${supply.item.unit.toLowerCase()} in this house`}
+          {' in this house'}
         </AppText>
       </View>
       <Pressable

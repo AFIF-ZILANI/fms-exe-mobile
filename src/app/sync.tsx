@@ -15,10 +15,15 @@ import { formatRelative } from '@/lib/format';
 import { discardDeadLetter, retryDeadLetter, type OutboxRow } from '@/lib/outbox';
 import { describeOutboxRow, plainReason } from '@/lib/outbox-describe';
 import { useSession } from '@/lib/session';
+import { useGetData, type Paginated } from '@/lib/api';
+import type { Item } from '@/lib/types';
 import { SUMMARY_KEY, triggerFlush, useOutboxRows, useOutboxSummary } from '@/lib/use-outbox';
 
 /** docs/navigation-redesign-design.md Phase 2 — what is waiting to send, what failed and why. */
 export default function SyncCenterScreen() {
+  // So queued feed moves and draws read in bags; an item the cache doesn't know just shows its unit.
+  const { data: itemsPage } = useGetData<Paginated<Item>>('/items?is_active=true&limit=100', ['items', 'active']);
+  const items = itemsPage?.results ?? [];
   const theme = useTheme();
   const queryClient = useQueryClient();
   const { signedIn } = useSession();
@@ -96,7 +101,7 @@ export default function SyncCenterScreen() {
       {failed.length > 0 ? (
         <Card eyebrow="Couldn't send" note={String(failed.length)} style={styles.card}>
           {failed.map((row, i) => {
-            const { title, detail } = describeOutboxRow(row);
+            const { title, detail } = describeOutboxRow(row, items);
             return (
               <View key={row.key} style={[styles.item, i > 0 && { borderTopWidth: 1, borderTopColor: theme.line }]}>
                 <View style={styles.head}>
@@ -140,7 +145,7 @@ export default function SyncCenterScreen() {
       {pending.length > 0 ? (
         <Card eyebrow="Waiting to send" note={String(pending.length)} style={styles.card}>
           {pending.map((row, i) => {
-            const { title, detail } = describeOutboxRow(row);
+            const { title, detail } = describeOutboxRow(row, items);
             return (
               <View key={row.key} style={[styles.item, i > 0 && { borderTopWidth: 1, borderTopColor: theme.line }]}>
                 <View style={styles.head}>

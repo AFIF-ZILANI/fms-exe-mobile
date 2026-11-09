@@ -49,6 +49,43 @@ export function formatBalance(n: number): string {
   return n.toLocaleString('en-US', { maximumFractionDigits: 3 });
 }
 
+/** An item's Bag size in its base unit (50 for a 50 kg feed bag), or 0 when it isn't kept in bags. */
+export function bagSize(item: Pick<Item, 'unit' | 'itemUnits'>): number {
+  if (item.unit === 'BAG') return 0;
+  return Number(item.itemUnits?.find((u) => u.unit === 'BAG')?.factor_to_base ?? 0);
+}
+
+/** A stock amount in the item's base unit with its unit: "12.5 kg", "40 ml". An item with a Bag conversion
+ *  (feed) always reads in whole bags plus the loose remainder -- "3 Bag 12.5 kg", "3 Bag", "0 Bag 20 kg" --
+ *  never bare kg. Same rule as the dashboard's formatStock (web/src/pages/inventory/stock-qty.ts). */
+export function formatStock(n: number, item: Pick<Item, 'unit' | 'itemUnits'>): string {
+  const base = item.unit.toLowerCase();
+  const size = bagSize(item);
+  if (size <= 0) return `${formatBalance(n)} ${base}`;
+  const sign = n < 0 ? '-' : '';
+  const abs = Math.abs(n);
+  // epsilon so 150 at 50/bag is 3 bags, not 2 bags 50 kg from float drift
+  const bags = Math.floor(abs / size + 1e-9);
+  const loose = Number((abs - bags * size).toFixed(3));
+  return loose > 0 ? `${sign}${formatBalance(bags)} Bag ${formatBalance(loose)} ${base}` : `${sign}${formatBalance(bags)} Bag`;
+}
+
+/** A quantity as entered (a draw, a move): in the base unit it reads like stock ("2 Bag 20 kg"); in a bag
+ *  it's "2 Bag"; any other unit stays as entered. `item` may be unknown (an old queued record). */
+export function formatEntered(quantity: number, unit: string, item?: Pick<Item, 'unit' | 'itemUnits'> | null): string {
+  if (item && unit === item.unit) return formatStock(quantity, item);
+  if (unit === 'BAG') return `${formatBalance(quantity)} Bag`;
+  return `${formatBalance(quantity)} ${unit.toLowerCase()}`;
+}
+
+/** A stock figure split for a big-number layout: the headline and the line under it. Feed gives
+ *  { main: "25 Bag", sub: "20 kg" } (sub '' on a whole bag); anything else { main: "40", sub: "ml" }. */
+export function stockFigure(n: number, item: Pick<Item, 'unit' | 'itemUnits'>): { main: string; sub: string } {
+  if (bagSize(item) <= 0) return { main: formatBalance(n), sub: item.unit.toLowerCase() };
+  const [bags, loose = ''] = formatStock(n, item).split(' Bag');
+  return { main: `${bags} Bag`, sub: loose.trim() };
+}
+
 /** Case-insensitive match on item name or category ("feed", "vacc"); a blank query keeps everything. */
 export function searchStock(lines: StockLine[], query: string): StockLine[] {
   const q = query.trim().toLowerCase();

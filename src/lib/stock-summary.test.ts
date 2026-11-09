@@ -8,6 +8,8 @@ import {
   categoryCounts,
   filterStock,
   formatBalance,
+  formatStock,
+  stockFigure,
   groupLocations,
   levelRatio,
   reorderGap,
@@ -158,3 +160,17 @@ assert.deepEqual(
   }),
   [{ unit: 'KG', factor: 1 }, { unit: 'BAG', factor: 50 }],
 );
+
+// Feed reads in bags, never bare kg.
+{
+  const feed = { unit: 'KG', itemUnits: [{ unit: 'BAG', factor_to_base: '50.0000', is_usable: true }] } as unknown as Item;
+  assert.equal(formatStock(162.5, feed), '3 Bag 12.5 kg');
+  assert.equal(formatStock(150, feed), '3 Bag');
+  assert.equal(formatStock(20, feed), '0 Bag 20 kg');
+  assert.equal(formatStock(-70, feed), '-1 Bag 20 kg');
+  assert.equal(formatStock(62500, feed), '1,250 Bag');
+  assert.equal(formatStock(12, { unit: 'ML', itemUnits: [] } as unknown as Item), '12 ml');
+  assert.deepEqual(stockFigure(1270, feed), { main: '25 Bag', sub: '20 kg' });
+  assert.deepEqual(stockFigure(100, feed), { main: '2 Bag', sub: '' });
+  assert.deepEqual(stockFigure(40, { unit: 'ML', itemUnits: [] } as unknown as Item), { main: '40', sub: 'ml' });
+}

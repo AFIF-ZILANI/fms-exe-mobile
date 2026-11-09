@@ -1,4 +1,5 @@
 import type { HouseAllocation, HouseConsumption } from './types';
+import { formatEntered } from './stock-summary';
 
 export type Range = 'today' | 'week' | 'month' | 'all';
 
@@ -40,7 +41,7 @@ export function allocationRow(a: HouseAllocation): ActivityRowData {
 
 /** A draw of stock: how much, and by whom when we know. */
 export function consumptionRow(c: HouseConsumption): ActivityRowData {
-  const amount = `${Number(c.quantity)} ${c.unit.toLowerCase()}`;
+  const amount = formatEntered(Number(c.quantity), c.unit, c.item);
   return {
     id: c.id,
     title: c.item.name,

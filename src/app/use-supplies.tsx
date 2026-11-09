@@ -15,7 +15,7 @@ import { AppText } from '@/components/ui/text';
 import { Spacing } from '@/constants/theme';
 import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
-import { formatBalance, usableUnits } from '@/lib/stock-summary';
+import { bagSize, formatBalance, formatStock, usableUnits } from '@/lib/stock-summary';
 import type { HouseSupply } from '@/lib/house-stock';
 import { humanise } from '@/lib/profile-format';
 import { goBack } from '@/lib/nav';
@@ -52,6 +52,9 @@ export default function UseSuppliesScreen() {
   const unit = units.find((u) => u.unit === unitCode) ?? units[0] ?? null;
   const unitText = (code: string | undefined) => (code ? humanise(code).toLowerCase() : '');
   const baseText = unitText(item?.unit);
+  // Feed (anything kept in bags) reads "X Bag Y kg"; everything else as a number and its unit.
+  const bagged = !!item && bagSize(item) > 0;
+  const stock = (n: number): string => (item ? formatStock(n, item) : `${formatBalance(n)} ${baseText}`);
 
   const onHand = supply?.balance ?? null;
   const quantityNum = Number(quantity);
@@ -89,7 +92,7 @@ export default function UseSuppliesScreen() {
       hint="Feed, husk and other items without QR codes, used in a house. It comes off that house's stock."
       dirty={!!picked || !!quantity || !!note}
       submit={{
-        label: quantityNum > 0 && item ? `Use ${quantity} ${unitText(unit?.unit)} ${item.name.toLowerCase()}` : 'Use supplies',
+        label: quantityNum > 0 && item ? `Use ${bagged ? stock(baseQty) : `${quantity} ${unitText(unit?.unit)}`} ${item.name.toLowerCase()}` : 'Use supplies',
         onPress: handleSubmit,
         disabled: !isValid,
         loading: submitting,
@@ -107,7 +110,7 @@ export default function UseSuppliesScreen() {
           options={supplies}
           getKey={(s) => s.item.id}
           getLabel={(s) => s.item.name}
-          getSubLabel={(s) => `${formatBalance(s.balance)} ${s.item.unit.toLowerCase()} in this house`}
+          getSubLabel={(s) => `${formatStock(s.balance, s.item)} in this house`}
           onChange={(s) => {
             if (!house) return;
             setPicked({ houseId: house.id, itemId: s.item.id });
@@ -147,10 +150,10 @@ export default function UseSuppliesScreen() {
             onHand === null
               ? undefined
               : overStock
-                ? `This house only has ${formatBalance(onHand)} ${baseText}.`
-                : unit && unit.factor !== 1 && quantityNum > 0
-                  ? `= ${formatBalance(baseQty)} ${baseText} · ${formatBalance(onHand)} ${baseText} in this house`
-                  : `${formatBalance(onHand)} ${baseText} in this house`
+                ? `This house only has ${stock(onHand)}.`
+                : (bagged || (unit && unit.factor !== 1)) && quantityNum > 0
+                  ? `= ${stock(baseQty)} · ${stock(onHand)} in this house`
+                  : `${stock(onHand)} in this house`
           }
           helperColor={overStock ? 'critical' : 'muted'}
         />

@@ -16,7 +16,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
 import { useGetData, type Paginated } from '@/lib/api';
-import { formatBalance, usableUnits, type StockRow } from '@/lib/stock-summary';
+import { bagSize, formatBalance, formatStock, usableUnits, type StockRow } from '@/lib/stock-summary';
 import { humanise } from '@/lib/profile-format';
 import type { Item, Warehouse } from '@/lib/types';
 import { goBack } from '@/lib/nav';
@@ -74,6 +74,9 @@ export default function MoveStockScreen() {
   const unit = units.find((u) => u.unit === unitCode) ?? units[0] ?? null;
   const unitText = (code: string | undefined) => (code ? humanise(code).toLowerCase() : '');
   const baseText = unitText(item?.unit);
+  // Feed (anything kept in bags) reads "X Bag Y kg"; everything else as a number and its unit.
+  const bagged = !!item && bagSize(item) > 0;
+  const stock = (n: number): string => (item ? formatStock(n, item) : `${formatBalance(n)} ${baseText}`);
 
   const onHand = source ? balanceAt(source) : null;
   const quantityNum = Number(quantity);
@@ -119,10 +122,10 @@ export default function MoveStockScreen() {
   };
 
   const handleSubmit = () => {
-    const left = onHand !== null ? `${formatBalance(onHand - baseQty)} ${baseText}` : null;
-    const converted = unit && unit.factor !== 1 ? ` (${formatBalance(baseQty)} ${baseText})` : '';
+    const left = onHand !== null ? stock(onHand - baseQty) : null;
+    const converted = !bagged && unit && unit.factor !== 1 ? ` (${stock(baseQty)})` : '';
     Alert.alert(
-      `Move ${quantity} ${unitText(unit?.unit)} ${item?.name.toLowerCase()}?`,
+      `Move ${bagged ? stock(baseQty) : `${quantity} ${unitText(unit?.unit)}`} ${item?.name.toLowerCase()}?`,
       `${source?.name} → ${dest?.name}${converted}.${left !== null ? ` ${source?.name} keeps ${left}.` : ''} A mistake needs a second move back.`,
       [
         { text: 'Cancel', style: 'cancel' },
@@ -141,7 +144,7 @@ export default function MoveStockScreen() {
       getSubLabel={(p) => {
         const b = balanceAt(p);
         const kind = p.type === 'WAREHOUSE' ? 'Warehouse' : 'House';
-        return b === null ? kind : `${kind} · ${formatBalance(b)} ${baseText}`;
+        return b === null ? kind : `${kind} · ${stock(b)}`;
       }}
       onChange={(p) => pick(which, p)}
       loading={warehouses.isLoading || houses.isLoading}
@@ -219,10 +222,10 @@ export default function MoveStockScreen() {
             onHand === null || !source
               ? undefined
               : overStock
-                ? `${source.name} only has ${formatBalance(onHand)} ${baseText}.`
-                : unit && unit.factor !== 1 && quantityNum > 0
-                  ? `= ${formatBalance(baseQty)} ${baseText} · ${formatBalance(onHand)} ${baseText} at ${source.name}`
-                  : `${formatBalance(onHand)} ${baseText} at ${source.name}`
+                ? `${source.name} only has ${stock(onHand)}.`
+                : (bagged || (unit && unit.factor !== 1)) && quantityNum > 0
+                  ? `= ${stock(baseQty)} · ${stock(onHand)} at ${source.name}`
+                  : `${stock(onHand)} at ${source.name}`
           }
           helperColor={overStock ? 'critical' : 'muted'}
         />
