@@ -4,8 +4,6 @@
     "": {
       "name": "zfarm-mobile",
       "dependencies": {
-        "@expo-google-fonts/archivo": "^0.4.2",
-        "@expo-google-fonts/barlow-semi-condensed": "^0.4.1",
         "@expo-google-fonts/hind-siliguri": "^0.4.1",
         "@expo-google-fonts/tiro-bangla": "^0.4.1",
         "@expo/ui": "~58.0.23",
@@ -228,10 +226,6 @@
     "@eslint/object-schema": ["@eslint/object-schema@2.1.7", "", {}, "sha512-VtAOaymWVfZcmZbp6E2mympDIHvyjXs/12LqWYjVw6qjrfF+VK+fyG33kChz3nnK+SU5/NeHOqrTEHS8sXO3OA=="],
 
     "@eslint/plugin-kit": ["@eslint/plugin-kit@0.4.1", "", { "dependencies": { "@eslint/core": "^0.17.0", "levn": "^0.4.1" } }, "sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA=="],
-
-    "@expo-google-fonts/archivo": ["@expo-google-fonts/archivo@0.4.2", "", {}, "sha512-FLhI4/ZVIFSHHxx15Z7Rr4QX/4ZrJozEebBEFSdHSRRwULGCuSIpbb3dz56Hslux6LZEnJ1mVpZ6CyVpUzLwIg=="],
-
-    "@expo-google-fonts/barlow-semi-condensed": ["@expo-google-fonts/barlow-semi-condensed@0.4.1", "", {}, "sha512-L22y4aj2diDuSFDYIAxmP+PwhdNThE0XDjCUL3GLa8H4Ag6SsRem5j7WFl9qvrrtXeSygW9Az5YsS2oOgXOBRA=="],
 
     "@expo-google-fonts/hind-siliguri": ["@expo-google-fonts/hind-siliguri@0.4.1", "", {}, "sha512-x6OODAk3r/pYCzrOp+wrnKbnbjl+MCdjR8B8JkZc1KFCoo6blzz4pvRLkj6zKq+rfi2NpwF+2pfT9L2uZVNdrw=="],
 

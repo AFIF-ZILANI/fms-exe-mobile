@@ -2,20 +2,11 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, type TextStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { useFonts } from 'expo-font';
-import { BarlowSemiCondensed_600SemiBold } from '@expo-google-fonts/barlow-semi-condensed/600SemiBold';
-import { BarlowSemiCondensed_700Bold } from '@expo-google-fonts/barlow-semi-condensed/700Bold';
-import { Archivo_700Bold } from '@expo-google-fonts/archivo/700Bold';
-import { Archivo_800ExtraBold } from '@expo-google-fonts/archivo/800ExtraBold';
-import { TiroBangla_400Regular } from '@expo-google-fonts/tiro-bangla/400Regular';
-import { HindSiliguri_400Regular } from '@expo-google-fonts/hind-siliguri/400Regular';
-import { HindSiliguri_600SemiBold } from '@expo-google-fonts/hind-siliguri/600SemiBold';
-import { HindSiliguri_700Bold } from '@expo-google-fonts/hind-siliguri/700Bold';
+import ledger from '@/constants/ledger';
 
 /**
- * Design-direction preview, step 1 of the redesign: three candidate systems side by side, each on its own
- * ground. Self-contained on purpose — it uses none of the app's theme, so each direction is judged as itself.
- * Open with exp://<host>:8081/--/design-preview. Delete once a direction is picked and lives in the theme.
+ * Hisab Khata preview: the approved day palette next to the derived night palette (pending approval), both read
+ * from constants/ledger.js. Open with exp://<host>:8081/--/design-preview. Delete once night is approved.
  */
 
 type Direction = {
@@ -31,6 +22,7 @@ type Direction = {
     text: string;
     muted: string;
     success: string;
+    warning: string;
     error: string;
     line: string;
   };
@@ -38,76 +30,42 @@ type Direction = {
   spacing: number[];
 };
 
+const FONTS = {
+  display: 'TiroBangla_400Regular',
+  number: 'HindSiliguri_700Bold',
+  body: 'HindSiliguri_400Regular',
+  bodyStrong: 'HindSiliguri_600SemiBold',
+};
+
+const asDirection = (p: typeof ledger.light) => ({
+  primary: p.primary,
+  onPrimary: p.onPrimary,
+  background: p.background,
+  surface: p.surface,
+  text: p.ink,
+  muted: p.muted,
+  success: p.success,
+  warning: p.warning,
+  error: p.error,
+  line: p.line,
+});
+
 const DIRECTIONS: Direction[] = [
   {
-    key: 'shed',
-    name: 'Tin Shed',
-    why: 'Galvanised-steel greys and shed-paint teal. Numbers set in a road-sign face, so they stay readable at arm’s length in a bright shed.',
-    fonts: {
-      display: 'BarlowSemiCondensed_700Bold',
-      number: 'BarlowSemiCondensed_600SemiBold',
-      body: 'HindSiliguri_400Regular',
-      bodyStrong: 'HindSiliguri_600SemiBold',
-    },
-    colors: {
-      primary: '#0B6B66',
-      onPrimary: '#FFFFFF',
-      background: '#E8ECEE',
-      surface: '#FFFFFF',
-      text: '#12181C',
-      muted: '#56616A',
-      success: '#2E7D32',
-      error: '#B42318',
-      line: '#D3D9DD',
-    },
-    radius: 6,
-    spacing: [4, 8, 12, 16, 24, 32, 48],
+    key: 'day',
+    name: 'Hisab Khata, day',
+    why: 'Approved. Ink blue for actions, red only for losses and deaths, ochre for things that need a look.',
+    fonts: FONTS,
+    colors: asDirection(ledger.light),
+    radius: 10,
+    spacing: [4, 8, 16, 24, 40],
   },
   {
-    key: 'sack',
-    name: 'Feed Sack',
-    why: 'Taken from the printed feed sack: heavy wide letters and chick-yellow buttons nobody misses, even with gloves on.',
-    fonts: {
-      display: 'Archivo_800ExtraBold',
-      number: 'Archivo_700Bold',
-      body: 'HindSiliguri_400Regular',
-      bodyStrong: 'HindSiliguri_600SemiBold',
-    },
-    colors: {
-      primary: '#F2B705',
-      onPrimary: '#151A12',
-      background: '#FFFFFF',
-      surface: '#EFF2EC',
-      text: '#151A12',
-      muted: '#586152',
-      success: '#2B7A3D',
-      error: '#C2361F',
-      line: '#DDE2D8',
-    },
-    radius: 4,
-    spacing: [8, 12, 16, 24, 32, 48],
-  },
-  {
-    key: 'ledger',
-    name: 'Hisab Khata',
-    why: 'The ruled ledger every Bangladeshi business keeps: ink blue for actions, red only for losses and deaths, a calm serif for headings.',
-    fonts: {
-      display: 'TiroBangla_400Regular',
-      number: 'HindSiliguri_700Bold',
-      body: 'HindSiliguri_400Regular',
-      bodyStrong: 'HindSiliguri_600SemiBold',
-    },
-    colors: {
-      primary: '#1F3A5F',
-      onPrimary: '#FFFFFF',
-      background: '#EEF1F4',
-      surface: '#FFFFFF',
-      text: '#1A2230',
-      muted: '#5B6576',
-      success: '#2E7D4F',
-      error: '#B3261E',
-      line: '#D5DBE3',
-    },
+    key: 'night',
+    name: 'Hisab Khata, night',
+    why: 'Proposed for dark mode: a deep ink ground, the same hues lifted so every text colour passes 4.5:1.',
+    fonts: FONTS,
+    colors: asDirection(ledger.dark),
     radius: 10,
     spacing: [4, 8, 16, 24, 40],
   },
@@ -120,27 +78,16 @@ const ROLES: { role: keyof Direction['colors']; label: string }[] = [
   { role: 'text', label: 'Text' },
   { role: 'muted', label: 'Muted text' },
   { role: 'success', label: 'Success' },
+  { role: 'warning', label: 'Warning' },
   { role: 'error', label: 'Error' },
 ];
 
 const NUM: TextStyle = { fontVariant: ['tabular-nums'] };
 
 export default function DesignPreviewScreen() {
-  const [loaded] = useFonts({
-    BarlowSemiCondensed_600SemiBold,
-    BarlowSemiCondensed_700Bold,
-    Archivo_700Bold,
-    Archivo_800ExtraBold,
-    TiroBangla_400Regular,
-    HindSiliguri_400Regular,
-    HindSiliguri_600SemiBold,
-    HindSiliguri_700Bold,
-  });
   const [picked, setPicked] = useState(DIRECTIONS[0].key);
   const d = DIRECTIONS.find((x) => x.key === picked) ?? DIRECTIONS[0];
   const c = d.colors;
-
-  if (!loaded) return <View style={{ flex: 1, backgroundColor: c.background }} />;
 
   const body = (extra?: TextStyle): TextStyle => ({ fontFamily: d.fonts.body, color: c.text, fontSize: 17, lineHeight: 26, ...extra });
   const s = d.spacing;
@@ -187,7 +134,7 @@ export default function DesignPreviewScreen() {
         </View>
 
         {/* The card: the numbers lead */}
-        <View style={{ backgroundColor: c.surface, borderRadius: d.radius, padding: s[Math.min(4, s.length - 1)], gap: 16, borderWidth: d.key === 'sack' ? 0 : 1, borderColor: c.line }}>
+        <View style={{ backgroundColor: c.surface, borderRadius: d.radius, padding: s[Math.min(4, s.length - 1)], gap: 16, borderWidth: 1, borderColor: c.line }}>
           <View>
             <Text style={body({ color: c.muted, fontSize: 15 })}>Average weight</Text>
             <Text style={[{ fontFamily: d.fonts.number, fontSize: 64, lineHeight: 72, color: c.text }, NUM]}>

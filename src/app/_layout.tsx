@@ -1,6 +1,9 @@
+/** @jsxImportSource nativewind */
+// NativeWind's JSX here so the root view's `vars()` (the ledger palette) reach the NativeWind screens.
 import '../../global.css';
 import { useEffect, useState } from 'react';
-import { useColorScheme } from 'react-native';
+import { View, useColorScheme } from 'react-native';
+import { vars } from 'nativewind';
 import { applyAppearance, loadAppearance } from '@/lib/appearance';
 import {
   DarkTheme,
@@ -19,6 +22,7 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 
 import { Colors, FontAssets } from '@/constants/theme';
+import ledger from '@/constants/ledger';
 import { SessionProvider, useSession } from '@/lib/session';
 import { initOutbox } from '@/lib/outbox';
 import { useOutboxTriggers } from '@/lib/use-outbox';
@@ -54,6 +58,9 @@ const navDark = {
     primary: Colors.dark.primary,
   },
 };
+
+const LIGHT_VARS = vars(ledger.ledgerVars(ledger.light));
+const DARK_VARS = vars(ledger.ledgerVars(ledger.dark));
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -97,7 +104,10 @@ export default function RootLayout() {
     <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
       <SessionProvider>
         <ThemeProvider value={colorScheme === 'dark' ? navDark : navLight}>
-          <RootStack />
+          {/* The ledger palette as CSS variables, so NativeWind classes resolve against the current scheme. */}
+          <View style={[{ flex: 1 }, colorScheme === 'dark' ? DARK_VARS : LIGHT_VARS]}>
+            <RootStack />
+          </View>
         </ThemeProvider>
       </SessionProvider>
     </PersistQueryClientProvider>

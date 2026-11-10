@@ -1,3 +1,4 @@
+/** @jsxImportSource nativewind */
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, type Href } from 'expo-router';
@@ -14,7 +15,7 @@ import Animated, {
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 
-import ledger from '@/constants/ledger';
+import { useTheme } from '@/hooks/use-theme';
 
 type Feature = {
   label: string;
@@ -42,6 +43,7 @@ function featuresFor(isManager: boolean): Feature[] {
 }
 
 function Tile({ feature }: { feature: Feature }) {
+  const theme = useTheme();
   const scale = useSharedValue(1);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
@@ -59,7 +61,7 @@ function Tile({ feature }: { feature: Feature }) {
     >
       <Animated.View style={[styles.tile, style]}>
         <View className="items-center justify-center rounded border border-line bg-surface" style={styles.icon}>
-          <Ionicons name={feature.icon} size={28} color={ledger.primary} />
+          <Ionicons name={feature.icon} size={28} color={theme.primary} />
         </View>
         <Text className="font-body-medium text-label text-ink" numberOfLines={1}>
           {feature.label}
@@ -85,6 +87,7 @@ function Row({ items }: { items: Feature[] }) {
 
 /** docs/layout/01-dashboard.md — shortcuts on the page itself, four to a row; "See all" reveals the rest. */
 export function FeatureGrid({ isManager }: { isManager: boolean }) {
+  const theme = useTheme();
   const [open, setOpen] = useState(false);
   const turn = useSharedValue(0);
   const chevron = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.value * 180}deg` }] }));
@@ -115,7 +118,7 @@ export function FeatureGrid({ isManager }: { isManager: boolean }) {
           >
             <Text className="font-body-semibold text-label text-primary">{open ? 'Less' : 'See all'}</Text>
             <Animated.View style={chevron}>
-              <Ionicons name="chevron-down" size={16} color={ledger.primary} />
+              <Ionicons name="chevron-down" size={16} color={theme.primary} />
             </Animated.View>
           </Pressable>
         )}

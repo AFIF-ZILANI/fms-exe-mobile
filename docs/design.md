@@ -1,3 +1,8 @@
+> **Superseded on 2026-11-10 by the Hisab Khata system.** Colours, type, radius and spacing below are out of
+> date: the current values live in `src/constants/ledger.js` (palette, light and dark) and
+> `src/constants/theme.ts` (roles, type scale, spacing, radius), and `tailwind.config.js` builds NativeWind
+> classes from the same palette. Layout and interaction rules here still apply.
+
 # ZeroD Farms Field App — Design System
 
 Design system for the **Employee Field App** — the phone client Workers and

@@ -1,3 +1,4 @@
+/** @jsxImportSource nativewind */
 import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,7 +9,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { SyncBanner } from '@/components/ui/sync-banner';
 import { UpdateBanner } from '@/components/ui/update-banner';
 import { FeatureGrid } from '@/components/feature-grid';
-import ledger from '@/constants/ledger';
+import { useTheme } from '@/hooks/use-theme';
 import { useSession } from '@/lib/session';
 import { can } from '@/lib/permissions';
 import { useGetData, type Paginated } from '@/lib/api';
@@ -191,6 +192,7 @@ function HouseRow({ balance, last }: { balance: BatchHouseBalance; last: boolean
 
 /** docs/layout/01-dashboard.md — the screen a worker opens by reflex. */
 export default function DashboardScreen() {
+  const theme = useTheme();
   const { employee, isLoading, refresh } = useSession();
   const isManager = can(employee?.role, 'assign_task');
   // Held in state: new Date() during render is impure, and groupTasks needs one stable "now".
@@ -252,7 +254,7 @@ export default function DashboardScreen() {
       <Page>
         <Text className="mt-6 font-heading text-display text-ink">ZeroD Farms</Text>
         <View className="mt-10 items-center gap-2 rounded bg-surface p-6">
-          <Feather name="user" size={28} color={ledger.muted} />
+          <Feather name="user" size={28} color={theme.muted} />
           <Text className="font-body-semibold text-body text-ink">{"Couldn't load your profile."}</Text>
           <Text className="font-body text-label text-muted">Check your connection and try again.</Text>
           <Pressable
@@ -309,7 +311,7 @@ export default function DashboardScreen() {
           accessibilityLabel={badge ? `Inbox, ${badge} new` : 'Inbox'}
           className="h-icon w-icon items-center justify-center rounded bg-surface active:bg-line"
         >
-          <Feather name="bell" size={22} color={ledger.ink} />
+          <Feather name="bell" size={22} color={theme.ink} />
           {badge > 0 ? (
             <View
               className={`absolute -right-1 -top-1 min-w-[22px] items-center rounded-full px-1 ${
@@ -353,14 +355,14 @@ export default function DashboardScreen() {
             alertSummary.critical ? 'bg-error/10' : 'bg-primary/10'
           }`}
         >
-          <Feather name="alert-triangle" size={22} color={alertSummary.critical ? ledger.error : ledger.primary} />
+          <Feather name="alert-triangle" size={22} color={alertSummary.critical ? theme.critical : theme.primary} />
           <View className="flex-1">
             <Text className={`font-body-semibold text-body ${alertSummary.critical ? 'text-error' : 'text-ink'}`}>
               {alertSummary.count} active {alertSummary.count === 1 ? 'alert' : 'alerts'}
             </Text>
             {alertSummary.critical ? <Text className="font-body text-label text-ink">Needs attention</Text> : null}
           </View>
-          <Feather name="chevron-right" size={22} color={ledger.muted} />
+          <Feather name="chevron-right" size={22} color={theme.muted} />
         </Pressable>
       )}
 
@@ -379,7 +381,7 @@ export default function DashboardScreen() {
         )}
         {ordered.length === 0 ? (
           <View className="items-center gap-1 px-4 py-10">
-            <Feather name="check-circle" size={28} color={ledger.success} />
+            <Feather name="check-circle" size={28} color={theme.success} />
             <Text className="mt-2 font-body-semibold text-body text-ink">Nothing assigned today.</Text>
             <Text className="font-body text-label text-muted">Tap + to log anything.</Text>
           </View>
@@ -468,7 +470,7 @@ export default function DashboardScreen() {
       <View className="overflow-hidden rounded border border-line bg-surface">
         {activeBalances.length === 0 ? (
           <View className="items-center gap-2 px-4 py-10">
-            <Feather name="home" size={28} color={ledger.muted} />
+            <Feather name="home" size={28} color={theme.muted} />
             <Text className="font-body-semibold text-body text-ink">No running batches.</Text>
           </View>
         ) : (

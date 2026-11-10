@@ -4,7 +4,11 @@
  * else (it carries ৳ and Bangla).
  *
  * The palette, spacing and radius *replace* Tailwind's defaults rather than extend them, so a class can
- * only ever produce an approved value. Font names are the keys `FontAssets` loads them under
+ * only ever produce an approved value. Colours live in src/constants/ledger.js.
+ *
+ * NativeWind is opt-in per file: a file that uses `className` starts with `/** @jsxImportSource nativewind *\/`.
+ * It is not set globally in Babel because NativeWind's JSX wrapper replaces every Pressable and drops the
+ * `style={({ pressed }) => ...}` form the rest of the app's buttons use. Font names are the keys `FontAssets` loads them under
  * (constants/theme.ts).
  *
  * @type {import('tailwindcss').Config}
@@ -13,9 +17,12 @@ module.exports = {
   content: ['./src/**/*.{js,jsx,ts,tsx}'],
   presets: [require('nativewind/preset')],
   theme: {
+    // Each role reads a CSS variable set on the root view (ledgerVars), so one class follows light and dark.
     colors: {
       transparent: 'transparent',
-      ...require('./src/constants/ledger'),
+      ...Object.fromEntries(
+        Object.keys(require('./src/constants/ledger').light).map((role) => [role, `rgb(var(--ledger-${role}) / <alpha-value>)`]),
+      ),
     },
     spacing: {
       0: '0px',
