@@ -2,6 +2,7 @@ import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
+import type { IconName } from '@/components/ui/icon';
 import { Spacing, elevation } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
@@ -13,6 +14,7 @@ type SubmitBarProps = {
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
+  icon?: IconName;
   /** A ghost action *above* the primary, never beside it — a mis-tap on a
    *  2-up bar is exactly the error being guarded against. */
   secondary?: { label: string; onPress: () => void; destructive?: boolean };
@@ -20,7 +22,7 @@ type SubmitBarProps = {
 
 /** Sticky bottom, at the thumb. Content scrolls behind it — never a button at
  *  the end of a scroll. docs/design.md §4.3. */
-export function SubmitBar({ label, onPress, disabled, loading, secondary }: SubmitBarProps) {
+export function SubmitBar({ label, onPress, disabled, loading, icon, secondary }: SubmitBarProps) {
   const theme = useTheme();
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const insets = useSafeAreaInsets();
@@ -46,7 +48,7 @@ export function SubmitBar({ label, onPress, disabled, loading, secondary }: Subm
         />
       ) : null}
 
-      <Button label={label} onPress={onPress} disabled={disabled} loading={loading} />
+      <Button label={label} onPress={onPress} disabled={disabled} loading={loading} icon={icon} />
     </View>
   );
 }

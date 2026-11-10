@@ -20,6 +20,11 @@ import { goBack } from '@/lib/nav';
  *  docs/layout/07-log-mortality.md. */
 const WARN_RATIO = 0.02;
 
+/** Queuing is instant, so the spinner and the tick are held long enough to be seen. */
+const MIN_SPIN_MS = 600;
+const DONE_HOLD_MS = 700;
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /** docs/layout/07-log-mortality.md. Count is focused on mount — it's the
  *  reason this screen exists. Warns but never blocks: a real mass-mortality
  *  event is exactly when the app must not argue. */
@@ -33,6 +38,7 @@ export default function MortalityScreen() {
   const [causeNote, setCauseNote] = useState('');
   const [pickedCase, setPickedCase] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
 
   const { balance } = useResolvedBatch(house?.id);
   // Open outbreaks in this house; picking one puts these deaths down to it (the case's death count).
@@ -59,7 +65,7 @@ export default function MortalityScreen() {
     if (!house || !balance || !employee) return;
     setSubmitting(true);
     try {
-      const queued = await submit({
+      const [queued] = await Promise.all([submit({
         endpoint: '/mortality-logs',
         body: {
           batch_id: balance.batch_id,
@@ -70,17 +76,22 @@ export default function MortalityScreen() {
           ...(diseaseCaseId && { disease_case_id: diseaseCaseId }),
         },
         taskId: params.task_id,
-      });
-      if (queued) goBack();
+      }), wait(MIN_SPIN_MS)]);
+      if (queued) {
+        setDone(true);
+        await wait(DONE_HOLD_MS);
+        goBack();
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleSubmit = () => {
+    if (submitting || done) return;
     if (overThreshold) {
       Alert.alert(
-        `Record ${countNum} deaths in ${house?.name}?`,
+        `Record ${countNum} death${countNum === 1 ? '' : 's'} in ${house?.name}?`,
         `That's ${share?.toFixed(1)}% of the ${balance?.quantity.toLocaleString()} live birds in this house.`,
         [
           { text: 'Cancel', style: 'cancel' },
@@ -98,10 +109,17 @@ export default function MortalityScreen() {
       hint="Deaths come off the house's live count."
       dirty={!!count || !!causeNote}
       submit={{
-        label: countNum > 0 ? `Record ${countNum} death${countNum === 1 ? '' : 's'}` : 'Record mortality',
+        label: done
+          ? 'Recorded'
+          : submitting
+            ? 'Recording…'
+            : countNum === 1
+              ? 'Record death'
+              : 'Record deaths',
+        icon: done ? 'check' : undefined,
         onPress: handleSubmit,
         disabled: !isValid,
-        loading: submitting,
+        loading: submitting && !done,
       }}
     >
       <FormCard>

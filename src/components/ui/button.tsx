@@ -31,6 +31,8 @@ export function Button({
 }: ButtonProps) {
   const theme = useTheme();
   const isDisabled = disabled || loading;
+  // Loading keeps the button's own colour: grey would read as "can't press", not "working on it".
+  const looksDisabled = disabled && !loading;
 
   const height =
     variant === 'primary' || variant === 'destructive'
@@ -40,7 +42,7 @@ export function Button({
         : Size.buttonGhost;
 
   const fill: string =
-    isDisabled && variant !== 'ghost'
+    looksDisabled && variant !== 'ghost'
       ? theme.surfaceAlt
       : variant === 'primary'
         ? theme.primary
@@ -50,7 +52,7 @@ export function Button({
             ? theme.surface
             : 'transparent';
 
-  const labelColor: ThemeColor = isDisabled
+  const labelColor: ThemeColor = looksDisabled
     ? 'muted'
     : variant === 'primary' || variant === 'destructive'
       ? 'onPrimary'
@@ -80,16 +82,16 @@ export function Button({
         variant === 'secondary' && { borderWidth: 1, borderColor: theme.line },
       ]}
     >
-      {loading ? (
-        <ActivityIndicator color={theme.muted} />
-      ) : (
-        <View style={styles.content}>
-          {icon ? <Icon name={icon} size={20} color={labelColor} /> : null}
-          <AppText variant="label" color={labelColor}>
-            {label}
-          </AppText>
-        </View>
-      )}
+      <View style={styles.content}>
+        {loading ? (
+          <ActivityIndicator size="small" color={theme[labelColor]} />
+        ) : icon ? (
+          <Icon name={icon} size={20} color={labelColor} />
+        ) : null}
+        <AppText variant="label" color={labelColor}>
+          {label}
+        </AppText>
+      </View>
     </Pressable>
   );
 }

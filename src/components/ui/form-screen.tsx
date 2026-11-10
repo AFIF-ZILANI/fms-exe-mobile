@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
+import type { IconName } from '@/components/ui/icon';
 import { AppText } from '@/components/ui/text';
 import { SubmitBar } from '@/components/ui/submit-bar';
 import { Spacing } from '@/constants/theme';
@@ -20,6 +21,7 @@ type FormScreenProps = {
     onPress: () => void;
     disabled?: boolean;
     loading?: boolean;
+    icon?: IconName;
     secondary?: { label: string; onPress: () => void };
   };
   /** Set when any field has been touched — closing then confirms the discard.
