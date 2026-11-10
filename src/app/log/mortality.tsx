@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
 import { FormCard } from '@/components/ui/form-card';
@@ -8,6 +8,11 @@ import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
 import { BatchResolver, useResolvedBatch } from '@/components/ui/batch-resolver';
 import { NumberField } from '@/components/ui/number-field';
 import { TextField } from '@/components/ui/text-field';
+import { PillSelect } from '@/components/ui/pill-select';
+import { AppText } from '@/components/ui/text';
+import { Spacing } from '@/constants/theme';
+import { useGetData, type Paginated } from '@/lib/api';
+import { openCasesIn, type DiseaseCase } from '@/lib/disease-cases';
 import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
 import { goBack } from '@/lib/nav';
@@ -28,9 +33,19 @@ export default function MortalityScreen() {
   const [house, setHouse] = usePrefillHouse(params.house_id);
   const [count, setCount] = useState('');
   const [causeNote, setCauseNote] = useState('');
+  const [pickedCase, setPickedCase] = useState<string>('none');
   const [submitting, setSubmitting] = useState(false);
 
   const { balance } = useResolvedBatch(house?.id);
+  // Open outbreaks in this house; picking one puts these deaths down to it (the case's death count).
+  const cases = useGetData<Paginated<DiseaseCase>>(
+    balance ? `/disease-cases?batch_id=${balance.batch_id}&status=ACTIVE&limit=100` : '',
+    ['disease-cases', balance?.batch_id ?? 'none', 'active'],
+    { enabled: !!balance },
+  );
+  const openCases = openCasesIn(cases.data?.results ?? [], house?.id);
+  // A case picked for another house no longer applies once the house changes.
+  const diseaseCaseId = openCases.some((c) => c.id === pickedCase) ? pickedCase : null;
   const countNum = Number(count);
   const isValid = !!house && !!balance && countNum > 0 && Number.isInteger(countNum);
   const overThreshold = balance ? countNum > balance.quantity * WARN_RATIO : false;
@@ -54,6 +69,7 @@ export default function MortalityScreen() {
           count_died: countNum,
           date: new Date().toISOString(),
           ...(causeNote.trim() && { cause_note: causeNote.trim() }),
+          ...(diseaseCaseId && { disease_case_id: diseaseCaseId }),
         },
         taskId: params.task_id,
       });
@@ -114,8 +130,27 @@ export default function MortalityScreen() {
           }
           helperColor={overThreshold ? 'warning' : 'muted'}
         />
+        {openCases.length > 0 ? (
+          <View style={styles.group}>
+            <AppText variant="eyebrow" color="muted">
+              Disease
+            </AppText>
+            <PillSelect
+              options={[
+                { value: 'none', label: 'None' },
+                ...openCases.map((c) => ({ value: c.id, label: c.disease.label })),
+              ]}
+              value={diseaseCaseId ?? 'none'}
+              onChange={setPickedCase}
+            />
+          </View>
+        ) : null}
         <TextField label="Cause (optional)" value={causeNote} onChangeText={setCauseNote} multiline />
       </FormCard>
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  group: { gap: Spacing.sm },
+});
