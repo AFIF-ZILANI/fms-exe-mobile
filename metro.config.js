@@ -1,5 +1,6 @@
 // Learn more https://docs.expo.io/guides/customizing-metro
 const { getDefaultConfig } = require('expo/metro-config');
+const { withNativeWind } = require('nativewind/metro');
 
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
@@ -16,4 +17,5 @@ config.resolver.assetExts.push('wasm');
 // -- lib/outbox.ts opens the database lazily and degrades instead of
 // crashing. iOS and Android use native SQLite and are unaffected.
 
-module.exports = config;
+// NativeWind compiles global.css (the Hisab Khata tokens in tailwind.config.js) into styles.
+module.exports = withNativeWind(config, { input: './global.css' });

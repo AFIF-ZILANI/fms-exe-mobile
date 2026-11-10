@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, type Href } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -14,9 +14,7 @@ import Animated, {
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 
-import { AppText } from '@/components/ui/text';
-import { Radius, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import ledger from '@/constants/ledger';
 
 type Feature = {
   label: string;
@@ -44,7 +42,6 @@ function featuresFor(isManager: boolean): Feature[] {
 }
 
 function Tile({ feature }: { feature: Feature }) {
-  const theme = useTheme();
   const scale = useSharedValue(1);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
@@ -61,12 +58,12 @@ function Tile({ feature }: { feature: Feature }) {
       style={styles.cell}
     >
       <Animated.View style={[styles.tile, style]}>
-        <View style={[styles.icon, { backgroundColor: theme.surfaceAlt }]}>
-          <Ionicons name={feature.icon} size={28} color={theme.inkSoft} />
+        <View className="items-center justify-center rounded border border-line bg-surface" style={styles.icon}>
+          <Ionicons name={feature.icon} size={28} color={ledger.primary} />
         </View>
-        <AppText variant="label" numberOfLines={1}>
+        <Text className="font-body-medium text-label text-ink" numberOfLines={1}>
           {feature.label}
-        </AppText>
+        </Text>
       </Animated.View>
     </Pressable>
   );
@@ -88,7 +85,6 @@ function Row({ items }: { items: Feature[] }) {
 
 /** docs/layout/01-dashboard.md — shortcuts on the page itself, four to a row; "See all" reveals the rest. */
 export function FeatureGrid({ isManager }: { isManager: boolean }) {
-  const theme = useTheme();
   const [open, setOpen] = useState(false);
   const turn = useSharedValue(0);
   const chevron = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.value * 180}deg` }] }));
@@ -106,24 +102,20 @@ export function FeatureGrid({ isManager }: { isManager: boolean }) {
   return (
     // The section grows and shrinks smoothly as rows appear, instead of jumping.
     <Animated.View layout={LinearTransition.duration(240)} style={styles.section}>
-      <View style={styles.head}>
-        <AppText variant="eyebrow" color="muted">
-          Shortcuts
-        </AppText>
+      <View className="mb-2 flex-row items-end justify-between">
+        <Text className="font-heading text-title text-ink">Shortcuts</Text>
         {rest.length > 0 && (
           <Pressable
             onPress={toggle}
             accessibilityRole="button"
             accessibilityState={{ expanded: open }}
             accessibilityLabel={open ? 'Show fewer shortcuts' : 'See all shortcuts'}
-            hitSlop={Spacing.md}
-            style={styles.toggle}
+            hitSlop={16}
+            className="flex-row items-center gap-1"
           >
-            <AppText variant="label" color="primary">
-              {open ? 'Less' : 'See all'}
-            </AppText>
+            <Text className="font-body-semibold text-label text-primary">{open ? 'Less' : 'See all'}</Text>
             <Animated.View style={chevron}>
-              <Ionicons name="chevron-down" size={16} color={theme.primary} />
+              <Ionicons name="chevron-down" size={16} color={ledger.primary} />
             </Animated.View>
           </Pressable>
         )}
@@ -145,24 +137,11 @@ export function FeatureGrid({ isManager }: { isManager: boolean }) {
   );
 }
 
+// Kept as style objects: these sit on Reanimated views or carry sizes outside the spacing scale.
 const styles = StyleSheet.create({
-  section: { marginTop: Spacing.xl },
-  head: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 28,
-    marginBottom: Spacing.xs,
-  },
-  toggle: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
-  row: { flexDirection: 'row', gap: Spacing.sm },
+  section: { marginTop: 24 },
+  row: { flexDirection: 'row', gap: 8 },
   cell: { flex: 1, alignItems: 'center' },
-  tile: { alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.sm },
-  icon: {
-    width: 64,
-    height: 64,
-    borderRadius: Radius.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  tile: { alignItems: 'center', gap: 8, paddingVertical: 8 },
+  icon: { width: 64, height: 64 },
 });

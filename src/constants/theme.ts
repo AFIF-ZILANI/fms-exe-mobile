@@ -116,6 +116,12 @@ export const FontAssets = {
   [FontFamily.sansBold]: require('../../assets/fonts/PlusJakartaSans-Bold.ttf'),
   [FontFamily.mono]: require('../../assets/fonts/IBMPlexMono-Regular.ttf'),
   [FontFamily.monoSemiBold]: require('../../assets/fonts/IBMPlexMono-SemiBold.ttf'),
+  // Hisab Khata (tailwind.config.js names them by these keys).
+  TiroBangla_400Regular: require('@expo-google-fonts/tiro-bangla/400Regular/TiroBangla_400Regular.ttf'),
+  HindSiliguri_400Regular: require('@expo-google-fonts/hind-siliguri/400Regular/HindSiliguri_400Regular.ttf'),
+  HindSiliguri_500Medium: require('@expo-google-fonts/hind-siliguri/500Medium/HindSiliguri_500Medium.ttf'),
+  HindSiliguri_600SemiBold: require('@expo-google-fonts/hind-siliguri/600SemiBold/HindSiliguri_600SemiBold.ttf'),
+  HindSiliguri_700Bold: require('@expo-google-fonts/hind-siliguri/700Bold/HindSiliguri_700Bold.ttf'),
 };
 
 type TypeRole = {

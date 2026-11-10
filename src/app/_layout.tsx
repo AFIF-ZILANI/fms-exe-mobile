@@ -1,3 +1,4 @@
+import '../../global.css';
 import { useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
 import { applyAppearance, loadAppearance } from '@/lib/appearance';
