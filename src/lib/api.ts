@@ -1,6 +1,7 @@
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import { getToken, notifyUnauthorized } from '@/lib/auth-token';
+import { fetchAllPages } from '@/lib/all-pages';
 
 const API_PORT = 5085;
 
@@ -149,6 +150,20 @@ export function useGetData<T>(endpoint: string, key: unknown[], options?: QueryO
   return useQuery<T, ApiError>({
     queryKey: key,
     queryFn: () => apiFetch<T>(endpoint),
+    ...options,
+  });
+}
+
+/** useGetData for a paginated list that has to be whole: every page, joined (lib/all-pages.ts). For lists
+ *  the phone searches or picks from, where reading only page one hides everything past the first 100. */
+export function useGetAllPages<T extends { id: string }>(
+  endpoint: string,
+  key: unknown[],
+  options?: QueryOpts<Paginated<T>>,
+) {
+  return useQuery<Paginated<T>, ApiError>({
+    queryKey: key,
+    queryFn: () => fetchAllPages<T>(endpoint, (url) => apiFetch<Paginated<T>>(url)),
     ...options,
   });
 }

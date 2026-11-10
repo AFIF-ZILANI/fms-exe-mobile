@@ -1,5 +1,5 @@
 import { PickerField } from '@/components/ui/picker-field';
-import { useGetData, type Paginated } from '@/lib/api';
+import { useGetAllPages } from '@/lib/api';
 import { humanise } from '@/lib/profile-format';
 import type { Item } from '@/lib/types';
 
@@ -27,12 +27,12 @@ export function ItemPicker({
   placeholder,
   onClear,
 }: ItemPickerProps) {
-  // The server caps limit at 100 and 400s above it.
-  const params = new URLSearchParams({ is_active: 'true', limit: '100' });
+  // Every page, not just the first 100: the picker's search filters what is loaded here.
+  const params = new URLSearchParams({ is_active: 'true' });
   if (unitTracked !== undefined) params.set('is_unit_tracked', String(unitTracked));
   if (category !== undefined) params.set('category', category);
 
-  const { data, isLoading } = useGetData<Paginated<Item>>(`/items?${params.toString()}`, [
+  const { data, isLoading } = useGetAllPages<Item>(`/items?${params.toString()}`, [
     'items',
     unitTracked ?? 'all',
     category ?? 'all',

@@ -15,14 +15,14 @@ import { formatRelative } from '@/lib/format';
 import { discardDeadLetter, retryDeadLetter, type OutboxRow } from '@/lib/outbox';
 import { describeOutboxRow, plainReason } from '@/lib/outbox-describe';
 import { useSession } from '@/lib/session';
-import { useGetData, type Paginated } from '@/lib/api';
+import { useGetAllPages } from '@/lib/api';
 import type { Item } from '@/lib/types';
 import { SUMMARY_KEY, triggerFlush, useOutboxRows, useOutboxSummary } from '@/lib/use-outbox';
 
 /** docs/navigation-redesign-design.md Phase 2 — what is waiting to send, what failed and why. */
 export default function SyncCenterScreen() {
   // So queued feed moves and draws read in bags; an item the cache doesn't know just shows its unit.
-  const { data: itemsPage } = useGetData<Paginated<Item>>('/items?is_active=true&limit=100', ['items', 'active']);
+  const { data: itemsPage } = useGetAllPages<Item>('/items?is_active=true', ['items', 'active']);
   const items = itemsPage?.results ?? [];
   const theme = useTheme();
   const queryClient = useQueryClient();

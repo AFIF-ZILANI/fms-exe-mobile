@@ -15,7 +15,7 @@ import { AppText } from '@/components/ui/text';
 import { Radius, Spacing, elevation } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
-import { useGetData, type Paginated } from '@/lib/api';
+import { useGetAllPages, useGetData } from '@/lib/api';
 import { humanise } from '@/lib/profile-format';
 import {
   formatStock,
@@ -40,7 +40,7 @@ export default function StockItemScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Same URLs and keys as the Stock tab, so this opens instantly from its cache.
-  const items = useGetData<Paginated<Item>>('/items?is_active=true&limit=100', ['items', 'active']);
+  const items = useGetAllPages<Item>('/items?is_active=true', ['items', 'active']);
   const rows = useGetData<StockRow[]>('/items/stock-by-location', ['items', 'stock-by-location']);
 
   const line = useMemo(

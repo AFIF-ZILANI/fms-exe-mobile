@@ -14,7 +14,7 @@ import { SyncBanner } from '@/components/ui/sync-banner';
 import { AppText } from '@/components/ui/text';
 import { Radius, Size, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useGetData, type Paginated } from '@/lib/api';
+import { useGetAllPages, useGetData } from '@/lib/api';
 import { can } from '@/lib/permissions';
 import { humanise } from '@/lib/profile-format';
 import { useSession } from '@/lib/session';
@@ -34,7 +34,6 @@ import {
 import type { Item } from '@/lib/types';
 
 const REFRESH_TIMEOUT_MS = 6000;
-const PAGE = 100;
 
 const WORKER_SHORTCUTS: { label: string; path: string; icon: IconName }[] = [
   { label: 'Move to house', path: '/scan/allocate', icon: 'arrow-right' },
@@ -65,8 +64,7 @@ export default function StockScreen() {
   const [query, setQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
-  // ponytail: limit=100 is the server max; past that the list says so (see `truncated`). Page it if a farm ever has more.
-  const items = useGetData<Paginated<Item>>('/items?is_active=true&limit=100', ['items', 'active']);
+  const items = useGetAllPages<Item>('/items?is_active=true', ['items', 'active']);
   const rows = useGetData<StockRow[]>('/items/stock-by-location', ['items', 'stock-by-location']);
 
   const lines = useMemo(
@@ -80,7 +78,6 @@ export default function StockScreen() {
     (sec) => sec.lines.length > 0,
   );
   const searching = query.trim().length > 0;
-  const truncated = (items.data?.total ?? 0) > PAGE;
 
   const shortcuts = isManager
     ? [...WORKER_SHORTCUTS, { label: 'Link items', path: '/link', icon: 'maximize' as IconName }]
@@ -252,11 +249,6 @@ export default function StockScreen() {
         sections.map((sec) => <StockSection key={sec.state} label={sec.label} lines={sec.lines} />)
       )}
 
-      {truncated ? (
-        <AppText variant="caption" color="muted" style={styles.note}>
-          Showing the first {PAGE} items. Search to narrow the list.
-        </AppText>
-      ) : null}
     </Screen>
   );
 }

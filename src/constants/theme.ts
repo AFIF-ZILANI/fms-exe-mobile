@@ -18,12 +18,16 @@ import ledger from './ledger';
 /** 10% of a colour, for tinted fills (8-digit hex). */
 const tint = (hex: string) => `${hex}1A`;
 
+/** The ruling colour at half strength: a quiet fill a step off both the ground and a white card (inputs,
+ *  skeletons, a segmented track, a pressed row). Not `background`, which would vanish on the ground. */
+const half = (hex: string) => `${hex}80`;
+
 function roles(p: typeof ledger.light) {
   return {
     // Foundation
     ground: p.background,
     surface: p.surface,
-    surfaceAlt: p.background,
+    surfaceAlt: half(p.line),
     ink: p.ink,
     inkSoft: p.muted,
     muted: p.muted,
@@ -51,7 +55,7 @@ function roles(p: typeof ledger.light) {
     /** @deprecated v1 name. Use `surface` (fills) or `onPrimary` (text on a fill). */
     paper: p.surface,
     /** @deprecated v1 name. Use `surfaceAlt`. */
-    field: p.background,
+    field: half(p.line),
   };
 }
 

@@ -18,7 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AppText } from '@/components/ui/text';
 import { Radius, Spacing, type ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { ApiError, apiFetch, useGetData, type Paginated } from '@/lib/api';
+import { ApiError, apiFetch, useGetAllPages, useGetData, type Paginated } from '@/lib/api';
 import { formatRelative } from '@/lib/format';
 import { codeTail, houseSupplies, unitActions, type HouseSupply } from '@/lib/house-stock';
 import { scanErrorMessage } from '@/lib/scan';
@@ -67,7 +67,7 @@ export function useHouseUnits(houseId: string, section: UnitSection, limit: numb
 
 /** Feed and other uncoded supplies held in this house. Same URLs and keys as the Stock tab. */
 export function useHouseSupplies(houseId: string) {
-  const items = useGetData<Paginated<Item>>('/items?is_active=true&limit=100', ['items', 'active']);
+  const items = useGetAllPages<Item>('/items?is_active=true', ['items', 'active']);
   const rows = useGetData<StockRow[]>('/items/stock-by-location', ['items', 'stock-by-location']);
   const supplies = items.data && rows.data ? houseSupplies(items.data.results, rows.data, houseId) : undefined;
   return {
