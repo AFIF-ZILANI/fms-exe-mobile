@@ -5,7 +5,7 @@
  *
  * Light: approved 2026-11-10. `warning` (a ledger ochre) added on request the same day, for "needs a look"
  * states (waiting to upload, low stock, an unusual count) so red stays for losses, deaths and errors.
- * Dark: derived from light (deep ink ground, the same hues lifted for contrast); pending the user's approval.
+ * Dark: derived from light (deep ink ground, the same hues lifted for contrast); shipped in 1.0.11 for the user to judge on the phone.
  */
 const light = {
   primary: '#1F3A5F',
