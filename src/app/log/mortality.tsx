@@ -25,8 +25,9 @@ const MIN_SPIN_MS = 600;
 const DONE_HOLD_MS = 700;
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** docs/layout/07-log-mortality.md. Count is focused on mount — it's the
- *  reason this screen exists. Warns but never blocks: a real mass-mortality
+/** docs/layout/07-log-mortality.md. Count is focused on mount only when the
+ *  house came prefilled; otherwise the house is picked first, so no keyboard
+ *  over the picker. Warns but never blocks: a real mass-mortality
  *  event is exactly when the app must not argue. */
 export default function MortalityScreen() {
   const params = useLocalSearchParams<{ house_id?: string; task_id?: string }>();
@@ -132,7 +133,7 @@ export default function MortalityScreen() {
           label="Birds that died"
           value={count}
           onChangeText={setCount}
-          autoFocus
+          autoFocus={!!params.house_id}
           allowDecimal={false}
           steppers
           hero
