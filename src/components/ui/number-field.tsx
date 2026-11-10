@@ -3,7 +3,7 @@ import { Pressable, TextInput, View, StyleSheet } from 'react-native';
 
 import { AppText } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
-import { FontFamily, Radius, Size, Spacing, type ThemeColor } from '@/constants/theme';
+import { FontFamily, Radius, Size, Spacing, Type, type ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type NumberFieldProps = {
@@ -25,6 +25,8 @@ type NumberFieldProps = {
   warn?: boolean;
   /** One-tap values shown under the field (e.g. 1, 2, 5, 10). Tapping sets the field to that value. */
   quick?: number[];
+  /** The screen's one number: big centred figure between − and +. Needs `steppers`. */
+  hero?: boolean;
 };
 
 /** Numeric keypad + Plex Mono — every count, weight and reading in the app
@@ -42,6 +44,7 @@ export function NumberField({
   steppers,
   warn,
   quick,
+  hero,
 }: NumberFieldProps) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
@@ -66,6 +69,9 @@ export function NumberField({
       </AppText>
 
       <View style={styles.row}>
+        {steppers && hero ? (
+          <Stepper icon="minus" hero onPress={() => step(-1)} disabled={(Number(value) || 0) <= 0} />
+        ) : null}
         <View
           style={[
             styles.field,
@@ -74,6 +80,7 @@ export function NumberField({
               borderColor,
               borderWidth: error || warn || focused ? 2 : 1,
             },
+            hero && styles.heroField,
           ]}
         >
           <TextInput
@@ -85,7 +92,7 @@ export function NumberField({
             onBlur={() => setFocused(false)}
             placeholder="0"
             placeholderTextColor={theme.muted}
-            style={[styles.input, { color: theme.ink }]}
+            style={[styles.input, hero && styles.heroInput, { color: theme.ink }]}
           />
           {unit ? (
             <AppText variant="body" color="muted">
@@ -94,7 +101,8 @@ export function NumberField({
           ) : null}
         </View>
 
-        {steppers ? (
+        {steppers && hero ? <Stepper icon="plus" hero onPress={() => step(1)} /> : null}
+        {steppers && !hero ? (
           <>
             <Stepper icon="minus" onPress={() => step(-1)} disabled={(Number(value) || 0) <= 0} />
             <Stepper icon="plus" onPress={() => step(1)} />
@@ -144,10 +152,12 @@ function Stepper({
   icon,
   onPress,
   disabled,
+  hero,
 }: {
   icon: 'minus' | 'plus';
   onPress: () => void;
   disabled?: boolean;
+  hero?: boolean;
 }) {
   const theme = useTheme();
   return (
@@ -158,6 +168,7 @@ function Stepper({
       accessibilityLabel={icon === 'plus' ? 'Increase' : 'Decrease'}
       style={({ pressed }) => [
         styles.stepper,
+        hero && styles.heroStepper,
         {
           backgroundColor: pressed ? theme.surfaceAlt : theme.surface,
           borderColor: theme.line,
@@ -165,7 +176,7 @@ function Stepper({
         },
       ]}
     >
-      <Icon name={icon} size={24} color={disabled ? 'muted' : 'ink'} />
+      <Icon name={icon} size={hero ? 28 : 24} color={disabled ? 'muted' : 'ink'} />
     </Pressable>
   );
 }
@@ -173,9 +184,10 @@ function Stepper({
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.xs },
   row: { flexDirection: 'row', alignItems: 'stretch', gap: Spacing.sm },
-  quick: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  // Equal widths across the row: a half-filled row of pills reads as unfinished.
+  quick: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.xs },
   chip: {
-    minWidth: 48,
+    flex: 1,
     minHeight: 36,
     alignItems: 'center',
     justifyContent: 'center',
@@ -198,6 +210,9 @@ const styles = StyleSheet.create({
     fontSize: 20,
     paddingVertical: Spacing.md,
   },
+  heroField: { minHeight: 88, justifyContent: 'center' },
+  heroInput: { ...Type.hero, textAlign: 'center', paddingVertical: Spacing.lg },
+  heroStepper: { width: 64, minHeight: 88 },
   stepper: {
     width: 56,
     minHeight: Size.inputNumber,

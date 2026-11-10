@@ -95,7 +95,7 @@ export default function MortalityScreen() {
   return (
     <FormScreen
       title="Log mortality"
-      hint="Birds that died. The count comes off the house's live total."
+      hint="Deaths come off the house's live count."
       dirty={!!count || !!causeNote}
       submit={{
         label: countNum > 0 ? `Record ${countNum} death${countNum === 1 ? '' : 's'}` : 'Record mortality',
@@ -109,7 +109,7 @@ export default function MortalityScreen() {
         <BatchResolver houseId={house?.id} />
       </FormCard>
 
-      <FormCard title="What happened">
+      <FormCard>
         <NumberField
           label="Birds that died"
           value={count}
@@ -117,6 +117,7 @@ export default function MortalityScreen() {
           autoFocus
           allowDecimal={false}
           steppers
+          hero
           quick={[1, 2, 5, 10]}
           warn={overThreshold}
           helper={
@@ -132,6 +133,7 @@ export default function MortalityScreen() {
           <PickerField
             label="Disease"
             placeholder="None"
+            helper="Pick one if these deaths come from an open case."
             value={openCases.find((c) => c.id === diseaseCaseId) ?? null}
             options={openCases}
             getKey={(c) => c.id}
@@ -140,7 +142,13 @@ export default function MortalityScreen() {
             onClear={() => setPickedCase(null)}
           />
         ) : null}
-        <TextField label="Cause (optional)" value={causeNote} onChangeText={setCauseNote} multiline />
+        <TextField
+          label="Cause (optional)"
+          placeholder="e.g. heat stress, crushed at the feeder"
+          value={causeNote}
+          onChangeText={setCauseNote}
+          multiline
+        />
       </FormCard>
     </FormScreen>
   );
