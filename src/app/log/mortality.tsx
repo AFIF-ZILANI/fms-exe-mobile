@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
 import { FormCard } from '@/components/ui/form-card';
@@ -8,9 +8,7 @@ import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
 import { BatchResolver, useResolvedBatch } from '@/components/ui/batch-resolver';
 import { NumberField } from '@/components/ui/number-field';
 import { TextField } from '@/components/ui/text-field';
-import { PillSelect } from '@/components/ui/pill-select';
-import { AppText } from '@/components/ui/text';
-import { Spacing } from '@/constants/theme';
+import { PickerField } from '@/components/ui/picker-field';
 import { useGetData, type Paginated } from '@/lib/api';
 import { openCasesIn, type DiseaseCase } from '@/lib/disease-cases';
 import { useSession } from '@/lib/session';
@@ -33,7 +31,7 @@ export default function MortalityScreen() {
   const [house, setHouse] = usePrefillHouse(params.house_id);
   const [count, setCount] = useState('');
   const [causeNote, setCauseNote] = useState('');
-  const [pickedCase, setPickedCase] = useState<string>('none');
+  const [pickedCase, setPickedCase] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const { balance } = useResolvedBatch(house?.id);
@@ -131,26 +129,19 @@ export default function MortalityScreen() {
           helperColor={overThreshold ? 'warning' : 'muted'}
         />
         {openCases.length > 0 ? (
-          <View style={styles.group}>
-            <AppText variant="eyebrow" color="muted">
-              Disease
-            </AppText>
-            <PillSelect
-              options={[
-                { value: 'none', label: 'None' },
-                ...openCases.map((c) => ({ value: c.id, label: c.disease.label })),
-              ]}
-              value={diseaseCaseId ?? 'none'}
-              onChange={setPickedCase}
-            />
-          </View>
+          <PickerField
+            label="Disease"
+            placeholder="None"
+            value={openCases.find((c) => c.id === diseaseCaseId) ?? null}
+            options={openCases}
+            getKey={(c) => c.id}
+            getLabel={(c) => c.disease.label}
+            onChange={(c) => setPickedCase(c.id)}
+            onClear={() => setPickedCase(null)}
+          />
         ) : null}
         <TextField label="Cause (optional)" value={causeNote} onChangeText={setCauseNote} multiline />
       </FormCard>
     </FormScreen>
   );
 }
-
-const styles = StyleSheet.create({
-  group: { gap: Spacing.sm },
-});
