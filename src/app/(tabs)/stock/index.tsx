@@ -7,7 +7,8 @@ import { Header } from '@/components/ui/header';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Icon, type IconName } from '@/components/ui/icon';
-import { StockItemCard, categoryIcon } from '@/components/stock-item-card';
+import { StockItemRow, categoryIcon } from '@/components/stock-item-row';
+import { SegmentedToggle } from '@/components/ui/segmented-toggle';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SyncBanner } from '@/components/ui/sync-banner';
 import { AppText } from '@/components/ui/text';
@@ -23,7 +24,10 @@ import {
   filterStock,
   searchStock,
   statusCounts,
+  stockState,
   summarizeStock,
+  type StockLine,
+  type StockState,
   type StockFilter,
   type StockRow,
 } from '@/lib/stock-summary';
@@ -39,10 +43,11 @@ const WORKER_SHORTCUTS: { label: string; path: string; icon: IconName }[] = [
   { label: 'Look up a code', path: '/scan/lookup', icon: 'search' },
 ];
 
-const STATUS_CHIPS: { value: StockFilter['status']; label: string }[] = [
-  { value: 'ALL', label: 'All' },
-  { value: 'LOW', label: 'Low' },
-  { value: 'OUT', label: 'Out' },
+/** The list's groups, in attention order (`attentionOrder` sorts the same way). */
+const SECTIONS: { state: StockState; label: string }[] = [
+  { state: 'LOW', label: 'Running low' },
+  { state: 'OK', label: 'In stock' },
+  { state: 'OUT', label: 'Out of stock' },
 ];
 
 const EMPTY_BY_STATUS = {
@@ -71,6 +76,9 @@ export default function StockScreen() {
   const counts = statusCounts(lines);
   const categories = categoryCounts(lines);
   const shown = attentionOrder(searchStock(filterStock(lines, { status, category }), query));
+  const sections = SECTIONS.map((sec) => ({ ...sec, lines: shown.filter((l) => stockState(l) === sec.state) })).filter(
+    (sec) => sec.lines.length > 0,
+  );
   const searching = query.trim().length > 0;
   const truncated = (items.data?.total ?? 0) > PAGE;
 
@@ -111,7 +119,7 @@ export default function StockScreen() {
       <Header title="Stock" />
       <SyncBanner />
 
-      {/* The scan actions, compact: they are shortcuts, not the point of the screen. */}
+      {/* The scan actions: full labels in a two-up grid. An odd last one spans the row. */}
       <View style={styles.shortcuts}>
         {shortcuts.map((s) => (
           <Pressable
@@ -121,14 +129,13 @@ export default function StockScreen() {
             accessibilityLabel={s.label}
             style={({ pressed }) => [
               styles.shortcut,
-              { backgroundColor: theme.surface, borderColor: theme.line },
-              pressed && { backgroundColor: theme.surfaceAlt },
+              { backgroundColor: pressed ? theme.surfaceAlt : theme.surface },
             ]}
           >
             <View style={[styles.shortcutIcon, { backgroundColor: theme.primarySoft }]}>
-              <Icon name={s.icon} size={20} color="primary" />
+              <Icon name={s.icon} size={18} color="primary" />
             </View>
-            <AppText variant="caption" color="inkSoft" numberOfLines={1}>
+            <AppText variant="label" numberOfLines={1} style={styles.flex}>
               {s.label}
             </AppText>
           </Pressable>
@@ -154,30 +161,16 @@ export default function StockScreen() {
         ) : null}
       </View>
 
-      <View style={styles.chips}>
-        {STATUS_CHIPS.map((c) => {
-          const on = status === c.value;
-          return (
-            <Pressable
-              key={c.value}
-              onPress={() => setStatus(c.value)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on }}
-              accessibilityLabel={`${c.label}, ${counts[c.value]}`}
-              style={[
-                styles.chip,
-                { backgroundColor: on ? theme.primary : theme.surface, borderColor: on ? theme.primary : theme.line },
-              ]}
-            >
-              <AppText variant="label" color={on ? 'onPrimary' : 'inkSoft'}>
-                {c.label}
-              </AppText>
-              <AppText variant="data" color={on ? 'onPrimary' : 'muted'}>
-                {counts[c.value]}
-              </AppText>
-            </Pressable>
-          );
-        })}
+      <View style={styles.status}>
+        <SegmentedToggle
+          value={status}
+          onChange={setStatus}
+          options={[
+            { value: 'ALL', label: `All · ${counts.ALL}` },
+            { value: 'LOW', label: `Low · ${counts.LOW}`, activeTint: 'tintAmber', activeColor: 'warning' },
+            { value: 'OUT', label: `Out · ${counts.OUT}`, activeTint: 'tintRed', activeColor: 'critical' },
+          ]}
+        />
       </View>
 
       {categories.length > 1 ? (
@@ -256,11 +249,7 @@ export default function StockScreen() {
           />
         </Card>
       ) : (
-        <View style={styles.list}>
-          {shown.map((line) => (
-            <StockItemCard key={line.item.id} line={line} />
-          ))}
-        </View>
+        sections.map((sec) => <StockSection key={sec.state} label={sec.label} lines={sec.lines} />)
       )}
 
       {truncated ? (
@@ -272,21 +261,38 @@ export default function StockScreen() {
   );
 }
 
+/** One group of the list: a small heading with its count, then the items as rows in one card. */
+function StockSection({ label, lines }: { label: string; lines: StockLine[] }) {
+  return (
+    <View style={styles.section}>
+      <AppText variant="eyebrow" color="muted" style={styles.sectionHead}>
+        {label} · {lines.length}
+      </AppText>
+      <Card rows style={styles.sectionCard}>
+        {lines.map((line, i) => (
+          <StockItemRow key={line.item.id} line={line} last={i === lines.length - 1} />
+        ))}
+      </Card>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  shortcuts: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.xs },
+  shortcuts: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.xs },
   shortcut: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: '45%',
+    minHeight: Size.buttonPrimary,
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.xs,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.xs,
-    borderWidth: 1,
-    borderRadius: Radius.card,
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.control,
   },
   shortcutIcon: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     borderRadius: Radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
@@ -302,16 +308,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.control,
   },
   searchInput: { flex: 1, minHeight: 48, fontSize: 16 },
-  chips: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-    minHeight: 40,
-    paddingHorizontal: Spacing.md,
-    borderWidth: 1,
-    borderRadius: Radius.pill,
-  },
+  status: { marginTop: Spacing.md },
   categories: { gap: Spacing.sm, marginTop: Spacing.sm },
   chipSmall: {
     flexDirection: 'row',
@@ -325,4 +322,7 @@ const styles = StyleSheet.create({
   note: { marginTop: Spacing.md, paddingHorizontal: Spacing.xs },
   card: { marginTop: Spacing.md },
   list: { gap: Spacing.sm, marginTop: Spacing.md },
+  section: { marginTop: Spacing.lg, gap: Spacing.sm },
+  sectionHead: { paddingHorizontal: Spacing.xs },
+  sectionCard: { paddingVertical: 0, overflow: 'hidden' },
 });

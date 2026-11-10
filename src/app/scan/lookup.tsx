@@ -4,7 +4,7 @@ import { router, type Href } from 'expo-router';
 import { useNetworkState } from 'expo-network';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { categoryIcon } from '@/components/stock-item-card';
+import { categoryIcon } from '@/components/stock-item-row';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Header } from '@/components/ui/header';

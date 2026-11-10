@@ -2,10 +2,8 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { router, type Href } from 'expo-router';
 
 import { Icon, IconTile, type IconName } from '@/components/ui/icon';
-import { StatusPill } from '@/components/ui/status-pill';
 import { AppText } from '@/components/ui/text';
-import { Radius, Spacing, elevation } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { humanise } from '@/lib/profile-format';
 import { formatStock, levelRatio, stockFigure, stockState, type StockLine, type StockState } from '@/lib/stock-summary';
@@ -47,10 +45,10 @@ export function LevelBar({ line }: { line: StockLine }) {
   );
 }
 
-/** One item: what it is, how much is left against its reorder level, and whether it needs attention. */
-export function StockItemCard({ line }: { line: StockLine }) {
+/** One item as a row in a grouped list: what it is, how much is left, and its level against the reorder line.
+ *  The section it sits in says Low / In stock / Out, so the row doesn't repeat it. */
+export function StockItemRow({ line, last }: { line: StockLine; last?: boolean }) {
   const theme = useTheme();
-  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const state = stockState(line);
   const look = LOOK[state];
   const figure = stockFigure(line.balance, line.item);
@@ -61,55 +59,50 @@ export function StockItemCard({ line }: { line: StockLine }) {
       onPress={() => router.push(`/stock/${line.item.id}` as Href)}
       accessibilityRole="button"
       accessibilityLabel={`${line.item.name}, ${formatStock(line.balance, line.item)}${state === 'LOW' ? ', low' : state === 'OUT' ? ', out of stock' : ''}`}
-      style={({ pressed }) => [
-        styles.card,
-        { backgroundColor: pressed ? theme.surfaceAlt : theme.surface },
-        elevation(scheme, 'card'),
-      ]}
+      style={({ pressed }) => pressed && { backgroundColor: theme.surfaceAlt }}
     >
-      <IconTile name={categoryIcon(line.item.category)} tint={look.tint} color={look.color} />
-      <View style={styles.flex}>
-        <AppText variant="bodyStrong" numberOfLines={2}>
-          {line.item.name}
-        </AppText>
-        <View style={styles.meta}>
-          <AppText variant="caption" color={state === 'OUT' ? 'critical' : 'muted'} numberOfLines={1} style={styles.flex}>
+      <View style={styles.row}>
+        <IconTile name={categoryIcon(line.item.category)} tint={look.tint} color={look.color} />
+        <View style={styles.flex}>
+          <AppText variant="bodyStrong" numberOfLines={2}>
+            {line.item.name}
+          </AppText>
+          <AppText variant="caption" color="muted" numberOfLines={1}>
             {humanise(line.item.category)}
-            {state === 'OUT'
-              ? ' · out of stock'
-              : reorder !== null && Number.isFinite(reorder)
-                ? ` · reorder at ${formatStock(reorder, line.item)}`
-                : ''}
+            {reorder !== null && Number.isFinite(reorder) && reorder > 0
+              ? ` · reorder at ${formatStock(reorder, line.item)}`
+              : ''}
           </AppText>
-          {state === 'LOW' ? <StatusPill status="LOW" label="Low" /> : null}
+          <LevelBar line={line} />
         </View>
-        <LevelBar line={line} />
-      </View>
-      <View style={styles.qty}>
-        <AppText variant="figure" color={state === 'OK' ? 'ink' : state === 'LOW' ? 'warning' : 'critical'}>
-          {figure.main}
-        </AppText>
-        {figure.sub ? (
-          <AppText variant="caption" color="muted">
-            {figure.sub}
+        <View style={styles.qty}>
+          <AppText variant="figure" color={state === 'OK' ? 'ink' : state === 'LOW' ? 'warning' : 'critical'}>
+            {figure.main}
           </AppText>
-        ) : null}
+          {figure.sub ? (
+            <AppText variant="caption" color="muted">
+              {figure.sub}
+            </AppText>
+          ) : null}
+        </View>
+        <Icon name="chevron-right" size={20} color="muted" />
       </View>
-      <Icon name="chevron-right" size={20} color="muted" />
+      {/* Inset to the text column, so the icons read as one column down the group. */}
+      {last ? null : <View style={[styles.rule, { backgroundColor: theme.line }]} />}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  card: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-    padding: Spacing.lg,
-    borderRadius: Radius.card,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
   },
-  meta: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginTop: 2 },
+  rule: { height: 1, marginLeft: Spacing.lg + 40 + Spacing.md },
   qty: { alignItems: 'flex-end', minWidth: 52 },
   track: { height: 6, borderRadius: Radius.pill, overflow: 'hidden', marginTop: Spacing.sm },
   fill: { height: '100%', borderRadius: Radius.pill },

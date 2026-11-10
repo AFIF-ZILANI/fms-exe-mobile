@@ -4,7 +4,7 @@ import { router, useLocalSearchParams, type Href } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 
 import { InfoCard, InfoRow, openLink } from '@/components/profile-parts';
-import { categoryIcon } from '@/components/stock-item-card';
+import { categoryIcon } from '@/components/stock-item-row';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';

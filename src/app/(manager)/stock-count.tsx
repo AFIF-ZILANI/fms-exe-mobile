@@ -5,7 +5,7 @@ import { useNetworkState } from 'expo-network';
 import { useQueryClient } from '@tanstack/react-query';
 import * as Crypto from 'expo-crypto';
 
-import { categoryIcon } from '@/components/stock-item-card';
+import { categoryIcon } from '@/components/stock-item-row';
 import { StockCountActionSheet, type ActionResult } from '@/components/stock-count-action-sheet';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';

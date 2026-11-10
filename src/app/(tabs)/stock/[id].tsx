@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { RefreshControl, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
-import { LevelBar, categoryIcon } from '@/components/stock-item-card';
+import { LevelBar, categoryIcon } from '@/components/stock-item-row';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Header } from '@/components/ui/header';

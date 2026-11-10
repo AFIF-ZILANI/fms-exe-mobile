@@ -7,7 +7,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as Crypto from 'expo-crypto';
 import * as Haptics from 'expo-haptics';
 
-import { categoryIcon } from '@/components/stock-item-card';
+import { categoryIcon } from '@/components/stock-item-row';
 import { useResolvedBatch } from '@/components/ui/batch-resolver';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
