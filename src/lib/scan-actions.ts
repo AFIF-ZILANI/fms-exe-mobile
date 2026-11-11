@@ -47,6 +47,7 @@ const BLOCKED: Partial<Record<StockUnitStatus, string>> = {
   PRINTED: 'Not linked to a purchase yet.',
   CONSUMED: 'Already used up.',
   DISPOSED: 'Already disposed.',
+  SOLD: 'Already sold.',
 };
 
 export function checkUnit(plan: ScanPlan, unit: StockUnit): Check {

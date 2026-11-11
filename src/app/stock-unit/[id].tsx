@@ -182,7 +182,7 @@ export default function StockUnitScreen() {
                   />
                   <View style={styles.flex}>
                     <AppText variant="caption" color="muted">
-                      {p.status === 'CONSUMED' || p.status === 'DISPOSED' ? 'Last seen at' : 'Where it is now'}
+                      {p.status === 'CONSUMED' || p.status === 'DISPOSED' || p.status === 'SOLD' ? 'Last seen at' : 'Where it is now'}
                     </AppText>
                     <AppText variant="bodyStrong">{p.location.name}</AppText>
                     {p.location.since ? (
