@@ -61,7 +61,9 @@ export function checkUnit(plan: ScanPlan, unit: StockUnit): Check {
 
   // allocate / return / start / finish: only a live, bound unit makes sense.
   const blocked = BLOCKED[unit.status];
-  if (blocked) return fail(blocked);
+  // sell lets SOLD through: a re-scan after a lost response is only "done already" if it went out on this
+  // sale, which the server decides (200 for this sale, "Already sold" for another).
+  if (blocked && !(plan.action === 'sell' && unit.status === 'SOLD')) return fail(blocked);
 
   // Only a sealed bottle can be sold. Whether its item is on the sale only the server knows.
   if (plan.action === 'sell') return unit.status === 'IN_USE' ? fail('This bottle has been opened.') : OK;

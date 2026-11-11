@@ -181,7 +181,10 @@ assert.deepEqual(decideScan('manual', bad, true), { kind: 'duplicate' }, 'duplic
   const sell = { action: 'sell' as const };
   assert.deepEqual(checkUnit(sell, unit()), { ok: true }, 'a sealed bottle can be sold');
   assert.deepEqual(checkUnit(sell, unit({ status: 'IN_USE' })), { ok: false, reason: 'This bottle has been opened.' });
-  assert.deepEqual(checkUnit(sell, unit({ status: 'SOLD' })), { ok: false, reason: 'Already sold.' });
+  // A re-scan after a lost response finds the bottle SOLD: only the server knows whether it went out on this
+  // sale (fine, nothing changes) or another one (refused), so it has to ask.
+  assert.deepEqual(checkUnit(sell, unit({ status: 'SOLD' })), { ok: true });
+  assert.deepEqual(checkUnit(sell, unit({ status: 'DISPOSED' })), { ok: false, reason: 'Already disposed.' });
 }
 
 console.log('scan-actions checks passed');
