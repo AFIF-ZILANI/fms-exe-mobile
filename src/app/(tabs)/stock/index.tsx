@@ -80,14 +80,14 @@ export default function StockScreen() {
   );
   const searching = query.trim().length > 0;
 
-  // QR sales waiting for their bottles to be scanned out (managers only; the endpoint is manager-level).
+  // QR sales waiting for their packs to be scanned out (managers only; the endpoint is manager-level).
   const saleScans = useGetData<ScanSale[]>('/sale-scans', ['sale-scans'], { enabled: isManager });
   const shortcuts = isManager
     ? [
         ...WORKER_SHORTCUTS,
         { label: 'Link items', path: '/link', icon: 'maximize' as IconName },
         {
-          label: 'Sold bottles',
+          label: 'Sold packs',
           path: '/sell-scan',
           icon: 'shopping-bag' as IconName,
           count: waitingCount(saleScans.data ?? []),

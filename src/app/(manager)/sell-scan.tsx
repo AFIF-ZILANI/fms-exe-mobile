@@ -28,11 +28,11 @@ const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 
 /**
- * QR sales recorded on the dashboard wait here until their bottles are scanned out. Each scan is one bottle:
+ * QR sales recorded on the dashboard wait here until their packs are scanned out. Each scan is one pack:
  * the server checks it is sealed and on the sale, then takes it out of stock and marks it sold.
  *
- * Two stages on one screen, like Link items: the waiting sales, then one sale with its bottle strips and
- * the scanner. Online only -- each bottle is checked by the server as it is scanned. No prices here:
+ * Two stages on one screen, like Link items: the waiting sales, then one sale with its pack strips and
+ * the scanner. Online only -- each pack is checked by the server as it is scanned. No prices here:
  * managers never see sales money.
  */
 export default function SellScanScreen() {
@@ -56,7 +56,7 @@ export default function SellScanScreen() {
   const session = useScanSession({
     plan: { action: 'sell' },
     mode,
-    confirmLabel: 'Sell this bottle',
+    confirmLabel: 'Sell this pack',
     commit: async (unit) => {
       await apiFetch<ScanResult>(`/sale-scans/${saleId}/scan`, {
         method: 'POST',
@@ -67,7 +67,7 @@ export default function SellScanScreen() {
     refresh: { live: [['sale-scans', saleId]], after: [['sale-scans'], ['stock-units']] },
   });
 
-  // The last bottle in: close the camera after a beat, so the flash and the sound land first.
+  // The last pack in: close the camera after a beat, so the flash and the sound land first.
   useEffect(() => {
     if (!scanning || !done) return;
     const t = setTimeout(() => {
@@ -88,7 +88,7 @@ export default function SellScanScreen() {
   if (saleId === null) {
     return (
       <Screen>
-        <Header title="Sold bottles" leading="back" />
+        <Header title="Sold packs" leading="back" />
         {isLoading ? (
           <View style={styles.list}>
             <Skeleton height={104} />
@@ -99,8 +99,8 @@ export default function SellScanScreen() {
             <EmptyState
               icon="check-circle"
               tint="tintGreen"
-              title="No bottles waiting."
-              body="When a QR sale is recorded on the dashboard, its bottles show up here to scan out."
+              title="No packs waiting."
+              body="When a QR sale is recorded on the dashboard, its packs show up here to scan out."
             />
           </View>
         ) : (
@@ -116,7 +116,7 @@ export default function SellScanScreen() {
 
   return (
     <Screen>
-      <Header title="Sold bottles" leading="back" />
+      <Header title="Sold packs" leading="back" />
       {!sale || !progress ? (
         <View style={styles.list}>
           <Skeleton height={160} />
@@ -160,7 +160,7 @@ export default function SellScanScreen() {
               <View style={styles.flex}>
                 <AppText variant="bodyStrong">Scanning needs a connection.</AppText>
                 <AppText variant="caption" color="muted">
-                  Each bottle is checked against the server as you scan.
+                  Each pack is checked against the server as you scan.
                 </AppText>
               </View>
             </View>
@@ -168,7 +168,7 @@ export default function SellScanScreen() {
             <View style={[styles.banner, { backgroundColor: theme.tintGreen }]}>
               <Icon name="check-circle" size={20} color="success" />
               <View style={styles.flex}>
-                <AppText variant="bodyStrong">All bottles scanned.</AppText>
+                <AppText variant="bodyStrong">All packs scanned.</AppText>
                 <AppText variant="caption" color="muted">
                   They are out of stock and marked sold. Go back for the next sale.
                 </AppText>
@@ -180,7 +180,7 @@ export default function SellScanScreen() {
                 <ScanModeField value={mode} onChange={setMode} />
               </View>
               <Button
-                label="Scan bottles"
+                label="Scan packs"
                 icon="camera"
                 onPress={() => {
                   // Another phone may have scanned some since this sale was loaded.
@@ -240,7 +240,7 @@ function SaleCard({ sale, onPress }: { sale: ScanSale; onPress: () => void }) {
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${sale.customer_name ?? 'Walk-in'}, ${scanned} of ${needed} bottles scanned`}
+      accessibilityLabel={`${sale.customer_name ?? 'Walk-in'}, ${scanned} of ${needed} packs scanned`}
     >
       <Card>
         <View style={styles.cardHead}>

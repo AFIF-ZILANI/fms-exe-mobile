@@ -176,12 +176,12 @@ assert.deepEqual(decideScan('manual', bad, true), { kind: 'duplicate' }, 'duplic
   assert.notEqual(keys.keyFor('u-1'), first, 'after a confirmed write the next one gets a fresh key');
 }
 
-// --- sell (a QR sale's bottles; the server checks the item against the sale) --------
+// --- sell (a QR sale's packs; the server checks the item against the sale) --------
 {
   const sell = { action: 'sell' as const };
-  assert.deepEqual(checkUnit(sell, unit()), { ok: true }, 'a sealed bottle can be sold');
-  assert.deepEqual(checkUnit(sell, unit({ status: 'IN_USE' })), { ok: false, reason: 'This bottle has been opened.' });
-  // A re-scan after a lost response finds the bottle SOLD: only the server knows whether it went out on this
+  assert.deepEqual(checkUnit(sell, unit()), { ok: true }, 'a sealed pack can be sold');
+  assert.deepEqual(checkUnit(sell, unit({ status: 'IN_USE' })), { ok: false, reason: 'This pack has been opened.' });
+  // A re-scan after a lost response finds the pack SOLD: only the server knows whether it went out on this
   // sale (fine, nothing changes) or another one (refused), so it has to ask.
   assert.deepEqual(checkUnit(sell, unit({ status: 'SOLD' })), { ok: true });
   assert.deepEqual(checkUnit(sell, unit({ status: 'DISPOSED' })), { ok: false, reason: 'Already disposed.' });
