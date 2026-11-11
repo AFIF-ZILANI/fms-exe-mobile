@@ -7,7 +7,7 @@
 import type { StockUnit, StockUnitStatus } from './types';
 
 /** start/finish are "Use an item": open a unit (no log) / log it used up. return: house -> warehouse.
- *  sell: a QR sale's bottle going out. */
+ *  sell: a QR sale's pack going out. */
 export type ScanAction = 'allocate' | 'return' | 'start' | 'finish' | 'bind' | 'sell';
 export type Mode = 'manual' | 'auto';
 export type Check = { ok: true } | { ok: false; reason: string };
@@ -65,8 +65,8 @@ export function checkUnit(plan: ScanPlan, unit: StockUnit): Check {
   // sale, which the server decides (200 for this sale, "Already sold" for another).
   if (blocked && !(plan.action === 'sell' && unit.status === 'SOLD')) return fail(blocked);
 
-  // Only a sealed bottle can be sold. Whether its item is on the sale only the server knows.
-  if (plan.action === 'sell') return unit.status === 'IN_USE' ? fail('This bottle has been opened.') : OK;
+  // Only a sealed pack can be sold. Whether its item is on the sale only the server knows.
+  if (plan.action === 'sell') return unit.status === 'IN_USE' ? fail('This pack has been opened.') : OK;
 
   const purchase = unit.purchase_item;
   if (!purchase) return fail('This unit has no purchase record.');
