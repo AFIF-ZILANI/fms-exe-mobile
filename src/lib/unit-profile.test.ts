@@ -9,6 +9,7 @@ assert.equal(unitStatus('IN_USE', 'MEDICINE').label, 'Opened');
 assert.equal(unitStatus('BOUND', 'EQUIPMENT').label, 'Not in use');
 assert.equal(unitStatus('IN_USE', 'EQUIPMENT').label, 'In use');
 assert.equal(unitStatus('PRINTED', null).label, 'Not linked yet');
+assert.equal(unitStatus('SOLD', 'VACCINE').label, 'Sold');
 
 const now = new Date(2026, 10, 2, 10);
 assert.deepEqual(expiryState('2026-10-30T00:00:00.000Z', now), { label: 'Expired 3 days ago', tone: 'critical' });

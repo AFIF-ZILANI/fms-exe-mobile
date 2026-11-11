@@ -55,6 +55,8 @@ export function strayNote(s: Stray): string {
       return 'Marked used up, but it is here';
     case 'DISPOSED':
       return 'Marked disposed, but it is here';
+    case 'SOLD':
+      return 'Marked sold, but it is here';
     case 'UNASSIGNED':
     case 'PRINTED':
       return 'Not linked to a delivery yet';

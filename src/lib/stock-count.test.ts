@@ -67,6 +67,8 @@ assert.equal(diffCount(expected, [], new Map()).missing.length, 3);
   assert.equal(strayNote(r.notes[0]!), 'Marked used up, but it is here');
   assert.equal(strayNote(r.notes[1]!), 'Unknown code');
   assert.equal(strayNote(r.notes[2]!), 'Not linked to a delivery yet');
+  // A bottle scanned out on a sale that turns up again.
+  assert.equal(strayNote({ id: 's', unit: { ...r.notes[0]!.unit!, status: 'SOLD' } }), 'Marked sold, but it is here');
 }
 
 // a stray not looked up yet (lookup failed) is a note, never a crash

@@ -178,7 +178,23 @@ export type PurchaseItem = {
   purchase: Purchase;
 };
 
-export type StockUnitStatus = 'UNASSIGNED' | 'PRINTED' | 'BOUND' | 'IN_USE' | 'CONSUMED' | 'DISPOSED';
+export type StockUnitStatus = 'UNASSIGNED' | 'PRINTED' | 'BOUND' | 'IN_USE' | 'CONSUMED' | 'DISPOSED' | 'SOLD';
+
+/** GET /sale-scans rows: a QR sale waiting for its bottles. No money -- managers never see it. */
+export type ScanSale = {
+  id: string;
+  sale_date: string;
+  customer_name: string | null;
+  lines: { id: string; item_name: string; quantity: number; scanned: number }[];
+};
+
+/** GET /sale-scans/:id: the sale plus the bottles already scanned out on it. size is in the item's unit. */
+export type ScanSaleDetail = ScanSale & {
+  bottles: { id: string; line_id: string; size: string; unit: string; lot_date: string; sold_by: string | null; sold_at: string }[];
+};
+
+/** POST /sale-scans/:id/scan */
+export type ScanResult = { line_id: string; item_name: string; scanned: number; quantity: number; sale_done: boolean };
 
 export type StockUnit = {
   id: string;

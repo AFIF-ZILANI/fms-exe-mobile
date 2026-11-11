@@ -65,6 +65,8 @@ export function unitStatus(status: StockUnitStatus, category: string | null): { 
       return { label: 'Used up', tone: 'neutral' };
     case 'DISPOSED':
       return { label: 'Disposed', tone: 'critical' };
+    case 'SOLD':
+      return { label: 'Sold', tone: 'neutral' };
     case 'PRINTED':
       return { label: 'Not linked yet', tone: 'warning' };
     default:
@@ -103,7 +105,7 @@ export function usageTitle(u: UnitProfile['uses'][number]): string {
  */
 export function unitLeft(p: UnitProfile): { text: string; share: number } | null {
   if (!p.item || !p.lot || !p.remaining || p.item.category === 'EQUIPMENT') return null;
-  if (p.status === 'CONSUMED' || p.status === 'DISPOSED') return null;
+  if (p.status === 'CONSUMED' || p.status === 'DISPOSED' || p.status === 'SOLD') return null;
   if (p.remaining.unit === null || !p.lot.unit_count) return null;
   const size = Number(p.lot.base_quantity) / p.lot.unit_count;
   const left = Math.max(0, Math.min(size, Number(p.remaining.unit)));
