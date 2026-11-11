@@ -6,8 +6,9 @@
 
 import type { StockUnit, StockUnitStatus } from './types';
 
-/** start/finish are "Use an item": open a unit (no log) / log it used up. return: house -> warehouse. */
-export type ScanAction = 'allocate' | 'return' | 'start' | 'finish' | 'bind';
+/** start/finish are "Use an item": open a unit (no log) / log it used up. return: house -> warehouse.
+ *  sell: a QR sale's bottle going out. */
+export type ScanAction = 'allocate' | 'return' | 'start' | 'finish' | 'bind' | 'sell';
 export type Mode = 'manual' | 'auto';
 export type Check = { ok: true } | { ok: false; reason: string };
 
@@ -61,6 +62,9 @@ export function checkUnit(plan: ScanPlan, unit: StockUnit): Check {
   // allocate / return / start / finish: only a live, bound unit makes sense.
   const blocked = BLOCKED[unit.status];
   if (blocked) return fail(blocked);
+
+  // Only a sealed bottle can be sold. Whether its item is on the sale only the server knows.
+  if (plan.action === 'sell') return unit.status === 'IN_USE' ? fail('This bottle has been opened.') : OK;
 
   const purchase = unit.purchase_item;
   if (!purchase) return fail('This unit has no purchase record.');

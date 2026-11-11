@@ -176,4 +176,12 @@ assert.deepEqual(decideScan('manual', bad, true), { kind: 'duplicate' }, 'duplic
   assert.notEqual(keys.keyFor('u-1'), first, 'after a confirmed write the next one gets a fresh key');
 }
 
+// --- sell (a QR sale's bottles; the server checks the item against the sale) --------
+{
+  const sell = { action: 'sell' as const };
+  assert.deepEqual(checkUnit(sell, unit()), { ok: true }, 'a sealed bottle can be sold');
+  assert.deepEqual(checkUnit(sell, unit({ status: 'IN_USE' })), { ok: false, reason: 'This bottle has been opened.' });
+  assert.deepEqual(checkUnit(sell, unit({ status: 'SOLD' })), { ok: false, reason: 'Already sold.' });
+}
+
 console.log('scan-actions checks passed');

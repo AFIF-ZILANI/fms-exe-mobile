@@ -31,11 +31,12 @@ import {
   type StockFilter,
   type StockRow,
 } from '@/lib/stock-summary';
-import type { Item } from '@/lib/types';
+import type { Item, ScanSale } from '@/lib/types';
+import { waitingCount } from '@/lib/sale-scan';
 
 const REFRESH_TIMEOUT_MS = 6000;
 
-const WORKER_SHORTCUTS: { label: string; path: string; icon: IconName }[] = [
+const WORKER_SHORTCUTS: { label: string; path: string; icon: IconName; count?: number }[] = [
   { label: 'Move to house', path: '/scan/allocate', icon: 'arrow-right' },
   { label: 'Use an item', path: '/scan/consume', icon: 'box' },
   { label: 'Use supplies', path: '/use-supplies', icon: 'package' },
@@ -79,8 +80,19 @@ export default function StockScreen() {
   );
   const searching = query.trim().length > 0;
 
+  // QR sales waiting for their bottles to be scanned out (managers only; the endpoint is manager-level).
+  const saleScans = useGetData<ScanSale[]>('/sale-scans', ['sale-scans'], { enabled: isManager });
   const shortcuts = isManager
-    ? [...WORKER_SHORTCUTS, { label: 'Link items', path: '/link', icon: 'maximize' as IconName }]
+    ? [
+        ...WORKER_SHORTCUTS,
+        { label: 'Link items', path: '/link', icon: 'maximize' as IconName },
+        {
+          label: 'Sold bottles',
+          path: '/sell-scan',
+          icon: 'shopping-bag' as IconName,
+          count: waitingCount(saleScans.data ?? []),
+        },
+      ]
     : WORKER_SHORTCUTS;
 
   // `isPending`, not `isLoading`: offline with nothing cached a query is paused and never "loading".
@@ -135,6 +147,11 @@ export default function StockScreen() {
             <AppText variant="label" numberOfLines={1} style={styles.flex}>
               {s.label}
             </AppText>
+            {s.count ? (
+              <AppText variant="label" color="primary">
+                {s.count}
+              </AppText>
+            ) : null}
           </Pressable>
         ))}
       </View>
