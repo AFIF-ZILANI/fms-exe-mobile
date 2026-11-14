@@ -6,6 +6,7 @@ import { FormScreen } from '@/components/ui/form-screen';
 import { HousePicker, usePrefillHouse } from '@/components/ui/house-picker';
 import { BatchResolver, useResolvedBatch } from '@/components/ui/batch-resolver';
 import { NumberField } from '@/components/ui/number-field';
+import { TextField } from '@/components/ui/text-field';
 import { useSession } from '@/lib/session';
 import { useQueuedSubmit } from '@/lib/use-queued-submit';
 import { goBack } from '@/lib/nav';
@@ -26,6 +27,7 @@ export default function WeightScreen() {
   const [house, setHouse] = usePrefillHouse(params.house_id);
   const [averageWeight, setAverageWeight] = useState('');
   const [sampleSize, setSampleSize] = useState('');
+  const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const { balance } = useResolvedBatch(house?.id);
@@ -47,6 +49,8 @@ export default function WeightScreen() {
           average_wt_grams: avgNum,
           sample_size: sampleNum,
           date: weighedAt,
+          // The server refuses an empty note, so a blank box is left out.
+          ...(note.trim() && { note: note.trim() }),
           ...(balance && { batch_id: balance.batch_id }),
         },
         taskId: params.task_id,
@@ -61,7 +65,7 @@ export default function WeightScreen() {
     <FormScreen
       title="Log weight"
       hint="One sample per house per day: weigh a handful and enter their average."
-      dirty={!!averageWeight || !!sampleSize}
+      dirty={!!averageWeight || !!sampleSize || !!note}
       submit={{
         label: avgNum > 0 ? `Record ${avgNum.toLocaleString()} g average` : 'Record weight',
         onPress: handleSubmit,
@@ -91,6 +95,13 @@ export default function WeightScreen() {
           unit="birds"
           allowDecimal={false}
           quick={[10, 20, 50, 100]}
+        />
+        <TextField
+          label="Note (optional)"
+          placeholder="e.g. weighed after the feed"
+          value={note}
+          onChangeText={setNote}
+          maxLength={200}
         />
       </FormCard>
     </FormScreen>
