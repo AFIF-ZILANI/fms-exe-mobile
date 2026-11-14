@@ -11,9 +11,11 @@ import { useQueuedSubmit } from '@/lib/use-queued-submit';
 import { goBack } from '@/lib/nav';
 
 /** docs/layout/09-log-weight.md. The server enforces one sample per
- *  (batch, house, day) — `date` is truncated to midnight so same-day
- *  resubmits actually collide on that constraint instead of always landing as
- *  distinct timestamps. There's no update endpoint for WeightRecords
+ *  (batch, house, day) — the server files the sample under the farm day of
+ *  the instant we send (it knows the day-start hour), so same-day resubmits
+ *  collide on that constraint. Send the real instant: truncating to the
+ *  phone's local midnight is 18:00 UTC the day before and lands a day early.
+ *  There's no update endpoint for WeightRecords
  *  (create+list only), so a same-day duplicate surfaces through the outbox's
  *  normal dead-letter path rather than a bespoke "replace" flow. */
 export default function WeightScreen() {
@@ -33,8 +35,8 @@ export default function WeightScreen() {
 
   const handleSubmit = async () => {
     if (!house || !employee) return;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Captured at tap time: an offline submit keeps the day it was weighed, not the day it syncs.
+    const weighedAt = new Date().toISOString();
 
     setSubmitting(true);
     try {
@@ -44,7 +46,7 @@ export default function WeightScreen() {
           house_id: house.id,
           average_wt_grams: avgNum,
           sample_size: sampleNum,
-          date: today.toISOString(),
+          date: weighedAt,
           ...(balance && { batch_id: balance.batch_id }),
         },
         taskId: params.task_id,
