@@ -1,5 +1,6 @@
 import { farmDayNumber } from './farm';
 import type { StockUnit, StockUnitStatus } from './types';
+import { shortDate } from './vaccine-schedule';
 
 /** A unit the server says should be at the counted place (GET /stock-units/at-location). */
 export type CountUnit = {
@@ -90,9 +91,41 @@ export const daysAgo = (n: number, now: Date = new Date()) => new Date(now.getTi
 /** An instant's farm day as YYYY-MM-DD, the ?date= the server's batch lookup reads. */
 export const farmDateParam = (d: Date) => new Date(farmDayNumber(d) * DAY_MS).toISOString().slice(0, 10);
 
+/** The farm day an instant falls on, as "Sun, Nov 8" -- what "Today" / "Yesterday" really mean. Between
+ *  midnight and the farm's day-start hour "Today" is still the calendar day before, so say the date. Noon
+ *  UTC of that day reads as the same date in any time zone the phone is set to. */
+export const farmDayLabel = (d: Date) => shortDate(new Date(farmDayNumber(d) * DAY_MS + DAY_MS / 2));
+
+export type CountAction = 'CONSUMED' | 'START' | 'MOVE' | 'RETURN' | 'DISPOSE';
+
+/** One unit's outcome: what was done, or why it wasn't. */
+export type ActionResult = { ok: true; label: string } | { ok: false; message: string };
+
+/** POST /stock-units/bulk: the action in the server's words. */
+export const BULK_ACTION = {
+  CONSUMED: 'FINISH',
+  START: 'START',
+  MOVE: 'MOVE',
+  RETURN: 'RETURN',
+  DISPOSE: 'DISPOSE',
+} as const satisfies Record<CountAction, string>;
+
+/** Units per call: the server's cap (BULK_MAX_UNITS), so a call finishes inside the request timeout. */
+export const BULK_CHUNK = 25;
+
+/** What the server answers for one unit of a bulk call. */
+export type BulkUnitResult = { id: string; ok: true } | { id: string; ok: false; status: number; message: string };
+
+/** A unit's bulk outcome as the screen shows it. A unit already where the action puts it counts as done:
+ *  that is a retry whose first try landed. */
+export function settle(action: CountAction, doneLabel: string, r: BulkUnitResult): ActionResult {
+  if (r.ok || alreadyDone(action, r)) return { ok: true, label: doneLabel };
+  return { ok: false, message: r.message };
+}
+
 /** The server's 409 for a unit already where the action would put it (a retried write that landed). */
 export function alreadyDone(
-  action: 'CONSUMED' | 'START' | 'MOVE' | 'RETURN' | 'DISPOSE',
+  action: CountAction,
   err: { status: number; message: string },
 ) {
   if (err.status !== 409) return false;
