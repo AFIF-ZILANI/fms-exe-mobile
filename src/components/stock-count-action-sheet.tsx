@@ -108,8 +108,15 @@ export function StockCountActionSheet({ units, location, onClose, onDone }: Prop
   const run = async () => {
     setBusy(true);
     const results = new Map<string, ActionResult>();
+    let stopped: string | null = null;
     for (let i = 0; i < units.length; i += BULK_CHUNK) {
       const chunk = units.slice(i, i + BULK_CHUNK);
+      // After a call that came back with nothing, don't send the next one on top of it: the first may
+      // still be writing on the server and the two would queue on the same lot.
+      if (stopped !== null) {
+        for (const u of chunk) results.set(u.id, { ok: false, message: stopped });
+        continue;
+      }
       try {
         const { results: answers } = await apiFetch<{ results: BulkUnitResult[] }>('/stock-units/bulk', {
           method: 'POST',
@@ -125,8 +132,8 @@ export function StockCountActionSheet({ units, location, onClose, onDone }: Prop
       } catch (err) {
         // Nothing came back, so nothing is known: the rows stay missing with the reason, and tapping again
         // retries with the same keys.
-        const message = err instanceof ApiError ? err.message : "Couldn't reach the server.";
-        for (const u of chunk) results.set(u.id, { ok: false, message });
+        stopped = err instanceof ApiError ? err.message : "Couldn't reach the server.";
+        for (const u of chunk) results.set(u.id, { ok: false, message: stopped });
       }
     }
     setBusy(false);
