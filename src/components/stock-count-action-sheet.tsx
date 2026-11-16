@@ -14,20 +14,23 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, apiFetch, useGetData } from '@/lib/api';
 import {
+  BULK_ACTION,
+  BULK_CHUNK,
   canConsume,
   consumeBlockReason,
   daysAgo,
   farmDateParam,
+  farmDayLabel,
+  settle,
+  type ActionResult,
+  type BulkUnitResult,
+  type CountAction,
   type CountBatch,
   type CountUnit,
 } from '@/lib/stock-count';
 import type { House } from '@/lib/types';
-import { alreadyDone } from '@/lib/stock-count';
 
-export type CountAction = 'CONSUMED' | 'START' | 'MOVE' | 'RETURN' | 'DISPOSE';
-
-/** One unit's outcome: what was done, or why it wasn't. */
-export type ActionResult = { ok: true; label: string } | { ok: false; message: string };
+export type { ActionResult };
 
 type Props = {
   units: CountUnit[];
@@ -42,8 +45,9 @@ const dayLabel = (n: number) => (n === 0 ? 'Today' : n === 1 ? 'Yesterday' : `${
 
 /**
  * What to do with units the count didn't find: used up somewhere (the cost goes to the batch that was in
- * that house that day), opened, moved, returned, or written off. One call per unit, each with a key kept
- * across retries, so tapping again after a dropped connection can't record a unit twice.
+ * that house that day), opened, moved, returned, or written off. The whole selection goes in one call (25
+ * at a time) and the server answers per unit; each unit has a key kept across retries, so tapping again
+ * after a dropped connection can't record a unit twice.
  */
 export function StockCountActionSheet({ units, location, onClose, onDone }: Props) {
   const theme = useTheme();
@@ -104,40 +108,32 @@ export function StockCountActionSheet({ units, location, onClose, onDone }: Prop
   const run = async () => {
     setBusy(true);
     const results = new Map<string, ActionResult>();
-    // One at a time: the server rate-limits, and a count resolves a handful of units, not hundreds.
-    for (const u of units) {
-      const idempotency_key = keyFor(u.id);
-      const post = (path: string, body?: object) =>
-        apiFetch(`/stock-units/${u.id}/${path}`, {
-          method: 'POST',
-          ...(body && { body: JSON.stringify(body) }),
-        });
+    let stopped: string | null = null;
+    for (let i = 0; i < units.length; i += BULK_CHUNK) {
+      const chunk = units.slice(i, i + BULK_CHUNK);
+      // After a call that came back with nothing, don't send the next one on top of it: the first may
+      // still be writing on the server and the two would queue on the same lot.
+      if (stopped !== null) {
+        for (const u of chunk) results.set(u.id, { ok: false, message: stopped });
+        continue;
+      }
       try {
-        if (action === 'CONSUMED' || action === 'START') {
-          await post('use', {
-            action: action === 'CONSUMED' ? 'FINISH' : 'START',
-            house_id: house!.id,
-            date: date.toISOString(),
-            move_here: true,
-            idempotency_key,
-          });
-        } else if (action === 'MOVE' || action === 'RETURN') {
-          await post('relocate', {
-            house_id: action === 'MOVE' ? house!.id : null,
-            idempotency_key,
-          });
-        } else {
-          await post('dispose');
-        }
-        results.set(u.id, { ok: true, label: done[action] });
+        const { results: answers } = await apiFetch<{ results: BulkUnitResult[] }>('/stock-units/bulk', {
+          method: 'POST',
+          body: JSON.stringify({
+            action: BULK_ACTION[action],
+            ...(needsHouse && { house_id: house!.id }),
+            // The real instant, not a day: the server files it under the farm day it falls on.
+            ...(action === 'CONSUMED' && { date: date.toISOString() }),
+            units: chunk.map((u) => ({ id: u.id, idempotency_key: keyFor(u.id) })),
+          }),
+        });
+        for (const r of answers) results.set(r.id, settle(action, done[action], r));
       } catch (err) {
-        // A retry after a lost response finds the unit already in the state asked for: that's done, not failed.
-        if (err instanceof ApiError && alreadyDone(action, err)) results.set(u.id, { ok: true, label: done[action] });
-        else
-          results.set(u.id, {
-            ok: false,
-            message: err instanceof ApiError ? err.message : "Couldn't reach the server.",
-          });
+        // Nothing came back, so nothing is known: the rows stay missing with the reason, and tapping again
+        // retries with the same keys.
+        stopped = err instanceof ApiError ? err.message : "Couldn't reach the server.";
+        for (const u of chunk) results.set(u.id, { ok: false, message: stopped });
       }
     }
     setBusy(false);
@@ -186,7 +182,7 @@ export function StockCountActionSheet({ units, location, onClose, onDone }: Prop
           {action === 'CONSUMED' ? (
             <View style={styles.group}>
               <AppText variant="eyebrow" color="muted">
-                When
+                When · {farmDayLabel(date)}
               </AppText>
               <PillSelect
                 options={DAY_CHOICES.map((d) => ({
