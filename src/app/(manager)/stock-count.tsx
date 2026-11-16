@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useNetworkState } from 'expo-network';
 import { useQueryClient } from '@tanstack/react-query';
@@ -8,6 +8,7 @@ import * as Crypto from 'expo-crypto';
 import { categoryIcon } from '@/components/stock-item-row';
 import { StockCountActionSheet, type ActionResult } from '@/components/stock-count-action-sheet';
 import { Button } from '@/components/ui/button';
+import { CodeEntry } from '@/components/ui/code-entry';
 import { Card } from '@/components/ui/card';
 import { FormCard } from '@/components/ui/form-card';
 import { Header } from '@/components/ui/header';
@@ -20,7 +21,6 @@ import { Screen } from '@/components/ui/screen';
 import { SegmentedToggle } from '@/components/ui/segmented-toggle';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SubmitBar } from '@/components/ui/submit-bar';
-import { TextField } from '@/components/ui/text-field';
 import { AppText } from '@/components/ui/text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -72,9 +72,9 @@ export default function StockCountScreen() {
   const [acting, setActing] = useState<CountUnit[] | null>(null);
   const [movingStray, setMovingStray] = useState<string | null>(null);
   const [code, setCode] = useState('');
-  const [typedMsg, setTypedMsg] = useState<string | null>(null);
-  // Remounted after each counted code: on Android, setting value to '' leaves the keyboard's
-  // in-progress word in the native field, and the next code gets typed onto the end of it.
+  const [typedMsg, setTypedMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [checking, setChecking] = useState(false);
+  // Bumped after each counted code to remount the code field (see CodeEntry's use below).
   const [fieldKey, setFieldKey] = useState(0);
 
   const { data: warehouses, isLoading: warehousesLoading } = useGetData<Paginated<Warehouse>>('/warehouses?limit=100', [
@@ -154,24 +154,38 @@ export default function StockCountScreen() {
   // The printed characters under a torn label: matched against what should be here first, then the server.
   const typeCode = async () => {
     const tail = code.trim().toLowerCase();
-    if (tail.length < 3) return;
-    const local = units.filter((u) => u.id.endsWith(tail));
-    let id = local.length === 1 ? local[0]!.id : undefined;
-    if (!id) {
-      try {
-        const found = await apiFetch<Paginated<StockUnit>>(`/stock-units?q=${encodeURIComponent(tail)}&limit=2`);
-        if (found.results.length === 1) id = found.results[0]!.id;
-        else setTypedMsg(found.results.length ? 'More than one code matches. Type more of it.' : 'No code matches.');
-      } catch {
-        setTypedMsg("Couldn't reach the server.");
+    if (tail.length < 3 || checking) return;
+    setChecking(true);
+    try {
+      const local = units.filter((u) => u.id.endsWith(tail));
+      let id = local.length === 1 ? local[0]!.id : undefined;
+      if (!id) {
+        try {
+          const found = await apiFetch<Paginated<StockUnit>>(`/stock-units?q=${encodeURIComponent(tail)}&limit=2`);
+          if (found.results.length === 1) id = found.results[0]!.id;
+          else
+            setTypedMsg({
+              ok: false,
+              text: found.results.length ? 'More than one code matches. Type more of it.' : 'No code matches.',
+            });
+        } catch {
+          setTypedMsg({ ok: false, text: "Couldn't reach the server." });
+        }
       }
-    }
-    if (!id) return;
-    const r = await onScan(id);
-    setTypedMsg(r.ok ? `Counted: ${r.label ?? codeTail(id)}` : r.message);
-    if (r.ok) {
-      setCode('');
-      setFieldKey((k) => k + 1);
+      if (!id) return;
+      const r = await onScan(id);
+      // Scanning a code twice isn't a failure: it is counted. Only the field is left as typed.
+      setTypedMsg(
+        r.ok
+          ? { ok: true, text: `Counted: ${r.label ?? codeTail(id)}` }
+          : { ok: r.duplicate === true, text: r.message },
+      );
+      if (r.ok) {
+        setCode('');
+        setFieldKey((k) => k + 1);
+      }
+    } finally {
+      setChecking(false);
     }
   };
 
@@ -337,34 +351,25 @@ export default function StockCountScreen() {
 
         <Card style={styles.section}>
           <AppText variant="bodyStrong">Label won&apos;t scan?</AppText>
-          <TextField
-            key={fieldKey}
-            label="Type the end of the code"
-            value={code}
-            onChangeText={(t) => {
-              setCode(t);
-              setTypedMsg(null);
-            }}
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoComplete="off"
-            spellCheck={false}
-            selectTextOnFocus
-            // Android: a plain keyboard with no word composition. Gboard otherwise keeps its in-progress
-            // "word" and types the next code onto the end of the last one.
-            keyboardType={Platform.OS === 'android' ? 'visible-password' : 'default'}
-            placeholder="e.g. 3d4e5f6"
-            onSubmitEditing={typeCode}
-            returnKeyType="done"
-            helper={typedMsg ?? undefined}
-          />
-          <Button
-            label="Count this code"
-            variant="secondary"
-            onPress={typeCode}
-            disabled={code.trim().length < 3}
-            block
-          />
+          <AppText variant="caption" color="muted">
+            Type the characters printed under the code. The last few are enough.
+          </AppText>
+          <View style={styles.entry}>
+            {/* Remounted after each counted code: on Android, setting value to '' leaves the keyboard's
+                in-progress word in the native field, and the next code gets typed onto the end of it. */}
+            <CodeEntry
+              key={fieldKey}
+              value={code}
+              onChangeText={(t) => {
+                setCode(t);
+                setTypedMsg(null);
+              }}
+              onSubmit={typeCode}
+              ready={code.trim().length >= 3}
+              busy={checking}
+              message={typedMsg}
+            />
+          </View>
         </Card>
 
         {missing.length > 0 ? (
@@ -543,6 +548,7 @@ const styles = StyleSheet.create({
   summary: { marginTop: Spacing.md, gap: Spacing.xs },
   row: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md },
   section: { marginTop: Spacing.lg },
+  entry: { marginTop: Spacing.md },
   unit: {
     flexDirection: 'row',
     alignItems: 'center',
