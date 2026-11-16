@@ -12,11 +12,23 @@ type TextFieldProps = TextInputProps & {
    *  inline error carry that information. docs/layout/README.md. */
   error?: string;
   helper?: string;
+  /** The label is carried by the screen around the field (a card title, a button beside it): skip the
+   *  eyebrow above the input, and give screen readers the label instead. */
+  hideLabel?: boolean;
 };
 
 /** Free text is reserved for reason/note/cause/description — every other
  *  field is a picker. docs/design.md §7. */
-export function TextField({ label, error, helper, multiline, style, secureTextEntry, ...rest }: TextFieldProps) {
+export function TextField({
+  label,
+  error,
+  helper,
+  hideLabel,
+  multiline,
+  style,
+  secureTextEntry,
+  ...rest
+}: TextFieldProps) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
   // A password field gets a show/hide eye; it starts hidden.
@@ -26,13 +38,16 @@ export function TextField({ label, error, helper, multiline, style, secureTextEn
 
   return (
     <View style={styles.wrap}>
-      <AppText variant="eyebrow" color="muted">
-        {label}
-      </AppText>
+      {hideLabel ? null : (
+        <AppText variant="eyebrow" color="muted">
+          {label}
+        </AppText>
+      )}
 
       <View>
         <TextInput
           multiline={multiline}
+          accessibilityLabel={hideLabel ? label : undefined}
           placeholderTextColor={theme.muted}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
