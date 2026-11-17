@@ -29,6 +29,11 @@ assert.deepEqual(activityStamp({ at: '2026-11-01T00:00:00.000Z', day_only: true 
 
 assert.equal(activityMeta(entry('a', dhaka(2, 9), { detail: 'Heat', by: 'Rahim', batch_code: 'B-7' })), 'Heat · Rahim · B-7');
 assert.equal(activityMeta(entry('a', dhaka(2, 9), { by: 'Rahim' })), 'Rahim');
+// A usage record corrected through Fix usage says who fixed it.
+assert.equal(
+  activityMeta(entry('a', dhaka(2, 9), { by: 'Rahim', fixed: { at: dhaka(2, 10), by: 'Karim', reason: 'was 2 bags' } })),
+  'Rahim · Fixed by Karim',
+);
 
 // Grouped by farm day: with the day starting at 04:00, 01:30 on the 2nd still belongs to the 1st.
 setDayStartHour(4);
