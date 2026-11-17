@@ -108,6 +108,11 @@ function FixForm({ c }: { c: ConsumptionDetail }) {
       .map((d) => ({ value: String(d), label: d === 0 ? 'Today' : d === 1 ? 'Yesterday' : `${d} days ago` })),
   ];
 
+  // A shown error is about what was on screen when it was tried: any edit clears it.
+  const [shownFor, setShownFor] = useState('');
+  const formKey = [quantity, unitCode, daysBack, bottle?.id, reason].join('|');
+  const visibleError = error && shownFor === formKey ? error : null;
+
   const quantityNum = Number(quantity);
   const body: Record<string, unknown> = {};
   if (amountEditable && quantityNum > 0 && quantityNum !== Number(c.quantity)) body.quantity = quantityNum;
@@ -144,6 +149,11 @@ function FixForm({ c }: { c: ConsumptionDetail }) {
     }
   };
 
+  const showError = (text: string) => {
+    setError(text);
+    setShownFor(formKey);
+  };
+
   const finish = async (path: string, init: RequestInit, done: string) => {
     setBusy(true);
     setError(null);
@@ -155,7 +165,7 @@ function FixForm({ c }: { c: ConsumptionDetail }) {
       Alert.alert(done);
       goBack();
     } catch (e) {
-      setError(e instanceof ApiError && e.status === 0 ? "You're offline. Fixing needs a connection." : (e as Error).message);
+      showError(e instanceof ApiError && e.status === 0 ? "You're offline. Fixing needs a connection." : (e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -170,7 +180,7 @@ function FixForm({ c }: { c: ConsumptionDetail }) {
   ];
   const remove = () => {
     if (!reason.trim()) {
-      setError('Write why first, then remove.');
+      showError('Write why first, then remove.');
       return;
     }
     Alert.alert(
@@ -280,9 +290,9 @@ function FixForm({ c }: { c: ConsumptionDetail }) {
         </View>
 
         <TextField label="Why (required)" value={reason} onChangeText={setReason} placeholder="e.g. typed 2 kg, it was 2 bags" />
-        {error ? (
+        {visibleError ? (
           <AppText variant="caption" color="critical">
-            {error}
+            {visibleError}
           </AppText>
         ) : null}
       </FormCard>
