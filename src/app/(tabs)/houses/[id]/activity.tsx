@@ -3,7 +3,7 @@ import { RefreshControl, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
 
-import { ActivityRow } from '@/components/house-activity';
+import { ActivityRow, useFixUsage } from '@/components/house-activity';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -24,6 +24,7 @@ export default function HouseActivityScreen() {
   // Read once per mount and on pull-down: `new Date()` during render is impure.
   const [now, setNow] = useState(() => new Date());
   const [refreshing, setRefreshing] = useState(false);
+  const onFix = useFixUsage();
 
   const houseQ = useGetData<House>(`/houses/${id}`, ['houses', id]);
   const listQ = useInfiniteQuery({
@@ -86,7 +87,7 @@ export default function HouseActivityScreen() {
               </View>
               <Card rows>
                 {g.entries.map((e, i) => (
-                  <ActivityRow key={`${e.kind}:${e.id}`} entry={e} stamp={activityTime(e)} first={i === 0} />
+                  <ActivityRow key={`${e.kind}:${e.id}`} entry={e} stamp={activityTime(e)} first={i === 0} onPress={onFix(e)} />
                 ))}
               </Card>
             </View>

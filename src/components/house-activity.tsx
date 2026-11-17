@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { router, type Href } from 'expo-router';
 
 import { SectionHead } from '@/components/house-stock';
@@ -9,22 +9,37 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useGetData, type Paginated } from '@/lib/api';
 import { ACTIVITY_LOOK, activityMeta, type ActivityEntry } from '@/lib/house-activity';
+import { can } from '@/lib/permissions';
+import { useSession } from '@/lib/session';
 
 /** One line of a house's history: what happened, then detail, who and which batch, and when. */
 export function ActivityRow({
   entry,
   stamp,
   first,
+  onPress,
 }: {
   entry: ActivityEntry;
   stamp: { time: string | null; day: string | null };
   first?: boolean;
+  /** Set where the row can be opened: a manager's usage rows open Fix usage. */
+  onPress?: () => void;
 }) {
   const theme = useTheme();
   const look = ACTIVITY_LOOK[entry.kind];
   const meta = activityMeta(entry);
   return (
-    <View style={[styles.row, !first && { borderTopWidth: 1, borderTopColor: theme.line }]}>
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityHint={onPress ? 'Opens Fix usage' : undefined}
+      style={({ pressed }) => [
+        styles.row,
+        !first && { borderTopWidth: 1, borderTopColor: theme.line },
+        pressed && { backgroundColor: theme.surfaceAlt },
+      ]}
+    >
       <IconTile name={look.icon} tint={look.tint} color={look.color} size={32} />
       <View style={styles.flex}>
         <AppText variant="bodyStrong" numberOfLines={2}>
@@ -48,8 +63,16 @@ export function ActivityRow({
           </AppText>
         ) : null}
       </View>
-    </View>
+    </Pressable>
   );
+}
+
+/** For a manager, a usage row opens Fix usage (managers and admins can correct or remove a wrong record). */
+export function useFixUsage() {
+  const { employee } = useSession();
+  const manager = can(employee?.role, 'assign_task');
+  return (entry: ActivityEntry) =>
+    manager && entry.kind === 'USE' ? () => router.push({ pathname: '/fix-usage', params: { id: entry.id } }) : undefined;
 }
 
 /** The five latest things recorded in a house. Written as a hook so the screen refreshes it with the rest. */
@@ -68,6 +91,7 @@ export function HouseActivityCard({
   results: ActivityEntry[] | undefined;
   stamp: (entry: ActivityEntry) => { time: string | null; day: string };
 }) {
+  const onFix = useFixUsage();
   const theme = useTheme();
   if (!results?.length) return null;
   return (
@@ -81,7 +105,7 @@ export function HouseActivityCard({
       />
       <View style={[styles.rows, { borderTopColor: theme.line }]}>
         {results.map((e, i) => (
-          <ActivityRow key={`${e.kind}:${e.id}`} entry={e} stamp={stamp(e)} first={i === 0} />
+          <ActivityRow key={`${e.kind}:${e.id}`} entry={e} stamp={stamp(e)} first={i === 0} onPress={onFix(e)} />
         ))}
       </View>
     </Card>

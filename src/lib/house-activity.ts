@@ -24,6 +24,8 @@ export type ActivityEntry = {
   detail: string | null;
   by: string | null;
   batch_code: string | null;
+  /** A usage record corrected through Fix usage. */
+  fixed?: { at: string; by: string | null; reason: string | null };
 };
 
 type Look = {
@@ -81,7 +83,9 @@ export function activityStamp(
 
 /** The second line: what the server added, then who and which batch. */
 export function activityMeta(entry: ActivityEntry): string {
-  return [entry.detail, entry.by, entry.batch_code].filter(Boolean).join(' · ');
+  return [entry.detail, entry.by, entry.batch_code, entry.fixed && `Fixed by ${entry.fixed.by ?? 'someone'}`]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 /** Consecutive entries (already newest first) bundled under their farm day. */
