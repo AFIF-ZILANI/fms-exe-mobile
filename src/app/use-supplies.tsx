@@ -48,8 +48,8 @@ export default function UseSuppliesScreen() {
   const item = supply?.item ?? null;
 
   const units = item ? usableUnits(item) : [];
-  // Falls back to the base unit when nothing (or a unit of the previous item) is picked.
-  const unit = units.find((u) => u.unit === unitCode) ?? units[0] ?? null;
+  // Nothing (or a unit of the previous item) picked: feed is used by the bag, so start on Bag, else the base unit.
+  const unit = units.find((u) => u.unit === unitCode) ?? units.find((u) => u.unit === 'BAG') ?? units[0] ?? null;
   const unitText = (code: string | undefined) => (code ? humanise(code).toLowerCase() : '');
   const baseText = unitText(item?.unit);
   // Feed (anything kept in bags) reads "X Bag Y kg"; everything else as a number and its unit.
