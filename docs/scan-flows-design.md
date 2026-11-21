@@ -1,6 +1,6 @@
 # Scan flows — allocate, consume, bind
 
-Status: **Built** (2026-10-07): Allocate, Consume, and Bind on the shared scan session. Not built: offline queueing, dispose/mark-empty by scan, per-batch `stock_transfer_id` grouping. Camera behaviour still needs a device check (see the plan, Task 8 Step 3).
+Status: **Built** (2026-10-07): Allocate, Consume, and Bind on the shared scan session. Not built: offline queueing (scanning needs a connection), per-batch `stock_transfer_id` grouping. Built later: look up a code, dispose by scan through the stock count, vaccine confirm and sale scan. Camera behaviour still needs a device check (see the plan, Task 8 Step 3).
 
 Written from the product discussion on 2026-10-07. Source of truth for the unit
 model is `server/docs/inventory-tracking-design.md`; this doc only covers the

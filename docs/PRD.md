@@ -90,14 +90,15 @@ disabled.
 
 These affect behaviour on many screens. Stated once.
 
-- **No auth.** v1 ships a profile switcher (§6.2) as a stand-in; Google OAuth
-  replaces it later. Every write reads its actor id (`recorded_by_id` /
+- **Signed in, always.** The app opens on a login screen (email and password). A
+  new account or a reset gets a temporary password, and a change is forced before
+  anything else works. Every write reads its actor id (`recorded_by_id` /
   `measured_by_id` / `administered_by_id` / `given_by_id` / `assigned_by_id` /
   `bound_by_id`) from the session, never from a picker.
-- **Roles are UI shape, not security.** Nothing is enforced server-side — every
-  endpoint is open to anyone who can reach the API, which is already true of
-  `web/` today. `src/lib/permissions.ts` decides what a person *sees*. Do not
-  describe it as a permission boundary.
+- **Roles are enforced on the server.** `src/lib/permissions.ts` decides what a
+  person *sees*; the API's default-deny rules (`server/src/lib/permissions.ts`)
+  decide what they can *do*, and a route outside an employee's role answers
+  `403`. Hide what a role can't use, but don't rely on hiding.
 - **Every write queues first.** No form blocks on the network. See
   `docs/offline-sync.md`.
 - **Append-only.** Corrections are new offsetting entries, never edits. No
@@ -646,20 +647,19 @@ Admin knows who raised it. Worth a real field later; not worth a migration now.
 
 Don't scope-creep these into this pass:
 
-- **No auth.** Google OAuth replaces the profile switcher, at which point the §4
-  matrix moves server-side as real middleware.
+- ~~**No auth.**~~ **Shipped.** Email and password sign-in, with the §4 matrix
+  enforced on the server (default deny).
 - ~~**No QR scan.**~~ **Shipped.** `expo-camera` runs in Expo Go on SDK 57, so
   this needed no development build after all. §6.18 is now scan-first; the `q`
-  fragment search survives there as the fallback for an unreadable label. §6.8
-  still has no unit draw — that remains aggregate-only until `stock_unit_id`
-  consumption is designed.
+  fragment search survives there as the fallback for an unreadable label. Coded
+  units are used by scan (§9); the consumption form (§6.8) is for items without codes.
 - **No Intern tier** (`FEATURES.md` §3.4) — one key in `CAPABILITIES`, plus the
   "assist" nuance on weight sampling that the matrix leaves undefined.
 - **No recurring tasks.** Managers create each assignment.
-- **No admin web Tasks page.** Tasks and task types are API-only this pass.
+- ~~**No admin web Tasks page.**~~ **Shipped.** The dashboard has a Tasks page for assignments and the task catalog.
 - **Mobile never writes payroll.** It reads `PayrollRecord`; the monthly run
   stays Admin-only in `web/` (PRD §6.11).
-- **No server-side permission enforcement** — see §3.
+- ~~**No server-side permission enforcement.**~~ **Shipped** — see §3.
 
 ---
 
@@ -701,3 +701,26 @@ it, and nothing breaks in between.
 `TaskType.code` is generated once at create and never recomputed on rename, for
 this reason. Adding a seventh screen later is one screen, one line here, one
 admin-created row.
+
+---
+
+## 9. Screens added since this PRD was written
+
+The screens below were built after §6 and have no entry there. Each file's header comment, and the
+design doc it names, say more. The routes live under `src/app/`.
+
+| Screen | File | What it does |
+| --- | --- | --- |
+| Login, change password | `login.tsx`, `change-password.tsx` | Email and password. A temporary password forces a change before anything else works |
+| Inbox | `notifications.tsx`, `alerts.tsx` | What happened to me (tasks given, points, pay, account changes), and the farm's own warnings. One switch over two screens |
+| Sync centre | `sync.tsx` | What is waiting to send, and what failed and why (the dead-letter list) |
+| Settings | `settings.tsx` | App settings, which server this phone talks to, last refresh, and a way back to the person at the top |
+| Use supplies | `use-supplies.tsx` | Feed, husk and any other item without codes, used up in a house |
+| Move stock | `move-stock.tsx` | Uncoded stock moved by quantity: warehouse to house, house to house, or back |
+| Scan: move / return | `scan/allocate.tsx` | Pick the house (or the warehouse), then scan units into it |
+| Scan: start / finish | `scan/consume.tsx` | Open a sealed unit, or use it up where it is |
+| Look up a code | `scan/lookup.tsx` | Scan or type the end of any label and see everything known about that unit (`stock-unit/[id].tsx`) |
+| Vaccines | `vaccines/[batchId].tsx`, `vaccines/confirm.tsx` | A batch's vaccine plan as the house's worker reads it, and confirming a due dose by scanning the bottles |
+| Stock count (manager) | `(manager)/stock-count.tsx` | Scan everything at a place, then settle each missing unit (consumed, disposed, moved, returned) in bulk |
+| Sell scan (manager) | `(manager)/sell-scan.tsx` | A QR sale waits here until its packs are scanned out of stock, one scan per pack |
+| Fix usage (manager) | `fix-usage.tsx` | Correct or remove a wrong usage record, with a reason (`server/docs/api.md` §19.4) |

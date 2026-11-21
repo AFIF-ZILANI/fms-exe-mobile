@@ -1,0 +1,5 @@
+<!-- ZFarm Executor icon. A geometric Z (540-unit box on a 1024 canvas, bars 21% of the box,
+     diagonal solved to the same perpendicular thickness plus 4% optical boost), white on the app's ink indigo #1F3A5F.
+     Variants: the adaptive foreground and monochrome use the same Z at 430 units on a transparent canvas;
+     the splash uses 640. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#1F3A5F"/><path d="M242.00 242.00L782.00 242.00L782.00 355.40L421.75 668.60L782.00 668.60L782.00 782.00L242.00 782.00L242.00 668.60L602.25 355.40L242.00 355.40Z" fill="#fff"/></svg>
