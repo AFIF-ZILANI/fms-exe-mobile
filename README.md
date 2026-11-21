@@ -36,6 +36,7 @@ Every write is queued on the phone first and lands on the server exactly once wh
 - [Branding](#branding)
 - [Contributing](#contributing)
 - [Documentation](#documentation)
+- [License](#license)
 
 ## Features
 
@@ -190,3 +191,7 @@ Work on a branch, not on `main`. Before merging, run `bun run test`, `bun run ty
 | [`docs/superpowers/`](docs/superpowers/) | Build plans and specs for individual features |
 
 Upstream, in the API repo: [`docs/FEATURES.md`](https://github.com/AFIF-ZILANI/zfarm-api/blob/main/docs/FEATURES.md) (the feature set and the permission matrix this app implements), [`docs/api.md`](https://github.com/AFIF-ZILANI/zfarm-api/blob/main/docs/api.md) (conventions and the rules of each feature) and [`docs/endpoints.md`](https://github.com/AFIF-ZILANI/zfarm-api/blob/main/docs/endpoints.md) (every route and who may call it).
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE). Copyright 2026 Afif Zilani. See [`NOTICE`](NOTICE) for attribution, and the Expo template notice it carries.
