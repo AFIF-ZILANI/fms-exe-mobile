@@ -6,13 +6,13 @@
 
 **The field app for ZeroD Farms staff: log the day, scan the stock, get paid for good work.**
 
-[![Latest release](https://img.shields.io/github/v/release/AFIF-ZILANI/fms-exe-mobile?label=release)](https://github.com/AFIF-ZILANI/fms-exe-mobile/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/AFIF-ZILANI/zfarm-executor?label=release)](https://github.com/AFIF-ZILANI/zfarm-executor/releases/latest)
 ![Platform](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white)
 ![Expo SDK](https://img.shields.io/badge/Expo%20SDK-58-000020?logo=expo)
 ![React Native](https://img.shields.io/badge/React%20Native-0.88-61DAFB?logo=react)
 ![Offline first](https://img.shields.io/badge/offline-first-2E7D32)
 
-[**Download the Android APK**](https://github.com/AFIF-ZILANI/fms-exe-mobile/releases/latest)
+[**Download the Android APK**](https://github.com/AFIF-ZILANI/zfarm-executor/releases/latest)
 
 </div>
 
@@ -62,7 +62,7 @@ Every write is queued on the phone first and lands on the server exactly once wh
 
 ## Install
 
-1. On the phone, download `ZFarm-v<version>.apk` from the [latest release](https://github.com/AFIF-ZILANI/fms-exe-mobile/releases/latest).
+1. On the phone, download `ZFarm-v<version>.apk` from the [latest release](https://github.com/AFIF-ZILANI/zfarm-executor/releases/latest).
 2. Open it and allow installs from this source when Android asks. The app appears as **ZFarm Executor**.
 3. Sign in with the email and temporary password your manager gives you.
 
@@ -78,7 +78,7 @@ Android 7.0 or newer. The release APK talks to the production API. After the fir
 | Offline queue | `expo-sqlite` outbox, flushed in order with per-write idempotency keys |
 | Scanning | `expo-camera` QR reading, a pure scan pipeline (`src/lib/scan*.ts`) |
 | Feedback | Haptics and sounds per scan result |
-| API | Hono + Prisma + PostgreSQL ([`fms-backend`](https://github.com/AFIF-ZILANI/fms-backend)) |
+| API | Hono + Prisma + PostgreSQL ([`zfarm-api`](https://github.com/AFIF-ZILANI/zfarm-api)) |
 
 ## How it works
 
@@ -103,7 +103,7 @@ src/
 
 ## Development
 
-**Prerequisites:** [Bun](https://bun.sh), the [API](https://github.com/AFIF-ZILANI/fms-backend) running locally on port 5085, and Expo Go or an Android device/emulator.
+**Prerequisites:** [Bun](https://bun.sh), the [API](https://github.com/AFIF-ZILANI/zfarm-api) running locally on port 5085, and Expo Go or an Android device/emulator.
 
 ```bash
 bun install
@@ -189,4 +189,4 @@ Work on a branch, not on `main`. Before merging, run `bun run test`, `bun run ty
 | [`docs/ux-audit-2026-10.md`](docs/ux-audit-2026-10.md) | The October 2026 UX audit that started the redesigns |
 | [`docs/superpowers/`](docs/superpowers/) | Build plans and specs for individual features |
 
-Upstream, in the API repo: [`docs/FEATURES.md`](https://github.com/AFIF-ZILANI/fms-backend/blob/main/docs/FEATURES.md) (the feature set and the permission matrix this app implements), [`docs/api.md`](https://github.com/AFIF-ZILANI/fms-backend/blob/main/docs/api.md) (conventions and the rules of each feature) and [`docs/endpoints.md`](https://github.com/AFIF-ZILANI/fms-backend/blob/main/docs/endpoints.md) (every route and who may call it).
+Upstream, in the API repo: [`docs/FEATURES.md`](https://github.com/AFIF-ZILANI/zfarm-api/blob/main/docs/FEATURES.md) (the feature set and the permission matrix this app implements), [`docs/api.md`](https://github.com/AFIF-ZILANI/zfarm-api/blob/main/docs/api.md) (conventions and the rules of each feature) and [`docs/endpoints.md`](https://github.com/AFIF-ZILANI/zfarm-api/blob/main/docs/endpoints.md) (every route and who may call it).
