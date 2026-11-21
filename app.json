@@ -1,20 +1,16 @@
 {
   "expo": {
-    "name": "ZFarm",
+    "name": "ZFarm Executor",
     "slug": "zfarm",
     "version": "1.0.12",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "zfarm",
     "userInterfaceStyle": "automatic",
-    "ios": {
-      "icon": "./assets/expo.icon"
-    },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#1F3A5F",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
@@ -39,9 +35,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#1F3A5F",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 160
         }
       ],
       "expo-sqlite",
@@ -49,7 +45,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "ZeroD Farms uses the camera to scan the QR code on a stock unit and link it to the delivery it arrived on.",
+          "cameraPermission": "ZFarm Executor uses the camera to scan the QR code on a stock unit and link it to the delivery it arrived on.",
           "recordAudioAndroid": false
         }
       ],
