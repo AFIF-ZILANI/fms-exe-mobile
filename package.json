@@ -1,13 +1,13 @@
 {
-  "name": "fms-exe-mobile",
+  "name": "zfarm-executor",
   "description": "ZFarm Executor: the field app for ZeroD Farms staff. Offline daily logs, QR-coded stock and performance pay. Expo and React Native",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AFIF-ZILANI/fms-exe-mobile.git"
+    "url": "git+https://github.com/AFIF-ZILANI/zfarm-executor.git"
   },
-  "homepage": "https://github.com/AFIF-ZILANI/fms-exe-mobile#readme",
+  "homepage": "https://github.com/AFIF-ZILANI/zfarm-executor#readme",
   "bugs": {
-    "url": "https://github.com/AFIF-ZILANI/fms-exe-mobile/issues"
+    "url": "https://github.com/AFIF-ZILANI/zfarm-executor/issues"
   },
   "keywords": [
     "poultry",

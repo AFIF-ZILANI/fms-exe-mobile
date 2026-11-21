@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "fms-exe-mobile",
+      "name": "zfarm-executor",
       "dependencies": {
         "@expo-google-fonts/hind-siliguri": "^0.4.1",
         "@expo-google-fonts/tiro-bangla": "^0.4.1",
